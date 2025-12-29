@@ -1,0 +1,48 @@
+[
+  {
+    "input": "0P0001DZSM",
+    "inputType": "MORNINGSTAR_ID",
+    "normalizedInput": "0P0001DZSM",
+    "timestamp": "2025-12-26T21:15:53.973Z",
+    "status": "needs_review",
+    "confidence": 0.375,
+    "bestMatch": {
+      "url": "https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=0P0001DZSM",
+      "title": "BNP Paribas Easy MSCI Emerging SRI PAB UCITS ETF EUR Capitalisation",
+      "snippet": "ID Principal: 0P0001DZSM | Tipo: Desconocido",
+      "morningstarId": "0P0001DZSM",
+      "domain": "morningstar.es",
+      "ticker": 22,
+      "assetType": "Desconocido",
+      "score": 30,
+      "scoreBreakdown": {
+        "isinMatch": 0,
+        "tickerMatch": 0,
+        "nameMatch": 0,
+        "morningstarDomain": 20,
+        "typeMatch": 10
+      }
+    },
+    "allResults": [
+      {
+        "url": "https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=0P0001DZSM",
+        "title": "BNP Paribas Easy MSCI Emerging SRI PAB UCITS ETF EUR Capitalisation",
+        "snippet": "ID Principal: 0P0001DZSM | Tipo: Desconocido",
+        "morningstarId": "0P0001DZSM",
+        "domain": "morningstar.es",
+        "ticker": 22,
+        "assetType": "Desconocido",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "tickerMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      }
+    ],
+    "morningstarId": "0P0001DZSM",
+    "morningstarUrl": "https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=0P0001DZSM"
+  }
+]

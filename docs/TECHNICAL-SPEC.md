@@ -219,7 +219,8 @@ model Comment {
 // POST /api/assets/resolve
 // Request
 interface ResolveAssetRequest {
-  input: string;  // ISIN or Morningstar ID
+  input: string;  // ISIN, Morningstar ID, or ticker
+  assetType?: 'ETF' | 'FUND' | 'STOCK' | 'ETC';  // Optional hint for better resolution
 }
 
 // Response

@@ -1,0 +1,110 @@
+[
+  {
+    "input": "NIKE",
+    "inputType": "TICKER",
+    "normalizedInput": "NIKE",
+    "timestamp": "2025-12-25T19:16:21.985Z",
+    "status": "resolved",
+    "confidence": 1,
+    "bestMatch": {
+      "url": "https://global.morningstar.com/es/inversiones/fondos/0P0001UHI6/cotizacion",
+      "title": "Nike Inc Class B",
+      "snippet": "ID Principal: 0P0001UHI6 | ID Secundario: 0P0001UHI6",
+      "morningstarId": "0P0001UHI6",
+      "domain": "global.morningstar.com",
+      "ticker": 3,
+      "score": 70,
+      "scoreBreakdown": {
+        "isinMatch": 0,
+        "tickerMatch": 40,
+        "nameMatch": 0,
+        "morningstarDomain": 20,
+        "typeMatch": 10
+      }
+    },
+    "allResults": [
+      {
+        "url": "https://global.morningstar.com/es/inversiones/fondos/0P0001UHI6/cotizacion",
+        "title": "Nike Inc Class B",
+        "snippet": "ID Principal: 0P0001UHI6 | ID Secundario: 0P0001UHI6",
+        "morningstarId": "0P0001UHI6",
+        "domain": "global.morningstar.com",
+        "ticker": 3,
+        "score": 70,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "tickerMatch": 40,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      },
+      {
+        "url": "https://global.morningstar.com/es/inversiones/fondos/0P000003X1/cotizacion",
+        "title": "Nike Inc Class B",
+        "snippet": "ID Principal: 0P000003X1 | ID Secundario: 0P000003X1",
+        "morningstarId": "0P000003X1",
+        "domain": "global.morningstar.com",
+        "ticker": 3,
+        "score": 70,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "tickerMatch": 40,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      },
+      {
+        "url": "https://global.morningstar.com/es/inversiones/fondos/0P0000TQ4M/cotizacion",
+        "title": "Nike Inc Shs -B- Unsponsored Brazilian Depository Receipt Repr 1 Sh -B-",
+        "snippet": "ID Principal: 0P0000TQ4M | ID Secundario: 0P0000TQ4M",
+        "morningstarId": "0P0000TQ4M",
+        "domain": "global.morningstar.com",
+        "ticker": 3,
+        "score": 70,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "tickerMatch": 40,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      },
+      {
+        "url": "https://global.morningstar.com/es/inversiones/fondos/0P0001PJAE/cotizacion",
+        "title": "Nike Inc Canadian Depository Receipt",
+        "snippet": "ID Principal: 0P0001PJAE | ID Secundario: 0P0001PJAE",
+        "morningstarId": "0P0001PJAE",
+        "domain": "global.morningstar.com",
+        "ticker": 3,
+        "score": 70,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "tickerMatch": 40,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      },
+      {
+        "url": "https://global.morningstar.com/es/inversiones/fondos/0P0001PHDG/cotizacion",
+        "title": "Nike Inc Canadian Depository Receipt",
+        "snippet": "ID Principal: 0P0001PHDG | ID Secundario: 0P0001PHDG",
+        "morningstarId": "0P0001PHDG",
+        "domain": "global.morningstar.com",
+        "ticker": 3,
+        "score": 70,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "tickerMatch": 40,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      }
+    ],
+    "morningstarId": "0P0001UHI6",
+    "morningstarUrl": "https://global.morningstar.com/es/inversiones/fondos/0P0001UHI6/cotizacion"
+  }
+]

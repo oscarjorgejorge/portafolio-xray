@@ -1,0 +1,14 @@
+---
+alwaysApply: true
+---
+
+# Project Rules
+
+## Language & Documentation
+- All documentation, comments, and code documentation must be written in **English**.
+
+## Communication
+- Always ask clarifying questions when information is missing or ambiguous before proceeding with implementation.
+
+## Prompt Documentation
+- Always update the prompts file (`prompts/api-v1.md`) after making changes to the API or project structure. Keep this documentation in sync with the actual implementation.

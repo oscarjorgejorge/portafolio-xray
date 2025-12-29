@@ -1,0 +1,94 @@
+[
+  {
+    "input": "IE00BBL4VX78",
+    "inputType": "ISIN",
+    "normalizedInput": "IE00BBL4VX78",
+    "timestamp": "2025-12-25T18:59:27.708Z",
+    "status": "resolved",
+    "confidence": 0.95,
+    "bestMatch": {
+      "url": "https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=F00000THA5",
+      "title": "Federated Hermes Asia ex-Japan Equity Fund Class R EUR Accumulating Hedged IE00BBL4VX78",
+      "snippet": "",
+      "morningstarId": "F00000THA5",
+      "domain": "morningstar.es",
+      "score": 80,
+      "scoreBreakdown": {
+        "isinMatch": 50,
+        "nameMatch": 0,
+        "morningstarDomain": 20,
+        "typeMatch": 10
+      }
+    },
+    "allResults": [
+      {
+        "url": "https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=F00000THA5",
+        "title": "Federated Hermes Asia ex-Japan Equity Fund Class R EUR Accumulating Hedged IE00BBL4VX78",
+        "snippet": "",
+        "morningstarId": "F00000THA5",
+        "domain": "morningstar.es",
+        "score": 80,
+        "scoreBreakdown": {
+          "isinMatch": 50,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      }
+    ],
+    "morningstarId": "F00000THA5",
+    "morningstarUrl": "https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=F00000THA5",
+    "verification": {
+      "verified": true,
+      "isinFound": "IE00BBL4VX78",
+      "nameFound": "Federated Hermes Asia ex-Japan Equity Fund Class R EUR Accumulating Hedged IE00BBL4VX78",
+      "additionalInfo": {}
+    }
+  },
+  {
+    "input": "LU1897414303",
+    "inputType": "ISIN",
+    "normalizedInput": "LU1897414303",
+    "timestamp": "2025-12-25T18:59:32.324Z",
+    "status": "resolved",
+    "confidence": 0.95,
+    "bestMatch": {
+      "url": "https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=F000011G2R",
+      "title": "Janus Henderson Horizon Biotechnology Fund A2 USD LU1897414303",
+      "snippet": "",
+      "morningstarId": "F000011G2R",
+      "domain": "morningstar.es",
+      "score": 80,
+      "scoreBreakdown": {
+        "isinMatch": 50,
+        "nameMatch": 0,
+        "morningstarDomain": 20,
+        "typeMatch": 10
+      }
+    },
+    "allResults": [
+      {
+        "url": "https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=F000011G2R",
+        "title": "Janus Henderson Horizon Biotechnology Fund A2 USD LU1897414303",
+        "snippet": "",
+        "morningstarId": "F000011G2R",
+        "domain": "morningstar.es",
+        "score": 80,
+        "scoreBreakdown": {
+          "isinMatch": 50,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      }
+    ],
+    "morningstarId": "F000011G2R",
+    "morningstarUrl": "https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=F000011G2R",
+    "verification": {
+      "verified": true,
+      "isinFound": "LU1897414303",
+      "nameFound": "Janus Henderson Horizon Biotechnology Fund A2 USD LU1897414303",
+      "additionalInfo": {}
+    }
+  }
+]

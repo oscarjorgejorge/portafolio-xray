@@ -1,0 +1,46 @@
+[
+  {
+    "input": "0P0000A5TF",
+    "inputType": "MORNINGSTAR_ID",
+    "normalizedInput": "0P0000A5TF",
+    "timestamp": "2025-12-26T21:42:27.603Z",
+    "status": "needs_review",
+    "confidence": 0.375,
+    "bestMatch": {
+      "url": "https://global.morningstar.com/es/inversiones/acciones/0P0000A5TF/cotizacion",
+      "title": "Amper SA",
+      "snippet": "ID Principal: 0P0000A5TF | Tipo: Accion",
+      "morningstarId": "0P0000A5TF",
+      "domain": "global.morningstar.com",
+      "assetType": "Accion",
+      "score": 30,
+      "scoreBreakdown": {
+        "isinMatch": 0,
+        "tickerMatch": 0,
+        "nameMatch": 0,
+        "morningstarDomain": 20,
+        "typeMatch": 10
+      }
+    },
+    "allResults": [
+      {
+        "url": "https://global.morningstar.com/es/inversiones/acciones/0P0000A5TF/cotizacion",
+        "title": "Amper SA",
+        "snippet": "ID Principal: 0P0000A5TF | Tipo: Accion",
+        "morningstarId": "0P0000A5TF",
+        "domain": "global.morningstar.com",
+        "assetType": "Accion",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "tickerMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      }
+    ],
+    "morningstarId": "0P0000A5TF",
+    "morningstarUrl": "https://global.morningstar.com/es/inversiones/acciones/0P0000A5TF/cotizacion"
+  }
+]

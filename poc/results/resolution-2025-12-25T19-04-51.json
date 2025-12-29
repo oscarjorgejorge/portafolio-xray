@@ -1,0 +1,62 @@
+[
+  {
+    "input": "LU1241525184",
+    "inputType": "ISIN",
+    "normalizedInput": "LU1241525184",
+    "timestamp": "2025-12-25T19:04:51.703Z",
+    "status": "needs_review",
+    "confidence": 0.375,
+    "bestMatch": {
+      "url": "https://global.morningstar.com/es/inversiones/fondos/0P000168Z7/cotizacion",
+      "title": "BlackRock Strategic Funds - Managed Index Portfolios Growth D5 USD Hedged",
+      "snippet": "ID Principal: 0P000168Z7 | ID Secundario: F00000VYXH",
+      "morningstarId": "0P000168Z7",
+      "domain": "global.morningstar.com",
+      "score": 30,
+      "scoreBreakdown": {
+        "isinMatch": 0,
+        "nameMatch": 0,
+        "morningstarDomain": 20,
+        "typeMatch": 10
+      }
+    },
+    "allResults": [
+      {
+        "url": "https://global.morningstar.com/es/inversiones/fondos/0P000168Z7/cotizacion",
+        "title": "BlackRock Strategic Funds - Managed Index Portfolios Growth D5 USD Hedged",
+        "snippet": "ID Principal: 0P000168Z7 | ID Secundario: F00000VYXH",
+        "morningstarId": "0P000168Z7",
+        "domain": "global.morningstar.com",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      },
+      {
+        "url": "https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=F00000VYXH",
+        "title": "BlackRock Strategic Funds - Managed Index Portfolios Growth D5 USD Hedged",
+        "snippet": "ID: F00000VYXH",
+        "morningstarId": "F00000VYXH",
+        "domain": "morningstar.es",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      }
+    ],
+    "morningstarId": "0P000168Z7",
+    "morningstarUrl": "https://global.morningstar.com/es/inversiones/fondos/0P000168Z7/cotizacion",
+    "verification": {
+      "verified": false,
+      "isinFound": null,
+      "nameFound": null,
+      "additionalInfo": {}
+    }
+  }
+]

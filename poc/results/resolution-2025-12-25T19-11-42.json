@@ -1,0 +1,90 @@
+[
+  {
+    "input": "IE00BG0SKF03",
+    "inputType": "ISIN",
+    "normalizedInput": "IE00BG0SKF03",
+    "timestamp": "2025-12-25T19:11:42.704Z",
+    "status": "needs_review",
+    "confidence": 0.375,
+    "bestMatch": {
+      "url": "https://global.morningstar.com/es/inversiones/fondos/0P0001F9QM/cotizacion",
+      "title": "iShares Edge MSCI EM Value Factor UCITS ETF USD (Acc)",
+      "snippet": "ID Principal: 0P0001F9QM | ID Secundario: 0P0001F9QM",
+      "morningstarId": "0P0001F9QM",
+      "domain": "global.morningstar.com",
+      "score": 30,
+      "scoreBreakdown": {
+        "isinMatch": 0,
+        "nameMatch": 0,
+        "morningstarDomain": 20,
+        "typeMatch": 10
+      }
+    },
+    "allResults": [
+      {
+        "url": "https://global.morningstar.com/es/inversiones/fondos/0P0001F9QM/cotizacion",
+        "title": "iShares Edge MSCI EM Value Factor UCITS ETF USD (Acc)",
+        "snippet": "ID Principal: 0P0001F9QM | ID Secundario: 0P0001F9QM",
+        "morningstarId": "0P0001F9QM",
+        "domain": "global.morningstar.com",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      },
+      {
+        "url": "https://global.morningstar.com/es/inversiones/fondos/0P0001VRXB/cotizacion",
+        "title": "iShares Edge MSCI EM Value Factor UCITS ETF USD (Acc) EUR",
+        "snippet": "ID Principal: 0P0001VRXB | ID Secundario: 0P0001VRXB",
+        "morningstarId": "0P0001VRXB",
+        "domain": "global.morningstar.com",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      },
+      {
+        "url": "https://global.morningstar.com/es/inversiones/fondos/0P0001RMLK/cotizacion",
+        "title": "iShares Edge MSCI EM Value Factor UCITS ETF USD (Acc) EUR",
+        "snippet": "ID Principal: 0P0001RMLK | ID Secundario: 0P0001RMLK",
+        "morningstarId": "0P0001RMLK",
+        "domain": "global.morningstar.com",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      },
+      {
+        "url": "https://global.morningstar.com/es/inversiones/fondos/0P0001HUIE/cotizacion",
+        "title": "iShares Edge MSCI EM Value Factor UCITS ETF USD (Acc) USD",
+        "snippet": "ID Principal: 0P0001HUIE | ID Secundario: 0P0001HUIE",
+        "morningstarId": "0P0001HUIE",
+        "domain": "global.morningstar.com",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      }
+    ],
+    "morningstarId": "0P0001F9QM",
+    "morningstarUrl": "https://global.morningstar.com/es/inversiones/fondos/0P0001F9QM/cotizacion",
+    "verification": {
+      "verified": false,
+      "isinFound": null,
+      "nameFound": null,
+      "additionalInfo": {}
+    }
+  }
+]

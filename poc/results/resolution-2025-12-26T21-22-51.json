@@ -1,0 +1,465 @@
+[
+  {
+    "input": "IE00BBL4VX78",
+    "inputType": "ISIN",
+    "normalizedInput": "IE00BBL4VX78",
+    "timestamp": "2025-12-26T21:22:47.684Z",
+    "status": "needs_review",
+    "confidence": 0.375,
+    "bestMatch": {
+      "url": "https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=0P000134LI",
+      "title": "Federated Hermes Asia ex-Japan Equity Fund Class R EUR Accumulating Hedged",
+      "snippet": "ID Principal: 0P000134LI | Tipo: Desconocido",
+      "morningstarId": "0P000134LI",
+      "domain": "morningstar.es",
+      "ticker": 2,
+      "assetType": "Desconocido",
+      "score": 30,
+      "scoreBreakdown": {
+        "isinMatch": 0,
+        "tickerMatch": 0,
+        "nameMatch": 0,
+        "morningstarDomain": 20,
+        "typeMatch": 10
+      }
+    },
+    "allResults": [
+      {
+        "url": "https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=0P000134LI",
+        "title": "Federated Hermes Asia ex-Japan Equity Fund Class R EUR Accumulating Hedged",
+        "snippet": "ID Principal: 0P000134LI | Tipo: Desconocido",
+        "morningstarId": "0P000134LI",
+        "domain": "morningstar.es",
+        "ticker": 2,
+        "assetType": "Desconocido",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "tickerMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      },
+      {
+        "url": "https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=F00000THA5",
+        "title": "Federated Hermes Asia ex-Japan Equity Fund Class R EUR Accumulating Hedged",
+        "snippet": "ID Secundario: F00000THA5 | Tipo: Desconocido",
+        "morningstarId": "F00000THA5",
+        "domain": "morningstar.es",
+        "ticker": 2,
+        "assetType": "Desconocido",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "tickerMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      }
+    ],
+    "morningstarId": "0P000134LI",
+    "morningstarUrl": "https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=0P000134LI",
+    "verification": {
+      "verified": false,
+      "isinFound": null,
+      "nameFound": null,
+      "additionalInfo": {}
+    }
+  },
+  {
+    "input": "LU1241525184",
+    "inputType": "ISIN",
+    "normalizedInput": "LU1241525184",
+    "timestamp": "2025-12-26T21:22:48.609Z",
+    "status": "needs_review",
+    "confidence": 0.375,
+    "bestMatch": {
+      "url": "https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=0P000168Z7",
+      "title": "BlackRock Strategic Funds - Managed Index Portfolios Growth D5 USD Hedged",
+      "snippet": "ID Principal: 0P000168Z7 | Tipo: Desconocido",
+      "morningstarId": "0P000168Z7",
+      "domain": "morningstar.es",
+      "ticker": 2,
+      "assetType": "Desconocido",
+      "score": 30,
+      "scoreBreakdown": {
+        "isinMatch": 0,
+        "tickerMatch": 0,
+        "nameMatch": 0,
+        "morningstarDomain": 20,
+        "typeMatch": 10
+      }
+    },
+    "allResults": [
+      {
+        "url": "https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=0P000168Z7",
+        "title": "BlackRock Strategic Funds - Managed Index Portfolios Growth D5 USD Hedged",
+        "snippet": "ID Principal: 0P000168Z7 | Tipo: Desconocido",
+        "morningstarId": "0P000168Z7",
+        "domain": "morningstar.es",
+        "ticker": 2,
+        "assetType": "Desconocido",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "tickerMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      },
+      {
+        "url": "https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=F00000VYXH",
+        "title": "BlackRock Strategic Funds - Managed Index Portfolios Growth D5 USD Hedged",
+        "snippet": "ID Secundario: F00000VYXH | Tipo: Desconocido",
+        "morningstarId": "F00000VYXH",
+        "domain": "morningstar.es",
+        "ticker": 2,
+        "assetType": "Desconocido",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "tickerMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      }
+    ],
+    "morningstarId": "0P000168Z7",
+    "morningstarUrl": "https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=0P000168Z7",
+    "verification": {
+      "verified": false,
+      "isinFound": null,
+      "nameFound": null,
+      "additionalInfo": {}
+    }
+  },
+  {
+    "input": "AMD",
+    "inputType": "TICKER",
+    "normalizedInput": "AMD",
+    "timestamp": "2025-12-26T21:22:49.403Z",
+    "status": "needs_review",
+    "confidence": 0.42857142857142855,
+    "bestMatch": {
+      "url": "https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=0P0000006A",
+      "title": "Advanced Micro Devices Inc",
+      "snippet": "ID Principal: 0P0000006A | Tipo: Desconocido",
+      "morningstarId": "0P0000006A",
+      "domain": "morningstar.es",
+      "ticker": 3,
+      "assetType": "Desconocido",
+      "score": 30,
+      "scoreBreakdown": {
+        "isinMatch": 0,
+        "tickerMatch": 0,
+        "nameMatch": 0,
+        "morningstarDomain": 20,
+        "typeMatch": 10
+      }
+    },
+    "allResults": [
+      {
+        "url": "https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=0P0000006A",
+        "title": "Advanced Micro Devices Inc",
+        "snippet": "ID Principal: 0P0000006A | Tipo: Desconocido",
+        "morningstarId": "0P0000006A",
+        "domain": "morningstar.es",
+        "ticker": 3,
+        "assetType": "Desconocido",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "tickerMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      },
+      {
+        "url": "https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=0P0000ESX9",
+        "title": "Advanced Micro Devices Inc",
+        "snippet": "ID Principal: 0P0000ESX9 | Tipo: Desconocido",
+        "morningstarId": "0P0000ESX9",
+        "domain": "morningstar.es",
+        "ticker": 3,
+        "assetType": "Desconocido",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "tickerMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      },
+      {
+        "url": "https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=0P0000EYEX",
+        "title": "Advanced Micro Devices Inc",
+        "snippet": "ID Principal: 0P0000EYEX | Tipo: Desconocido",
+        "morningstarId": "0P0000EYEX",
+        "domain": "morningstar.es",
+        "ticker": 3,
+        "assetType": "Desconocido",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "tickerMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      },
+      {
+        "url": "https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=0P0000EEOC",
+        "title": "Advanced Micro Devices Inc",
+        "snippet": "ID Principal: 0P0000EEOC | Tipo: Desconocido",
+        "morningstarId": "0P0000EEOC",
+        "domain": "morningstar.es",
+        "ticker": 3,
+        "assetType": "Desconocido",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "tickerMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      },
+      {
+        "url": "https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=0P0000C95I",
+        "title": "Advanced Micro Devices Inc",
+        "snippet": "ID Principal: 0P0000C95I | Tipo: Desconocido",
+        "morningstarId": "0P0000C95I",
+        "domain": "morningstar.es",
+        "ticker": 3,
+        "assetType": "Desconocido",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "tickerMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      },
+      {
+        "url": "https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=0P00015OWP",
+        "title": "Neuberger Berman Emerging Market Debt - Local Currency Fund SGD A Monthly Distributing Class- Hedged",
+        "snippet": "ID Principal: 0P00015OWP | Tipo: Desconocido",
+        "morningstarId": "0P00015OWP",
+        "domain": "morningstar.es",
+        "ticker": 2,
+        "assetType": "Desconocido",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "tickerMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      },
+      {
+        "url": "https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=F00000VL02",
+        "title": "Neuberger Berman Emerging Market Debt - Local Currency Fund SGD A Monthly Distributing Class- Hedged",
+        "snippet": "ID Secundario: F00000VL02 | Tipo: Desconocido",
+        "morningstarId": "F00000VL02",
+        "domain": "morningstar.es",
+        "ticker": 2,
+        "assetType": "Desconocido",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "tickerMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      },
+      {
+        "url": "https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=0P0000YGGJ",
+        "title": "Neuberger Berman Global Senior Floating Rate Income Fund AUD A (Monthly) Distributing Class - Hedged",
+        "snippet": "ID Principal: 0P0000YGGJ | Tipo: Desconocido",
+        "morningstarId": "0P0000YGGJ",
+        "domain": "morningstar.es",
+        "ticker": 2,
+        "assetType": "Desconocido",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "tickerMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      },
+      {
+        "url": "https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=F00000PSUN",
+        "title": "Neuberger Berman Global Senior Floating Rate Income Fund AUD A (Monthly) Distributing Class - Hedged",
+        "snippet": "ID Secundario: F00000PSUN | Tipo: Desconocido",
+        "morningstarId": "F00000PSUN",
+        "domain": "morningstar.es",
+        "ticker": 2,
+        "assetType": "Desconocido",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "tickerMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      },
+      {
+        "url": "https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=0P0000YGGS",
+        "title": "Neuberger Berman Global Senior Floating Rate Income Fund GBP A (Monthly) Distributing Class - Hedged",
+        "snippet": "ID Principal: 0P0000YGGS | Tipo: Desconocido",
+        "morningstarId": "0P0000YGGS",
+        "domain": "morningstar.es",
+        "ticker": 2,
+        "assetType": "Desconocido",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "tickerMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      }
+    ],
+    "morningstarId": "0P0000006A",
+    "morningstarUrl": "https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=0P0000006A"
+  },
+  {
+    "input": "CELH",
+    "inputType": "TICKER",
+    "normalizedInput": "CELH",
+    "timestamp": "2025-12-26T21:22:50.350Z",
+    "status": "needs_review",
+    "confidence": 0.42857142857142855,
+    "bestMatch": {
+      "url": "https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=0P0000COVI",
+      "title": "Celsius Holdings Inc",
+      "snippet": "ID Principal: 0P0000COVI | Tipo: Desconocido",
+      "morningstarId": "0P0000COVI",
+      "domain": "morningstar.es",
+      "ticker": 3,
+      "assetType": "Desconocido",
+      "score": 30,
+      "scoreBreakdown": {
+        "isinMatch": 0,
+        "tickerMatch": 0,
+        "nameMatch": 0,
+        "morningstarDomain": 20,
+        "typeMatch": 10
+      }
+    },
+    "allResults": [
+      {
+        "url": "https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=0P0000COVI",
+        "title": "Celsius Holdings Inc",
+        "snippet": "ID Principal: 0P0000COVI | Tipo: Desconocido",
+        "morningstarId": "0P0000COVI",
+        "domain": "morningstar.es",
+        "ticker": 3,
+        "assetType": "Desconocido",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "tickerMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      },
+      {
+        "url": "https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=0P0001TAR1",
+        "title": "Celsius Holdings Inc",
+        "snippet": "ID Principal: 0P0001TAR1 | Tipo: Desconocido",
+        "morningstarId": "0P0001TAR1",
+        "domain": "morningstar.es",
+        "ticker": 3,
+        "assetType": "Desconocido",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "tickerMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      },
+      {
+        "url": "https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=0P0000BHRP",
+        "title": "Celik Halat ve Tel Sanayii AS",
+        "snippet": "ID Principal: 0P0000BHRP | Tipo: Desconocido",
+        "morningstarId": "0P0000BHRP",
+        "domain": "morningstar.es",
+        "ticker": 3,
+        "assetType": "Desconocido",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "tickerMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      }
+    ],
+    "morningstarId": "0P0000COVI",
+    "morningstarUrl": "https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=0P0000COVI"
+  },
+  {
+    "input": "0P0001DZSM",
+    "inputType": "MORNINGSTAR_ID",
+    "normalizedInput": "0P0001DZSM",
+    "timestamp": "2025-12-26T21:22:51.346Z",
+    "status": "needs_review",
+    "confidence": 0.375,
+    "bestMatch": {
+      "url": "https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=0P0001DZSM",
+      "title": "BNP Paribas Easy MSCI Emerging SRI PAB UCITS ETF EUR Capitalisation",
+      "snippet": "ID Principal: 0P0001DZSM | Tipo: Desconocido",
+      "morningstarId": "0P0001DZSM",
+      "domain": "morningstar.es",
+      "ticker": 22,
+      "assetType": "Desconocido",
+      "score": 30,
+      "scoreBreakdown": {
+        "isinMatch": 0,
+        "tickerMatch": 0,
+        "nameMatch": 0,
+        "morningstarDomain": 20,
+        "typeMatch": 10
+      }
+    },
+    "allResults": [
+      {
+        "url": "https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=0P0001DZSM",
+        "title": "BNP Paribas Easy MSCI Emerging SRI PAB UCITS ETF EUR Capitalisation",
+        "snippet": "ID Principal: 0P0001DZSM | Tipo: Desconocido",
+        "morningstarId": "0P0001DZSM",
+        "domain": "morningstar.es",
+        "ticker": 22,
+        "assetType": "Desconocido",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "tickerMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      }
+    ],
+    "morningstarId": "0P0001DZSM",
+    "morningstarUrl": "https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=0P0001DZSM"
+  }
+]
