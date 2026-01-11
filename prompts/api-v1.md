@@ -177,3 +177,24 @@ deberia poder detectarse al poner el input o en algun momento que hay un asset r
   - By ISIN - checked after asset resolution
   - By Morningstar ID - checked after asset resolution
 - Prevents duplicate assets from being added to portfolio, keeping it clean
+
+### Prompt 28
+I am receiving and answer like this: morningstarUrl: "https://lt.morningstar.com/j2uwuwirpv/xray/default.aspx?PortfolioType=2&values=0P000134LI%7C30%7C0P0001UHI6%7C20%7C0P0001EXVW%7C20%7C0P0001Y6QW%7C10%7C0P0001QPGR%7C10%7C0P0000005M%7C10" shareableUrl: "/xray?assets=0P000134LI%3A3 the shareableUrl, should appear on the botton, with the webdomain before and a button to coppy the url
+
+**Implementation:**
+- Updated `PortfolioBuilder` to display shareable URL after successful X-Ray generation
+- Shows full URL with domain (e.g., `http://localhost:3000/xray?assets=...`)
+- Added copy button to copy the full shareable URL to clipboard
+- URL appears at the bottom of the Portfolio Builder card after generation
+- Maintains navigation to X-Ray page while also showing the shareable URL for copying
+- URL is cleared when "Clear All" is executed
+
+### Prompt 29
+el boton "view x-ray report", deberia abrir el pdf con la url que viene de la api, pero no lo esta haciendo
+
+**Implementation:**
+- Updated `PortfolioBuilder` to store `morningstarUrl` from API response in component state
+- Changed "View X-Ray Report" button handler from `handleNavigateToXRay` to `handleOpenPDF`
+- `handleOpenPDF` opens the PDF directly in a new tab using `window.open(morningstarUrl, '_blank')`
+- Button is disabled when `morningstarUrl` is not available
+- `morningstarUrl` is cleared when "Clear All" is executed
