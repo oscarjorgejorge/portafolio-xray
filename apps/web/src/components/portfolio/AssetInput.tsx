@@ -11,24 +11,66 @@ import { generateSimpleId } from '@/lib/utils/id';
 interface AssetInputProps {
   onAssetResolved: (asset: PortfolioAsset) => void;
   assetTypeHint?: AssetType;
+  existingAssets?: PortfolioAsset[];
 }
 
 export const AssetInput: React.FC<AssetInputProps> = ({
   onAssetResolved,
   assetTypeHint,
+  existingAssets = [],
 }) => {
   const [input, setInput] = useState('');
   const [error, setError] = useState<string | null>(null);
+
+  const checkDuplicate = (
+    identifier: string,
+    resolvedAsset?: { isin?: string; morningstarId?: string }
+  ): boolean => {
+    return existingAssets.some((existingAsset) => {
+      // Check by identifier (ISIN, ticker, etc.)
+      if (
+        existingAsset.identifier.toUpperCase() === identifier.toUpperCase()
+      ) {
+        return true;
+      }
+      // Check by ISIN if both have resolved assets
+      if (
+        existingAsset.asset?.isin &&
+        resolvedAsset?.isin &&
+        existingAsset.asset.isin.toUpperCase() ===
+          resolvedAsset.isin.toUpperCase()
+      ) {
+        return true;
+      }
+      // Check by Morningstar ID if both have resolved assets
+      if (
+        existingAsset.asset?.morningstarId &&
+        resolvedAsset?.morningstarId &&
+        existingAsset.asset.morningstarId === resolvedAsset.morningstarId
+      ) {
+        return true;
+      }
+      return false;
+    });
+  };
 
   const resolveMutation = useMutation({
     mutationFn: (identifier: string) =>
       resolveAsset(identifier, assetTypeHint),
     onSuccess: (data) => {
+      const trimmedIdentifier = input.trim().toUpperCase();
+
       if (data.success && data.asset) {
+        // Check for duplicate before adding
+        if (checkDuplicate(trimmedIdentifier, data.asset)) {
+          setError('This asset is already in your portfolio');
+          return;
+        }
+
         // Asset resolved successfully
         const portfolioAsset: PortfolioAsset = {
           id: generateSimpleId(),
-          identifier: input.trim().toUpperCase(),
+          identifier: trimmedIdentifier,
           asset: data.asset,
           weight: 0,
           status: 'resolved',
@@ -37,10 +79,16 @@ export const AssetInput: React.FC<AssetInputProps> = ({
         setInput('');
         setError(null);
       } else if (data.alternatives && data.alternatives.length > 0) {
+        // Check for duplicate by identifier before adding
+        if (checkDuplicate(trimmedIdentifier)) {
+          setError('This asset is already in your portfolio');
+          return;
+        }
+
         // Low confidence - show alternatives
         const portfolioAsset: PortfolioAsset = {
           id: generateSimpleId(),
-          identifier: input.trim().toUpperCase(),
+          identifier: trimmedIdentifier,
           weight: 0,
           status: 'low_confidence',
           alternatives: data.alternatives,
@@ -50,10 +98,16 @@ export const AssetInput: React.FC<AssetInputProps> = ({
         setInput('');
         setError(null);
       } else {
+        // Check for duplicate by identifier before adding
+        if (checkDuplicate(trimmedIdentifier)) {
+          setError('This asset is already in your portfolio');
+          return;
+        }
+
         // Manual input required
         const portfolioAsset: PortfolioAsset = {
           id: generateSimpleId(),
-          identifier: input.trim().toUpperCase(),
+          identifier: trimmedIdentifier,
           weight: 0,
           status: 'manual_required',
           error: data.error || 'Asset not found',
@@ -75,6 +129,13 @@ export const AssetInput: React.FC<AssetInputProps> = ({
       setError('Please enter an ISIN, Morningstar ID, or ticker');
       return;
     }
+
+    // Check for duplicate by identifier before making API call
+    if (checkDuplicate(trimmedInput.toUpperCase())) {
+      setError('This asset is already in your portfolio');
+      return;
+    }
+
     setError(null);
     resolveMutation.mutate(trimmedInput);
   };

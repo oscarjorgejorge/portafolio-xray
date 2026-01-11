@@ -60,7 +60,7 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
 
   const handleAssetResolved = (newAsset: PortfolioAsset) => {
     setAssets((prev) => [...prev, newAsset]);
-    
+
     // Handle different statuses
     if (newAsset.status === 'low_confidence') {
       setSelectedAssetForAlternatives(newAsset);
@@ -169,7 +169,10 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
         <AllocationModeToggle mode={allocationMode} onChange={setAllocationMode} />
 
         <div className="mb-6">
-          <AssetInput onAssetResolved={handleAssetResolved} />
+          <AssetInput
+            onAssetResolved={handleAssetResolved}
+            existingAssets={assets}
+          />
         </div>
 
         {assets.length > 0 && (

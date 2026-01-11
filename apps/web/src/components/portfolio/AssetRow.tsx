@@ -33,34 +33,42 @@ export const AssetRow: React.FC<AssetRowProps> = ({
         <>
           {/* Top row: Link, Name, Weight (desktop), X button */}
           <div className="flex items-start gap-2 flex-wrap mb-2">
-            <h4 className="font-semibold text-slate-900 flex-1 min-w-0 break-words leading-tight">
-              {asset.asset.name}
-              {asset.asset.url && (
-                <a
-                  href={asset.asset.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex align-middle ml-1 mb-2 text-blue-600 hover:text-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded"
-                  aria-label={`Open ${asset.asset.name} on Morningstar`}
-                  title="Open on Morningstar"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-5 w-5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={2}
+            <div className="flex-1 min-w-0">
+              <h4 className="font-semibold text-slate-900 break-words leading-tight">
+                {asset.asset.name}
+                {asset.asset.url && (
+                  <a
+                    href={asset.asset.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex align-middle ml-1 mb-2 text-blue-600 hover:text-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded"
+                    aria-label={`Open ${asset.asset.name} on Morningstar`}
+                    title="Open on Morningstar"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                    />
-                  </svg>
-                </a>
-              )}
-            </h4>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                      />
+                    </svg>
+                  </a>
+                )}
+              </h4>
+              <div className="flex items-center gap-4 text-sm text-slate-600 mt-1">
+                <span>{asset.asset.isin}</span>
+                <span>
+                  <span className="font-medium">Type:</span> {asset.asset.type}
+                </span>
+              </div>
+            </div>
             {/* Desktop: Weight and X button on the right */}
             <div className="hidden md:flex items-start gap-2 flex-shrink-0">
               <div className="w-24">
@@ -175,22 +183,15 @@ export const AssetRow: React.FC<AssetRowProps> = ({
               {error}
             </p>
           )}
-          {/* Bottom row: ISIN, Type, etc. */}
-          <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600">
-            <span>
-              <span className="font-medium">ISIN:</span> {asset.asset.isin}
-            </span>
-            <span>
-              <span className="font-medium">Type:</span>{' '}
-              {asset.asset.type}
-            </span>
-            {asset.asset.ticker && (
+          {/* Bottom row: Ticker, etc. */}
+          {asset.asset.ticker && (
+            <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600">
               <span>
                 <span className="font-medium">Ticker:</span>{' '}
                 {asset.asset.ticker}
               </span>
-            )}
-          </div>
+            </div>
+          )}
         </>
       ) : (
         <>

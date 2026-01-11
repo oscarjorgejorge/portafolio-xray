@@ -140,3 +140,40 @@ how i can make the link icon to be displayed right after the last word of the ti
   - Mobile: Weight input moved below the text for better UX
   - Desktop: All elements aligned at the top row
   - Link icon uses `ml-1` for spacing and flows naturally with the text
+
+### Prompt 24
+la informacion del Isin deberia venir debajo del nombre
+
+**Implementation:**
+- Updated `AssetRow` component to display ISIN directly below the asset name
+- ISIN appears in smaller gray text (`text-sm text-slate-600`) right after the name
+- Removed ISIN from bottom section, keeping only Type and Ticker there
+
+### Prompt 25
+y type justo despues del isin
+
+**Implementation:**
+- Updated `AssetRow` component to display Type immediately after ISIN
+- Both ISIN and Type now appear below the asset name in sequence
+- Type formatted with "Type:" label followed by the asset type value
+
+### Prompt 26
+a la derecha
+
+**Implementation:**
+- Updated `AssetRow` component layout to show Type on the same line as ISIN, positioned to the right
+- Used flexbox layout (`flex items-center gap-4`) to display ISIN and Type horizontally
+- Type appears with "Type:" label followed by the asset type value
+
+### Prompt 27
+deberia poder detectarse al poner el input o en algun momento que hay un asset repetido, no se cual seria la mejor solucion, si incluirlo y poner un mensaje de alerta, o que no se pueda incluir?
+
+**Implementation:**
+- Added duplicate detection in `AssetInput` component
+- Checks for duplicates before making API call (by identifier) and after resolving asset (by ISIN and Morningstar ID)
+- Shows error message "This asset is already in your portfolio" and prevents adding duplicate
+- Duplicate detection criteria:
+  - By identifier (ISIN, ticker, etc.) - checked before API call
+  - By ISIN - checked after asset resolution
+  - By Morningstar ID - checked after asset resolution
+- Prevents duplicate assets from being added to portfolio, keeping it clean
