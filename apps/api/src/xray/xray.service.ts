@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { GenerateXRayDto, XRayAssetDto } from './dto';
+import { AssetsRepository } from '../assets/assets.repository';
 
 export interface GenerateXRayResponse {
   morningstarUrl: string;
@@ -11,10 +12,12 @@ export class XRayService {
   private readonly MORNINGSTAR_BASE_URL =
     process.env.MORNINGSTAR_BASE_URL || 'https://lt.morningstar.com';
 
+  constructor(private readonly assetsRepository: AssetsRepository) {}
+
   /**
    * Generate Morningstar X-Ray URL from portfolio assets
    */
-  generate(dto: GenerateXRayDto): GenerateXRayResponse {
+  async generate(dto: GenerateXRayDto): Promise<GenerateXRayResponse> {
     // Validate total weight equals 100%
     const totalWeight = dto.assets.reduce((sum, asset) => sum + asset.weight, 0);
     if (Math.abs(totalWeight - 100) > 0.01) {
@@ -24,7 +27,7 @@ export class XRayService {
     }
 
     // Build Morningstar X-Ray URL
-    const morningstarUrl = this.buildMorningstarUrl(dto.assets);
+    const morningstarUrl = await this.buildMorningstarUrl(dto.assets);
 
     // Build shareable app URL
     const shareableUrl = this.buildShareableUrl(dto.assets);
@@ -37,22 +40,60 @@ export class XRayService {
 
   /**
    * Build Morningstar X-Ray URL
-   * Format: https://lt.morningstar.com/j2uwuwirpv/xray/default.aspx?PortfolioType=2&values=ID1|weight1|ID2|weight2...
+   * Format: https://lt.morningstar.com/j2uwuwirpv/xraypdf/default.aspx?LanguageId=es-ES&PortfolioType=2&SecurityTokenList=...&values=...
    */
-  private buildMorningstarUrl(assets: XRayAssetDto[]): string {
-    // Build values string: ID1|weight1|ID2|weight2...
-    const values = assets
-      .map((asset) => `${asset.morningstarId}|${asset.weight}`)
-      .join('|');
+  private async buildMorningstarUrl(assets: XRayAssetDto[]): Promise<string> {
+    const baseUrl = `${this.MORNINGSTAR_BASE_URL}/j2uwuwirpv/xraypdf/default.aspx`;
+    
+    // Look up asset types from database
+    const securityTokens: string[] = [];
+    const values: number[] = [];
 
-    // Note: The exact URL format may need adjustment based on Morningstar's actual API
-    // This is a common pattern but may require refinement
-    const url = new URL(
-      '/j2uwuwirpv/xray/default.aspx',
-      this.MORNINGSTAR_BASE_URL,
-    );
+    for (const asset of assets) {
+      // Look up asset type from database
+      const dbAsset = await this.assetsRepository.findByMorningstarId(asset.morningstarId);
+      
+      // Determine type code and exchange code
+      let typeCode: string;
+      let exchangeCode: string;
+      
+      if (dbAsset) {
+        // Use type from database
+        if (dbAsset.type === 'STOCK') {
+          typeCode = '3';
+          exchangeCode = 'E0WWE';
+        } else {
+          // FUND, ETF, ETC all use type code 2
+          typeCode = '2';
+          exchangeCode = 'FOESP';
+        }
+      } else {
+        // Fallback: infer from Morningstar ID format
+        // IDs starting with F are funds, 0P could be anything but default to fund
+        if (asset.morningstarId.toUpperCase().startsWith('F')) {
+          typeCode = '2';
+          exchangeCode = 'FOESP';
+        } else {
+          // Default to fund for unknown types
+          typeCode = '2';
+          exchangeCode = 'FOESP';
+        }
+      }
+
+      // Generate security token: {ID}]typeCode]0]{EXCHANGE}$$ALL_1340
+      const securityToken = `${asset.morningstarId}]${typeCode}]0]${exchangeCode}$$ALL_1340`;
+      securityTokens.push(encodeURIComponent(securityToken));
+      
+      // Convert weight percentage to absolute value (multiply by 100)
+      values.push(Math.round(asset.weight * 100));
+    }
+
+    // Build URL with all parameters
+    const url = new URL(baseUrl);
+    url.searchParams.set('LanguageId', 'es-ES');
     url.searchParams.set('PortfolioType', '2');
-    url.searchParams.set('values', values);
+    url.searchParams.set('SecurityTokenList', securityTokens.join('%7C')); // %7C is |
+    url.searchParams.set('values', values.join('%7C'));
 
     return url.toString();
   }

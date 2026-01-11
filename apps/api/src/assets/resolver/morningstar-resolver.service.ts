@@ -189,6 +189,15 @@ export class MorningstarResolverService {
       breakdown.typeMatch = 10;
     }
 
+    // +15 bonus for fund IDs starting with "F" (preferred format for funds)
+    if (
+      result.morningstarId &&
+      result.assetType === 'Fondo' &&
+      result.morningstarId.toUpperCase().startsWith('F')
+    ) {
+      breakdown.typeMatch += 15;
+    }
+
     const totalScore = Object.values(breakdown).reduce((a, b) => a + b, 0);
 
     return {
@@ -231,7 +240,6 @@ export class MorningstarResolverService {
         for (const jsonStr of jsonMatches) {
           try {
             const item = JSON.parse(jsonStr);
-            const principalId = item.pi || item.i;
             const rawType = item.tt || item.Type || item.type;
             const securityType = item.t || item.tt || item.Type || 2;
             const isStock = securityType === 3 || securityType === '3';
@@ -240,6 +248,35 @@ export class MorningstarResolverService {
               : rawType === 'CE' || rawType === 'ET'
                 ? 'ETF'
                 : 'Fondo';
+
+            // For funds, prioritize IDs starting with "F" over "0P"
+            // For stocks, use the standard priority (pi first)
+            let principalId: string | null = null;
+            let secondaryId: string | null = null;
+
+            if (isStock) {
+              // For stocks, use standard priority
+              principalId = item.pi || item.i || null;
+              secondaryId = item.i && item.i !== principalId ? item.i : null;
+            } else {
+              // For funds, prioritize IDs starting with "F"
+              const piId = item.pi || null;
+              const iId = item.i || null;
+              
+              // Check if either ID starts with "F"
+              const piStartsWithF = piId && piId.toUpperCase().startsWith('F');
+              const iStartsWithF = iId && iId.toUpperCase().startsWith('F');
+              
+              if (piStartsWithF || iStartsWithF) {
+                // Prefer the one starting with "F"
+                principalId = piStartsWithF ? piId : iId;
+                secondaryId = piStartsWithF ? (iId && iId !== principalId ? iId : null) : (piId && piId !== principalId ? piId : null);
+              } else {
+                // If neither starts with "F", use standard priority
+                principalId = piId || iId || null;
+                secondaryId = iId && iId !== principalId ? iId : null;
+              }
+            }
 
             if (principalId) {
               const tickerString =
@@ -257,7 +294,6 @@ export class MorningstarResolverService {
               });
 
               // Add secondary ID if different
-              const secondaryId = item.i;
               if (secondaryId && secondaryId !== principalId) {
                 results.push({
                   url: this.buildMorningstarUrl(secondaryId, securityType),
@@ -619,6 +655,38 @@ export class MorningstarResolverService {
       .map((r) => this.scoreResult(r, input, inputType))
       .sort((a, b) => b.score - a.score);
 
+    // For funds: if multiple results have the same name, prioritize the one with "F" ID
+    if (scoredResults.length > 1) {
+      const firstResult = scoredResults[0];
+      const isFund = firstResult?.assetType === 'Fondo' || firstResult?.assetType === 'ETF';
+      
+      if (isFund && firstResult?.title) {
+        // Find all results with the same name (normalized)
+        const normalizedTitle = this.normalizeInput(firstResult.title);
+        const sameNameResults = scoredResults.filter(
+          (r) => r.title && this.normalizeInput(r.title) === normalizedTitle
+        );
+        
+        // If multiple results have the same name, prefer the one with "F" ID
+        if (sameNameResults.length > 1) {
+          const fIdResult = sameNameResults.find(
+            (r) => r.morningstarId && r.morningstarId.toUpperCase().startsWith('F')
+          );
+          
+          if (fIdResult && fIdResult !== firstResult) {
+            // Move the "F" ID result to the top
+            scoredResults = [
+              fIdResult,
+              ...scoredResults.filter((r) => r !== fIdResult),
+            ];
+            this.logger.log(
+              `Found multiple results with same name "${normalizedTitle}", prioritizing "F" ID: ${fIdResult.morningstarId}`,
+            );
+          }
+        }
+      }
+    }
+
     // Determine initial state
     let bestMatch = scoredResults[0] || null;
     let status: 'resolved' | 'needs_review' | 'not_found' = 'not_found';
@@ -664,9 +732,27 @@ export class MorningstarResolverService {
             : 80;
       confidence = Math.min(bestMatch.score / maxScore, 1);
 
+      // Check if this is a fund with "F" ID that we prioritized from multiple same-name results
+      const isPrioritizedFund =
+        bestMatch.assetType === 'Fondo' &&
+        bestMatch.morningstarId?.toUpperCase().startsWith('F') &&
+        scoredResults.some(
+          (r) =>
+            r !== bestMatch &&
+            r.title &&
+            this.normalizeInput(r.title) === this.normalizeInput(bestMatch.title || ''),
+        );
+
       if (verification?.verified) {
         status = 'resolved';
         confidence = Math.max(confidence, 0.95);
+      } else if (isPrioritizedFund && bestMatch.morningstarId) {
+        // Automatically resolve funds with "F" ID when we've prioritized them from same-name results
+        status = 'resolved';
+        confidence = Math.max(confidence, 0.85);
+        this.logger.log(
+          `Auto-resolving fund with "F" ID from multiple same-name results: ${bestMatch.morningstarId}`,
+        );
       } else if (confidence >= this.config.minConfidence && bestMatch.morningstarId) {
         status = 'resolved';
       } else if (bestMatch.morningstarId) {

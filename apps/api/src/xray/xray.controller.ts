@@ -32,7 +32,7 @@ export class XRayController {
           type: 'string',
           description: 'Direct URL to Morningstar X-Ray PDF',
           example:
-            'https://lt.morningstar.com/j2uwuwirpv/xray/default.aspx?PortfolioType=2&values=0P0000YXJO|40|F00000THA5|30|0P000168Z7|30',
+            'https://lt.morningstar.com/j2uwuwirpv/xraypdf/default.aspx?LanguageId=es-ES&PortfolioType=2&SecurityTokenList=F00000THA5%5D2%5D0%5DFOESP%24%24ALL_1340%7C0P0001UHI6%5D3%5D0%5DE0WWE%24%24ALL_1340&values=30000%7C20000',
         },
         shareableUrl: {
           type: 'string',
@@ -46,7 +46,7 @@ export class XRayController {
     status: 400,
     description: 'Invalid input - total weight must equal 100%',
   })
-  generate(@Body() dto: GenerateXRayDto): GenerateXRayResponse {
+  async generate(@Body() dto: GenerateXRayDto): Promise<GenerateXRayResponse> {
     return this.xrayService.generate(dto);
   }
 }

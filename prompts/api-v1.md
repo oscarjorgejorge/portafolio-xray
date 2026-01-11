@@ -198,3 +198,97 @@ el boton "view x-ray report", deberia abrir el pdf con la url que viene de la ap
 - `handleOpenPDF` opens the PDF directly in a new tab using `window.open(morningstarUrl, '_blank')`
 - Button is disabled when `morningstarUrl` is not available
 - `morningstarUrl` is cleared when "Clear All" is executed
+
+### Prompt 30
+the resolution when it is a fund, it is not correct, it should resolve with a morningstartId with "F", for example: IE00BBL4VX78, should resolve as F00000THA5, from a url like that https://global.morningstar.com/es/inversiones/fondos/F00000THA5/cotizacion  and LU1897414303 with F000011G2R, from this url https://global.morningstar.com/es/inversiones/fondos/F000011G2R/cotizacion
+
+**Implementation:**
+- Updated `searchMorningstarAPI` method in `MorningstarResolverService` to prioritize Morningstar IDs starting with "F" for funds
+- For funds (not stocks), the resolver now checks both `item.pi` and `item.i` from the API response and prefers the one starting with "F"
+- For stocks, maintains the standard priority (pi first)
+- Added scoring bonus (+15 points) for fund results with IDs starting with "F" to ensure they're prioritized in the results
+- This ensures fund resolutions use the correct Morningstar ID format (F00000THA5, F000011G2R) instead of the 0P format
+
+### Prompt 31
+in this case, dont ask if it is the same fond (it is the same name), just pick the morningstart id with F
+
+**Implementation:**
+- Updated `resolve` method in `MorningstarResolverService` to automatically detect when multiple results have the same fund name
+- When multiple results share the same name, the resolver now automatically prioritizes and selects the one with Morningstar ID starting with "F"
+- Added logic to automatically resolve funds with "F" IDs when they're prioritized from multiple same-name results (confidence set to 0.85 minimum)
+- This prevents showing alternatives/confirmation dialogs when the same fund appears with different ID formats (F vs 0P)
+- The resolver now automatically picks the correct "F" format ID without user intervention when it's the same fund
+
+### Prompt 32
+the api is returning this url to open the pdf and it is not working: https://lt.morningstar.com/j2uwuwirpv/xray/default.aspx?PortfolioType=2&values=0P000134LI%7C30%7C0P0001UHI6%7C20%7C0P0001EXVW%7C20%7C0P0001Y6QW%7C10%7C0P0001QPGR%7C10%7C0P0000005M%7C10 , and url like that is working: https://lt.morningstar.com/j2uwuwirpv/xraypdf/default.aspx?LanguageId=es-ES&PortfolioType=2&SecurityTokenList=F00000THA5%5D2%5D0%5DFOESP%24%24ALL_1340%7C0P0001UHI6%5D3%5D0%5DE0WWE%24%24ALL_1340%7CF000011G2R%5D2%5D0%5DFOESP%24%24ALL_1340%7C0P0001Y6QW%5D3%5D0%5DE0WWE%24%24ALL_1340%7C0P0001QPGR%5D3%5D0%5DE0WWE%24%24ALL_1340%7C0P0000005M%5D3%5D0%5DE0WWE%24%24ALL_1340&values=30000%7C20000%7C20000%7C10000%7C10000%7C10000  which are the differences?
+
+**Implementation:**
+- Updated `buildMorningstarUrl` method in `XRayService` to use the correct URL format:
+  - Changed path from `/xray/default.aspx` to `/xraypdf/default.aspx`
+  - Added `LanguageId=es-ES` parameter
+  - Added `SecurityTokenList` parameter with format: `{ID}]typeCode]0]{EXCHANGE}$$ALL_1340`
+  - Changed `values` format from percentages to absolute values (weight × 100)
+- Updated `XRayService` to be async and look up asset types from database using `AssetsRepository`
+- Determines type code (2 for funds/ETFs, 3 for stocks) and exchange code (FOESP for funds/ETFs, E0WWE for stocks) based on asset type
+- Exported `AssetsRepository` from `AssetsModule` and imported `AssetsModule` in `XRayModule` to enable asset type lookups
+- Updated `XRayController.generate` method to be async
+- Updated Swagger documentation example to reflect the new URL format
+
+### Prompt 33
+change to this ui on mobile (ignore the weight input that appears on the photo, we keep it as we have), also change the x icon on desktop for this icon of the photo
+
+**Implementation:**
+- Changed X icon to trash can icon on both desktop and mobile views
+- Updated mobile UI to show asset information in a responsive format
+- Made container responsive with larger max-widths: `max-w-4xl lg:max-w-6xl xl:max-w-7xl`
+- Added responsive padding: `px-4 sm:px-6 lg:px-8`
+
+### Prompt 34
+we can do the container bigger, responsive to the screen
+
+**Implementation:**
+- Updated container widths in both main page and X-Ray page to be responsive
+- Small/Medium screens: `max-w-4xl` (896px)
+- Large screens: `lg:max-w-6xl` (1152px)
+- Extra Large screens: `xl:max-w-7xl` (1280px)
+- Added responsive padding that increases on larger screens
+
+### Prompt 35
+also I think we can show the morningstartId
+
+**Implementation:**
+- Added Morningstar ID display to `AssetRow` component
+- Shows Morningstar ID between ISIN and Type in the asset details
+- Only displays if Morningstar ID exists for the asset
+
+### Prompt 36
+on mobile, the type and the weight maybe can share the same row?
+
+**Implementation:**
+- Updated mobile layout so Type and Weight share the same row
+- Type appears on the left, Weight input on the right
+- Removed duplicate type display on mobile
+
+### Prompt 37
+I think it will be better not to show the word "type", just to put the type and put it on the left of the isin, for example STOCK: ADOBE
+
+**Implementation:**
+- Removed "Type:" label, now shows just the type value (uppercase)
+- Positioned type before ISIN in the information row
+- Format: **STOCK** · IE00BBL4VX78 · Morningstar ID: F00000THA5
+- Type is displayed in uppercase using `uppercase` class
+
+### Prompt 38
+BUT ON mobile we need to remove the duplicated word of the type (the one that it is close to the weight
+
+**Implementation:**
+- Removed duplicate type display from mobile Weight row
+- Type now appears only once in the main info row
+- Weight input aligned to the right on mobile
+
+### Prompt 39
+it should take the full width
+
+**Implementation:**
+- Updated mobile weight input to take full width using `flex-1`
+- Label and input are on the same row with label on left, input taking remaining space

@@ -7,6 +7,6 @@ import { MorningstarResolverService } from './resolver';
 @Module({
   controllers: [AssetsController],
   providers: [AssetsService, AssetsRepository, MorningstarResolverService],
-  exports: [AssetsService],
+  exports: [AssetsService, AssetsRepository],
 })
 export class AssetsModule {}

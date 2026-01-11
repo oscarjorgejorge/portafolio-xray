@@ -82,7 +82,7 @@ function XRayPageContent() {
   if (generateMutation.isPending) {
     return (
       <main className="min-h-screen bg-slate-100 py-8">
-        <div className="container mx-auto px-4 max-w-4xl">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl lg:max-w-6xl xl:max-w-7xl">
           <Card>
             <div className="text-center py-12">
               <p className="text-slate-700">Generating X-Ray URL...</p>
@@ -96,7 +96,7 @@ function XRayPageContent() {
   if (generateMutation.isError) {
     return (
       <main className="min-h-screen bg-slate-100 py-8">
-        <div className="container mx-auto px-4 max-w-4xl">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl lg:max-w-6xl xl:max-w-7xl">
           <Card>
             <Alert variant="error">
               <p className="font-medium">Error generating X-Ray</p>
@@ -120,7 +120,7 @@ function XRayPageContent() {
   if (!morningstarUrl || !shareableUrl) {
     return (
       <main className="min-h-screen bg-slate-100 py-8">
-        <div className="container mx-auto px-4 max-w-4xl">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl lg:max-w-6xl xl:max-w-7xl">
           <Card>
             <Alert variant="warning">
               <p>No portfolio data found in URL.</p>
@@ -224,7 +224,7 @@ export default function XRayPage() {
   return (
     <Suspense fallback={
       <main className="min-h-screen bg-slate-100 py-8">
-        <div className="container mx-auto px-4 max-w-4xl">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl lg:max-w-6xl xl:max-w-7xl">
           <Card>
             <div className="text-center py-12">
               <p className="text-slate-700">Loading...</p>

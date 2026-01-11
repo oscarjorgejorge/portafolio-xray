@@ -89,8 +89,16 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
     return allResolved && totalValid;
   }, [assets, allocationMode, totalWeight]);
 
+  // Helper function to clear shareable URLs when portfolio changes
+  const clearShareableUrls = () => {
+    setShareableUrl(null);
+    setMorningstarUrl(null);
+    setFullShareableUrl('');
+  };
+
   const handleAssetResolved = (newAsset: PortfolioAsset) => {
     setAssets((prev) => [...prev, newAsset]);
+    clearShareableUrls();
 
     // Handle different statuses
     if (newAsset.status === 'low_confidence') {
@@ -104,10 +112,12 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
     setAssets((prev) =>
       prev.map((asset) => (asset.id === id ? { ...asset, weight } : asset))
     );
+    clearShareableUrls();
   };
 
   const handleRemove = (id: string) => {
     setAssets((prev) => prev.filter((asset) => asset.id !== id));
+    clearShareableUrls();
   };
 
   const handleAlternativeSelected = (
