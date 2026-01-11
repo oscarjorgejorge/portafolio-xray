@@ -185,12 +185,26 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
   const handleGenerate = () => {
     if (!isValid) return;
 
-    const xrayAssets = assets
-      .filter((asset) => asset.asset)
-      .map((asset) => ({
-        morningstarId: asset.asset!.morningstarId,
-        weight: asset.weight,
-      }));
+    // Convert to X-Ray format with percentages
+    let xrayAssets;
+    if (allocationMode === 'amount') {
+      // Calculate total amount and convert each asset to percentage
+      const totalAmount = assets.reduce((sum, asset) => sum + (asset.weight || 0), 0);
+      xrayAssets = assets
+        .filter((asset) => asset.asset)
+        .map((asset) => ({
+          morningstarId: asset.asset!.morningstarId,
+          weight: totalAmount > 0 ? (asset.weight / totalAmount) * 100 : 0,
+        }));
+    } else {
+      // Already in percentage mode, use weights as-is
+      xrayAssets = assets
+        .filter((asset) => asset.asset)
+        .map((asset) => ({
+          morningstarId: asset.asset!.morningstarId,
+          weight: asset.weight,
+        }));
+    }
 
     generateMutation.mutate(xrayAssets);
   };
