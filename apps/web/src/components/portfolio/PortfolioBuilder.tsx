@@ -6,6 +6,7 @@ import { AssetRow } from './AssetRow';
 import { AllocationModeToggle } from './AllocationModeToggle';
 import { AssetAlternatives } from './AssetAlternatives';
 import { ManualAssetInput } from './ManualAssetInput';
+import { ClearAllConfirmation } from './ClearAllConfirmation';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Alert } from '@/components/ui/Alert';
@@ -28,6 +29,7 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
     useState<PortfolioAsset | null>(null);
   const [selectedAssetForManual, setSelectedAssetForManual] =
     useState<PortfolioAsset | null>(null);
+  const [showClearAllConfirmation, setShowClearAllConfirmation] = useState(false);
   const router = useRouter();
 
   const generateMutation = useMutation({
@@ -153,9 +155,12 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
   };
 
   const handleClearAll = () => {
-    if (confirm('Are you sure you want to clear all assets?')) {
-      setAssets([]);
-    }
+    setShowClearAllConfirmation(true);
+  };
+
+  const handleConfirmClearAll = () => {
+    setAssets([]);
+    setShowClearAllConfirmation(false);
   };
 
   return (
@@ -177,16 +182,22 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
                   allocationMode={allocationMode}
                   onWeightChange={handleWeightChange}
                   onRemove={handleRemove}
+                  onOpenManualInput={(id) => {
+                    const assetToEdit = assets.find((a) => a.id === id);
+                    if (assetToEdit) {
+                      setSelectedAssetForManual(assetToEdit);
+                    }
+                  }}
                   error={
-                    asset.status === 'error' ? asset.error : undefined
+                    asset.status === 'error' || asset.status === 'manual_required' ? asset.error : undefined
                   }
                 />
               ))}
             </div>
 
-            <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-              <div className="flex items-center gap-4">
-                <div className="text-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-4 border-t border-slate-200">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+                <div className="text-sm text-slate-700">
                   <span className="font-medium">Total:</span>{' '}
                   {allocationMode === 'percentage' ? (
                     <span
@@ -199,12 +210,12 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
                       {totalWeight.toFixed(2)}%
                     </span>
                   ) : (
-                    <span>{totalWeight.toFixed(2)}</span>
+                    <span className="text-slate-900">{totalWeight.toFixed(2)}</span>
                   )}
                 </div>
                 {allocationMode === 'percentage' &&
                   Math.abs(totalWeight - 100) >= 0.01 && (
-                    <Alert variant="warning" className="py-2 px-3">
+                    <Alert variant="warning" className="py-2 px-3 text-sm">
                       Total must equal 100%. Remaining:{' '}
                       {(100 - totalWeight).toFixed(2)}%
                     </Alert>
@@ -227,7 +238,7 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
         )}
 
         {assets.length === 0 && (
-          <div className="text-center py-12 text-gray-500">
+          <div className="text-center py-12 text-slate-500">
             <p>No assets added yet.</p>
             <p className="text-sm mt-2">
               Enter an ISIN, Morningstar ID, or ticker above to get started.
@@ -266,6 +277,14 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
             )
           }
           onCancel={() => setSelectedAssetForManual(null)}
+        />
+      )}
+
+      {/* Clear All Confirmation Modal */}
+      {showClearAllConfirmation && (
+        <ClearAllConfirmation
+          onConfirm={handleConfirmClearAll}
+          onCancel={() => setShowClearAllConfirmation(false)}
         />
       )}
     </div>

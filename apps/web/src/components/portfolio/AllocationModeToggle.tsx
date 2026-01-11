@@ -14,8 +14,8 @@ export const AllocationModeToggle: React.FC<AllocationModeToggleProps> = ({
 }) => {
   return (
     <div className="flex items-center space-x-4 mb-4">
-      <span className="text-sm font-medium text-gray-700">Allocation Mode:</span>
-      <div className="flex bg-gray-100 rounded-lg p-1">
+      <span className="text-sm font-medium text-slate-700">Allocation Mode:</span>
+      <div className="flex bg-slate-200 rounded-lg p-1">
         <button
           type="button"
           onClick={() => onChange('percentage')}
@@ -24,7 +24,7 @@ export const AllocationModeToggle: React.FC<AllocationModeToggleProps> = ({
             ${
               mode === 'percentage'
                 ? 'bg-white text-blue-600 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
+                : 'text-slate-700 hover:text-slate-900'
             }
           `}
         >
@@ -38,7 +38,7 @@ export const AllocationModeToggle: React.FC<AllocationModeToggleProps> = ({
             ${
               mode === 'amount'
                 ? 'bg-white text-blue-600 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
+                : 'text-slate-700 hover:text-slate-900'
             }
           `}
         >

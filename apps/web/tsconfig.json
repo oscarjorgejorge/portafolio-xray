@@ -16,7 +16,22 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "react-jsx",
+    
+    // Performance optimizations
     "incremental": true,
+    "tsBuildInfoFile": ".next/tsconfig.tsbuildinfo",
+    "assumeChangesOnlyAffectDirectDependencies": true,
+    
+    // Faster compilation - disable during dev, enable for production builds
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noImplicitReturns": false,
+    "noFallthroughCasesInSwitch": true,
+    
+    // Optimize module resolution
+    "resolvePackageJsonExports": true,
+    "resolvePackageJsonImports": true,
+    
     "plugins": [
       {
         "name": "next"
@@ -36,6 +51,9 @@
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    ".next",
+    "dist",
+    "build"
   ]
 }

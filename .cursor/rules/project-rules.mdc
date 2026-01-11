@@ -11,4 +11,4 @@ alwaysApply: true
 - Always ask clarifying questions when information is missing or ambiguous before proceeding with implementation.
 
 ## Prompt Documentation
-- Always update the prompts file (`prompts/api-v1.md`) after making changes to the API or project structure. Keep this documentation in sync with the actual implementation.
+- Always update the prompts file (`prompts/api-v1.md`) after making changes to the API or project structure. Keep this documentation in sync with the actual implementation.   Only write my prompts, not your answers

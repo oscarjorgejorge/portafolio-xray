@@ -4,9 +4,13 @@
     "private": true,
     "scripts": {
         "dev": "next dev",
+        "dev:turbo": "next dev --turbo",
         "build": "next build",
         "start": "next start",
-        "lint": "next lint"
+        "lint": "next lint",
+        "type-check": "tsc --noEmit",
+        "type-check:watch": "tsc --noEmit --watch",
+        "clean": "rm -rf .next tsconfig.tsbuildinfo node_modules/.cache .next/cache"
     },
     "dependencies": {
         "next": "^16.1.1",

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { useMutation } from '@tanstack/react-query';
 import { resolveAsset, type AssetType } from '@/lib/api/assets';
 import type { PortfolioAsset } from '@/types';
+import { generateSimpleId } from '@/lib/utils/id';
 
 interface AssetInputProps {
   onAssetResolved: (asset: PortfolioAsset) => void;
@@ -26,7 +27,7 @@ export const AssetInput: React.FC<AssetInputProps> = ({
       if (data.success && data.asset) {
         // Asset resolved successfully
         const portfolioAsset: PortfolioAsset = {
-          id: Math.random().toString(36).substr(2, 9),
+          id: generateSimpleId(),
           identifier: input.trim().toUpperCase(),
           asset: data.asset,
           weight: 0,
@@ -38,7 +39,7 @@ export const AssetInput: React.FC<AssetInputProps> = ({
       } else if (data.alternatives && data.alternatives.length > 0) {
         // Low confidence - show alternatives
         const portfolioAsset: PortfolioAsset = {
-          id: Math.random().toString(36).substr(2, 9),
+          id: generateSimpleId(),
           identifier: input.trim().toUpperCase(),
           weight: 0,
           status: 'low_confidence',
@@ -51,7 +52,7 @@ export const AssetInput: React.FC<AssetInputProps> = ({
       } else {
         // Manual input required
         const portfolioAsset: PortfolioAsset = {
-          id: Math.random().toString(36).substr(2, 9),
+          id: generateSimpleId(),
           identifier: input.trim().toUpperCase(),
           weight: 0,
           status: 'manual_required',

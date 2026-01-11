@@ -14,14 +14,26 @@ function XRayPageContent() {
   const [morningstarUrl, setMorningstarUrl] = useState<string | null>(null);
   const [shareableUrl, setShareableUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [fullShareableUrl, setFullShareableUrl] = useState<string>('');
 
   const generateMutation = useMutation({
     mutationFn: generateXRay,
     onSuccess: (data) => {
       setMorningstarUrl(data.morningstarUrl);
       setShareableUrl(data.shareableUrl);
+      // Set full URL on client side only
+      if (typeof window !== 'undefined') {
+        setFullShareableUrl(`${window.location.origin}${data.shareableUrl}`);
+      }
     },
   });
+
+  // Update full URL when shareableUrl changes (client-side only)
+  useEffect(() => {
+    if (shareableUrl && typeof window !== 'undefined') {
+      setFullShareableUrl(`${window.location.origin}${shareableUrl}`);
+    }
+  }, [shareableUrl]);
 
   useEffect(() => {
     // Parse assets from URL and generate X-Ray
@@ -69,11 +81,11 @@ function XRayPageContent() {
 
   if (generateMutation.isPending) {
     return (
-      <main className="min-h-screen bg-gray-50 py-8">
+      <main className="min-h-screen bg-slate-100 py-8">
         <div className="container mx-auto px-4 max-w-4xl">
           <Card>
             <div className="text-center py-12">
-              <p className="text-gray-600">Generating X-Ray URL...</p>
+              <p className="text-slate-700">Generating X-Ray URL...</p>
             </div>
           </Card>
         </div>
@@ -83,7 +95,7 @@ function XRayPageContent() {
 
   if (generateMutation.isError) {
     return (
-      <main className="min-h-screen bg-gray-50 py-8">
+      <main className="min-h-screen bg-slate-100 py-8">
         <div className="container mx-auto px-4 max-w-4xl">
           <Card>
             <Alert variant="error">
@@ -107,7 +119,7 @@ function XRayPageContent() {
 
   if (!morningstarUrl || !shareableUrl) {
     return (
-      <main className="min-h-screen bg-gray-50 py-8">
+      <main className="min-h-screen bg-slate-100 py-8">
         <div className="container mx-auto px-4 max-w-4xl">
           <Card>
             <Alert variant="warning">
@@ -124,16 +136,17 @@ function XRayPageContent() {
     );
   }
 
-  const fullShareableUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}${shareableUrl}`;
+  // Ensure fullShareableUrl is set if not already set
+  const displayShareableUrl = fullShareableUrl || (shareableUrl ? shareableUrl : '');
 
   return (
-    <main className="min-h-screen bg-gray-50 py-8">
+    <main className="min-h-screen bg-slate-100 py-8">
       <div className="container mx-auto px-4 max-w-4xl">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          <h1 className="text-3xl font-bold text-slate-900 mb-2">
             X-Ray Generated
           </h1>
-          <p className="text-gray-600">
+          <p className="text-slate-700">
             Your Morningstar X-Ray report is ready. Open the PDF or share the
             link with others.
           </p>
@@ -143,7 +156,7 @@ function XRayPageContent() {
           <Card title="Morningstar X-Ray PDF">
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-slate-700 mb-2">
                   Morningstar URL
                 </label>
                 <div className="flex gap-2">
@@ -151,7 +164,7 @@ function XRayPageContent() {
                     type="text"
                     readOnly
                     value={morningstarUrl}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-sm"
+                    className="flex-1 px-3 py-2 border border-slate-300 rounded-lg bg-white text-slate-900 text-sm"
                   />
                   <Button
                     onClick={() => handleCopyUrl(morningstarUrl, 'morningstar')}
@@ -171,18 +184,18 @@ function XRayPageContent() {
           <Card title="Shareable Link">
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-slate-700 mb-2">
                   Share this link to recreate the portfolio
                 </label>
                 <div className="flex gap-2">
                   <input
                     type="text"
                     readOnly
-                    value={fullShareableUrl}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-sm"
+                    value={displayShareableUrl}
+                    className="flex-1 px-3 py-2 border border-slate-300 rounded-lg bg-white text-slate-900 text-sm"
                   />
                   <Button
-                    onClick={() => handleCopyUrl(fullShareableUrl, 'shareable')}
+                    onClick={() => handleCopyUrl(displayShareableUrl, 'shareable')}
                     variant="secondary"
                     size="sm"
                   >
@@ -210,11 +223,11 @@ function XRayPageContent() {
 export default function XRayPage() {
   return (
     <Suspense fallback={
-      <main className="min-h-screen bg-gray-50 py-8">
+      <main className="min-h-screen bg-slate-100 py-8">
         <div className="container mx-auto px-4 max-w-4xl">
           <Card>
             <div className="text-center py-12">
-              <p className="text-gray-600">Loading...</p>
+              <p className="text-slate-700">Loading...</p>
             </div>
           </Card>
         </div>

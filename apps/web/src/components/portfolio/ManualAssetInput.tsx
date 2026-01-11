@@ -48,10 +48,10 @@ export const ManualAssetInput: React.FC<ManualAssetInputProps> = ({
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <Card className="max-w-lg w-full">
-        <h3 className="text-lg font-semibold mb-4">
+        <h3 className="text-lg font-semibold mb-4 text-slate-900">
           Manual Asset Entry for "{identifier}"
         </h3>
-        <p className="text-sm text-gray-600 mb-4">
+        <p className="text-sm text-slate-700 mb-4">
           The asset could not be resolved automatically. Please enter the
           Morningstar details manually.
         </p>
@@ -79,18 +79,18 @@ export const ManualAssetInput: React.FC<ManualAssetInputProps> = ({
             required
           />
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-slate-700 mb-1">
               Asset Type
             </label>
             <select
               value={assetType}
               onChange={(e) => setAssetType(e.target.value as AssetType)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-900"
             >
-              <option value="ETF">ETF</option>
-              <option value="FUND">Fund</option>
-              <option value="STOCK">Stock</option>
-              <option value="ETC">ETC</option>
+              <option value="ETF" className="text-slate-900">ETF</option>
+              <option value="FUND" className="text-slate-900">Fund</option>
+              <option value="STOCK" className="text-slate-900">Stock</option>
+              <option value="ETC" className="text-slate-900">ETC</option>
             </select>
           </div>
           <div className="flex gap-2 justify-end">

@@ -13,10 +13,10 @@ export const Card: React.FC<CardProps> = ({
 }) => {
   return (
     <div
-      className={`bg-white rounded-lg shadow-md border border-gray-200 p-6 ${className}`}
+      className={`bg-white rounded-lg shadow-lg border border-slate-200 p-6 ${className}`}
     >
       {title && (
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
+        <h3 className="text-lg font-semibold text-slate-900 mb-4">{title}</h3>
       )}
       {children}
     </div>

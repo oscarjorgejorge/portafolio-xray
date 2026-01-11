@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { PortfolioBuilder } from '@/components/portfolio/PortfolioBuilder';
 import type { PortfolioAsset } from '@/types';
 import { resolveAsset } from '@/lib/api/assets';
+import { generateSimpleId } from '@/lib/utils/id';
 
 function HomePageContent() {
   const searchParams = useSearchParams();
@@ -31,7 +32,7 @@ function HomePageContent() {
                 const result = await resolveAsset(identifier);
                 if (result.success && result.asset) {
                   resolvedAssets.push({
-                    id: Math.random().toString(36).substr(2, 9),
+                    id: generateSimpleId(),
                     identifier: identifier.toUpperCase(),
                     asset: result.asset,
                     weight,
@@ -40,7 +41,7 @@ function HomePageContent() {
                 } else {
                   // If resolution fails, add as pending
                   resolvedAssets.push({
-                    id: Math.random().toString(36).substr(2, 9),
+                    id: generateSimpleId(),
                     identifier: identifier.toUpperCase(),
                     weight,
                     status: 'error',
@@ -49,7 +50,7 @@ function HomePageContent() {
                 }
               } catch (error) {
                 resolvedAssets.push({
-                  id: Math.random().toString(36).substr(2, 9),
+                  id: generateSimpleId(),
                   identifier: identifier.toUpperCase(),
                   weight,
                   status: 'error',
@@ -72,13 +73,13 @@ function HomePageContent() {
   }, [searchParams]);
 
   return (
-    <main className="min-h-screen bg-gray-50 py-8">
+    <main className="min-h-screen bg-slate-100 py-8">
       <div className="container mx-auto px-4 max-w-4xl">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          <h1 className="text-3xl font-bold text-slate-900 mb-2">
             Portfolio X-Ray Generator
           </h1>
-          <p className="text-gray-600">
+          <p className="text-slate-700">
             Generate Morningstar X-Ray reports for your portfolio. Enter ISINs
             or Morningstar IDs and get instant analysis.
           </p>
@@ -86,7 +87,7 @@ function HomePageContent() {
 
         {isLoading ? (
           <div className="text-center py-12">
-            <p className="text-gray-600">Loading portfolio...</p>
+            <p className="text-slate-700">Loading portfolio...</p>
           </div>
         ) : (
           <PortfolioBuilder initialAssets={initialAssets} />
@@ -99,10 +100,10 @@ function HomePageContent() {
 export default function HomePage() {
   return (
     <Suspense fallback={
-      <main className="min-h-screen bg-gray-50 py-8">
+      <main className="min-h-screen bg-slate-100 py-8">
         <div className="container mx-auto px-4 max-w-4xl">
           <div className="text-center py-12">
-            <p className="text-gray-600">Loading...</p>
+            <p className="text-slate-700">Loading...</p>
           </div>
         </div>
       </main>

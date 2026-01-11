@@ -22,11 +22,11 @@ export const Button: React.FC<ButtonProps> = ({
     primary:
       'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500',
     secondary:
-      'bg-gray-200 text-gray-900 hover:bg-gray-300 focus:ring-gray-500',
+      'bg-slate-200 text-slate-900 hover:bg-slate-300 focus:ring-slate-500',
     danger:
       'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
     ghost:
-      'bg-transparent text-gray-700 hover:bg-gray-100 focus:ring-gray-500',
+      'bg-transparent text-slate-700 hover:bg-slate-100 focus:ring-slate-500',
   };
 
   const sizeStyles = {

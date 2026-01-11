@@ -135,11 +135,21 @@ export class MorningstarResolverService {
       nameMatch: 0,
       morningstarDomain: 0,
       typeMatch: 0,
+      morningstarIdMatch: 0,
     };
 
     const textToSearch =
       `${result.title} ${result.snippet} ${result.url}`.toUpperCase();
     const normalizedInput = this.normalizeInput(originalInput);
+
+    // +100 if Morningstar ID matches exactly (highest priority)
+    if (
+      inputType === 'MORNINGSTAR_ID' &&
+      result.morningstarId &&
+      result.morningstarId.toUpperCase() === normalizedInput
+    ) {
+      breakdown.morningstarIdMatch = 100;
+    }
 
     // +50 if ISIN appears in result
     if (inputType === 'ISIN' && textToSearch.includes(normalizedInput)) {
@@ -615,8 +625,20 @@ export class MorningstarResolverService {
     let confidence = 0;
     let verification: VerificationResult | undefined = undefined;
 
+    // If input is a Morningstar ID and we have an exact match, resolve immediately
+    if (
+      inputType === 'MORNINGSTAR_ID' &&
+      bestMatch?.morningstarId &&
+      bestMatch.morningstarId.toUpperCase() === normalizedInput
+    ) {
+      status = 'resolved';
+      confidence = 1.0;
+      this.logger.log(
+        `Exact Morningstar ID match found: ${normalizedInput} -> ${bestMatch.morningstarId}`,
+      );
+    }
     // If we have a candidate with Morningstar ID and it's ISIN, VERIFY
-    if (bestMatch?.morningstarId && inputType === 'ISIN') {
+    else if (bestMatch?.morningstarId && inputType === 'ISIN') {
       verification = await this.verifyFundPage(bestMatch.url, normalizedInput);
 
       if (verification.verified) {
@@ -632,12 +654,14 @@ export class MorningstarResolverService {
     }
 
     // Calculate final confidence
-    if (bestMatch) {
+    if (bestMatch && status !== 'resolved') {
       const maxScore = verification?.verified
         ? 130
-        : inputType === 'TICKER'
-          ? 70
-          : 80;
+        : inputType === 'MORNINGSTAR_ID'
+          ? 130 // Higher max score for Morningstar ID matches
+          : inputType === 'TICKER'
+            ? 70
+            : 80;
       confidence = Math.min(bestMatch.score / maxScore, 1);
 
       if (verification?.verified) {
@@ -673,4 +697,11 @@ export class MorningstarResolverService {
     return result;
   }
 }
+
+
+
+
+
+
+
 

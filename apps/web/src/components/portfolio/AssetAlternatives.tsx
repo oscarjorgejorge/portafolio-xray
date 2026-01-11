@@ -44,29 +44,32 @@ export const AssetAlternatives: React.FC<AssetAlternativesProps> = ({
     },
   });
 
+  const isSingleAlternative = alternatives.length === 1;
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <Card className="max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-        <h3 className="text-lg font-semibold mb-4">
-          Multiple matches found for "{identifier}"
+        <h3 className="text-lg font-semibold mb-4 text-slate-900">
+          {isSingleAlternative
+            ? `Match found for "${identifier}"`
+            : `Multiple matches found for "${identifier}"`}
         </h3>
-        <p className="text-sm text-gray-600 mb-4">
-          Please select the correct asset from the list below:
+        <p className="text-sm text-slate-700 mb-4">
+          {isSingleAlternative
+            ? 'Please confirm this is the correct asset:'
+            : 'Please select the correct asset from the list below:'}
         </p>
         <div className="space-y-2">
           {alternatives.map((alt, index) => (
             <div
               key={alt.morningstarId}
-              className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
+              className="border border-slate-200 rounded-lg p-4 hover:bg-slate-50 transition-colors bg-white"
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <h4 className="font-medium text-gray-900">{alt.name}</h4>
-                  <p className="text-sm text-gray-600 mt-1">
+                  <h4 className="font-medium text-slate-900">{alt.name}</h4>
+                  <p className="text-sm text-slate-600 mt-1">
                     Morningstar ID: {alt.morningstarId}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Confidence: {(alt.score * 100).toFixed(1)}%
                   </p>
                 </div>
                 <Button

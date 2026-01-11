@@ -30,6 +30,7 @@ export interface ScoredResult extends SearchResult {
     nameMatch: number;
     morningstarDomain: number;
     typeMatch: number;
+    morningstarIdMatch: number;
   };
 }
 
@@ -63,4 +64,11 @@ export interface ResolverConfig {
   minConfidence: number;
   domains: string[];
 }
+
+
+
+
+
+
+
 

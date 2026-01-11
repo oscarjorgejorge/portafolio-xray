@@ -1,4 +1,6 @@
-import React from 'react';
+'use client';
+
+import React, { useId } from 'react';
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -12,14 +14,15 @@ export const Input: React.FC<InputProps> = ({
   id,
   ...props
 }) => {
-  const inputId = id || `input-${Math.random().toString(36).substr(2, 9)}`;
+  const generatedId = useId();
+  const inputId = id || generatedId;
 
   return (
     <div className="w-full">
       {label && (
         <label
           htmlFor={inputId}
-          className="block text-sm font-medium text-gray-700 mb-1"
+          className="block text-sm font-medium text-slate-700 mb-1"
         >
           {label}
         </label>
@@ -28,8 +31,9 @@ export const Input: React.FC<InputProps> = ({
         id={inputId}
         className={`
           w-full px-3 py-2 border rounded-lg
+          text-slate-900 bg-white
           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-          ${error ? 'border-red-500' : 'border-gray-300'}
+          ${error ? 'border-red-500' : 'border-slate-300'}
           ${className}
         `}
         {...props}
