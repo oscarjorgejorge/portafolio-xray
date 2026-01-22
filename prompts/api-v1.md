@@ -292,3 +292,38 @@ it should take the full width
 **Implementation:**
 - Updated mobile weight input to take full width using `flex-1`
 - Label and input are on the same row with label on left, input taking remaining space
+
+---
+
+## DevOps & Deployment
+
+### Prompt 40
+as a senior devops engineer, and checking the tecnologies used for the @apps/api/ , @apps/web/ and the documentation and roadmap, what it will be your suggestions to have 2 environments (dev and prod), and deploy live the code, where and how?
+
+### Prompt 41
+dont do anything yet, I want the plan, the ideas, pros and const
+
+### Prompt 42
+consider also the complexity on your analisis
+
+### Prompt 43
+what about latency, hosting and suitable for v2 and v3 of the roadmap? consider that the traffic will be low in general
+
+### Prompt 44
+and some of this solutions provides also the domain?
+
+### Prompt 45
+in your plan, it is also the github jobs to run the test, check lint errors, check typescript errors?
+
+### Prompt 46
+so check all plan details with this solution, Railway + Vercel
+
+### Prompt 47
+no, the plans looks good
+
+### Prompt 48
+(Selected option: Create a DEPLOYMENT.md documentation file first)
+
+**Result:**
+- Created comprehensive `docs/DEPLOYMENT.md` with full deployment guide
+- Covers Vercel + Railway architecture, setup steps, CI/CD pipelines, domains, costs, security, and troubleshooting
