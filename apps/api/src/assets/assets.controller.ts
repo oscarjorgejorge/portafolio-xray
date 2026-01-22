@@ -43,7 +43,10 @@ export class AssetsController {
             id: { type: 'string', example: 'uuid' },
             isin: { type: 'string', example: 'IE00B4L5Y983' },
             morningstarId: { type: 'string', example: '0P0000YXJO' },
-            name: { type: 'string', example: 'iShares Core MSCI World UCITS ETF' },
+            name: {
+              type: 'string',
+              example: 'iShares Core MSCI World UCITS ETF',
+            },
             type: { type: 'string', enum: ['ETF', 'FUND', 'STOCK', 'ETC'] },
           },
         },
@@ -95,4 +98,3 @@ export class AssetsController {
     return this.assetsService.confirm(dto);
   }
 }
-

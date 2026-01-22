@@ -32,7 +32,8 @@ export class XRayAssetDto {
 
 export class GenerateXRayDto {
   @ApiProperty({
-    description: 'Array of portfolio assets with their weights. Total weight must equal 100%.',
+    description:
+      'Array of portfolio assets with their weights. Total weight must equal 100%.',
     type: [XRayAssetDto],
     example: [
       { morningstarId: '0P0000YXJO', weight: 40 },
@@ -46,4 +47,3 @@ export class GenerateXRayDto {
   @Type(() => XRayAssetDto)
   assets!: XRayAssetDto[];
 }
-

@@ -46,10 +46,7 @@ export class AssetsRepository {
     });
   }
 
-  async update(
-    id: string,
-    data: Prisma.AssetUpdateInput,
-  ): Promise<Asset> {
+  async update(id: string, data: Prisma.AssetUpdateInput): Promise<Asset> {
     return this.prisma.asset.update({
       where: { id },
       data,
@@ -88,4 +85,3 @@ export class AssetsRepository {
     });
   }
 }
-

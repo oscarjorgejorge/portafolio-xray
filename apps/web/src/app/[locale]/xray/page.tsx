@@ -64,6 +64,7 @@ function XRayPageContent() {
 
       parseAssets();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   const handleCopyUrl = (url: string, type: 'morningstar' | 'shareable') => {

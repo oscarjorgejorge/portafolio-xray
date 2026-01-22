@@ -65,10 +65,25 @@ export interface ResolverConfig {
   domains: string[];
 }
 
+// Morningstar API response item (from morningstar.es SecuritySearch.ashx)
+export interface MorningstarApiItem {
+  n?: string; // name
+  i?: string; // id
+  pi?: string; // principal id
+  t?: string | number; // type code
+  tt?: string; // type text
+  Type?: string; // type
+  type?: string; // type (lowercase)
+  ticker?: string;
+  isin?: string;
+}
 
-
-
-
-
-
-
+// Global Morningstar API response item
+export interface GlobalMorningstarItem {
+  securityId?: string;
+  id?: string;
+  name?: string;
+  legalName?: string;
+  isin?: string;
+  ticker?: string;
+}

@@ -1,10 +1,4 @@
-import {
-  Controller,
-  Post,
-  Body,
-  HttpCode,
-  HttpStatus,
-} from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { XRayService } from './xray.service';
 import type { GenerateXRayResponse } from './xray.service';
@@ -50,4 +44,3 @@ export class XRayController {
     return this.xrayService.generate(dto);
   }
 }
-

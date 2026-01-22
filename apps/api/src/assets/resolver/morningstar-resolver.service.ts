@@ -8,6 +8,8 @@ import {
   ResolverConfig,
   VerificationResult,
   MorningstarAssetType,
+  MorningstarApiItem,
+  GlobalMorningstarItem,
 } from './resolver.types';
 
 /**
@@ -99,7 +101,9 @@ export class MorningstarResolverService {
     }
   }
 
-  private mapMorningstarType(rawType: string | undefined): MorningstarAssetType {
+  private mapMorningstarType(
+    rawType: string | undefined,
+  ): MorningstarAssetType {
     if (!rawType) return 'Desconocido';
     const upperType = rawType.toUpperCase();
     return this.MORNINGSTAR_TYPE_MAP[upperType] || 'Desconocido';
@@ -239,9 +243,9 @@ export class MorningstarResolverService {
       if (jsonMatches) {
         for (const jsonStr of jsonMatches) {
           try {
-            const item = JSON.parse(jsonStr);
-            const rawType = item.tt || item.Type || item.type;
-            const securityType = item.t || item.tt || item.Type || 2;
+            const item = JSON.parse(jsonStr) as MorningstarApiItem;
+            const rawType = item.tt ?? item.Type ?? item.type;
+            const securityType = item.t ?? item.tt ?? item.Type ?? 2;
             const isStock = securityType === 3 || securityType === '3';
             const detectedAssetType: MorningstarAssetType = isStock
               ? 'Accion'
@@ -256,35 +260,41 @@ export class MorningstarResolverService {
 
             if (isStock) {
               // For stocks, use standard priority
-              principalId = item.pi || item.i || null;
+              principalId = item.pi ?? item.i ?? null;
               secondaryId = item.i && item.i !== principalId ? item.i : null;
             } else {
               // For funds, prioritize IDs starting with "F"
-              const piId = item.pi || null;
-              const iId = item.i || null;
-              
+              const piId = item.pi ?? null;
+              const iId = item.i ?? null;
+
               // Check if either ID starts with "F"
-              const piStartsWithF = piId && piId.toUpperCase().startsWith('F');
-              const iStartsWithF = iId && iId.toUpperCase().startsWith('F');
-              
+              const piStartsWithF =
+                piId?.toUpperCase().startsWith('F') ?? false;
+              const iStartsWithF = iId?.toUpperCase().startsWith('F') ?? false;
+
               if (piStartsWithF || iStartsWithF) {
                 // Prefer the one starting with "F"
                 principalId = piStartsWithF ? piId : iId;
-                secondaryId = piStartsWithF ? (iId && iId !== principalId ? iId : null) : (piId && piId !== principalId ? piId : null);
+                secondaryId = piStartsWithF
+                  ? iId && iId !== principalId
+                    ? iId
+                    : null
+                  : piId && piId !== principalId
+                    ? piId
+                    : null;
               } else {
                 // If neither starts with "F", use standard priority
-                principalId = piId || iId || null;
+                principalId = piId ?? iId ?? null;
                 secondaryId = iId && iId !== principalId ? iId : null;
               }
             }
 
             if (principalId) {
-              const tickerString =
-                typeof item.ticker === 'string' ? item.ticker : undefined;
+              const tickerString = item.ticker;
 
               results.push({
                 url: this.buildMorningstarUrl(principalId, securityType),
-                title: item.n || '',
+                title: item.n ?? '',
                 snippet: `ID Principal: ${principalId} | Tipo: ${detectedAssetType}`,
                 morningstarId: principalId,
                 domain: 'global.morningstar.com',
@@ -297,7 +307,7 @@ export class MorningstarResolverService {
               if (secondaryId && secondaryId !== principalId) {
                 results.push({
                   url: this.buildMorningstarUrl(secondaryId, securityType),
-                  title: item.n || '',
+                  title: item.n ?? '',
                   snippet: `ID Secundario: ${secondaryId} | Tipo: ${detectedAssetType}`,
                   morningstarId: secondaryId,
                   domain: 'global.morningstar.com',
@@ -386,7 +396,9 @@ export class MorningstarResolverService {
   private async searchGlobalMorningstar(
     query: string,
   ): Promise<SearchResult[]> {
-    this.logger.debug(`[GLOBAL] Searching global.morningstar.com for: ${query}`);
+    this.logger.debug(
+      `[GLOBAL] Searching global.morningstar.com for: ${query}`,
+    );
 
     const endpoint = `https://global.morningstar.com/api/v1/security/search?q=${encodeURIComponent(query)}&languageId=es-ES&countryId=ES`;
 
@@ -405,18 +417,17 @@ export class MorningstarResolverService {
 
       const text = await response.text();
       try {
-        const data = JSON.parse(text);
+        const data = JSON.parse(text) as GlobalMorningstarItem[];
 
         if (Array.isArray(data) && data.length > 0) {
           this.logger.debug(`[GLOBAL] Found ${data.length} results`);
-          return data.slice(0, 5).map((item: Record<string, unknown>) => ({
-            url: `https://global.morningstar.com/es/inversiones/fondos/${item.securityId || item.id}/cotizacion`,
-            title: (item.name as string) || (item.legalName as string) || '',
-            snippet: `${item.isin || ''} | ${item.ticker || ''}`,
-            morningstarId:
-              (item.securityId as string) || (item.id as string) || null,
+          return data.slice(0, 5).map((item: GlobalMorningstarItem) => ({
+            url: `https://global.morningstar.com/es/inversiones/fondos/${item.securityId ?? item.id ?? ''}/cotizacion`,
+            title: item.name ?? item.legalName ?? '',
+            snippet: `${item.isin ?? ''} | ${item.ticker ?? ''}`,
+            morningstarId: item.securityId ?? item.id ?? null,
             domain: 'global.morningstar.com',
-            ticker: (item.ticker as string) || undefined,
+            ticker: item.ticker,
           }));
         }
       } catch {
@@ -658,21 +669,23 @@ export class MorningstarResolverService {
     // For funds: if multiple results have the same name, prioritize the one with "F" ID
     if (scoredResults.length > 1) {
       const firstResult = scoredResults[0];
-      const isFund = firstResult?.assetType === 'Fondo' || firstResult?.assetType === 'ETF';
-      
+      const isFund =
+        firstResult?.assetType === 'Fondo' || firstResult?.assetType === 'ETF';
+
       if (isFund && firstResult?.title) {
         // Find all results with the same name (normalized)
         const normalizedTitle = this.normalizeInput(firstResult.title);
         const sameNameResults = scoredResults.filter(
-          (r) => r.title && this.normalizeInput(r.title) === normalizedTitle
+          (r) => r.title && this.normalizeInput(r.title) === normalizedTitle,
         );
-        
+
         // If multiple results have the same name, prefer the one with "F" ID
         if (sameNameResults.length > 1) {
           const fIdResult = sameNameResults.find(
-            (r) => r.morningstarId && r.morningstarId.toUpperCase().startsWith('F')
+            (r) =>
+              r.morningstarId && r.morningstarId.toUpperCase().startsWith('F'),
           );
-          
+
           if (fIdResult && fIdResult !== firstResult) {
             // Move the "F" ID result to the top
             scoredResults = [
@@ -688,7 +701,7 @@ export class MorningstarResolverService {
     }
 
     // Determine initial state
-    let bestMatch = scoredResults[0] || null;
+    const bestMatch = scoredResults[0] || null;
     let status: 'resolved' | 'needs_review' | 'not_found' = 'not_found';
     let confidence = 0;
     let verification: VerificationResult | undefined = undefined;
@@ -740,7 +753,8 @@ export class MorningstarResolverService {
           (r) =>
             r !== bestMatch &&
             r.title &&
-            this.normalizeInput(r.title) === this.normalizeInput(bestMatch.title || ''),
+            this.normalizeInput(r.title) ===
+              this.normalizeInput(bestMatch.title || ''),
         );
 
       if (verification?.verified) {
@@ -753,7 +767,10 @@ export class MorningstarResolverService {
         this.logger.log(
           `Auto-resolving fund with "F" ID from multiple same-name results: ${bestMatch.morningstarId}`,
         );
-      } else if (confidence >= this.config.minConfidence && bestMatch.morningstarId) {
+      } else if (
+        confidence >= this.config.minConfidence &&
+        bestMatch.morningstarId
+      ) {
         status = 'resolved';
       } else if (bestMatch.morningstarId) {
         status = 'needs_review';
@@ -783,11 +800,3 @@ export class MorningstarResolverService {
     return result;
   }
 }
-
-
-
-
-
-
-
-

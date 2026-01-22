@@ -49,7 +49,7 @@ export const ManualAssetInput: React.FC<ManualAssetInputProps> = ({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <Card className="max-w-lg w-full">
         <h3 className="text-lg font-semibold mb-4 text-slate-900">
-          Manual Asset Entry for "{identifier}"
+          Manual Asset Entry for &quot;{identifier}&quot;
         </h3>
         <p className="text-sm text-slate-700 mb-4">
           The asset could not be resolved automatically. Please enter the

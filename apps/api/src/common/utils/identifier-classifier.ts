@@ -54,7 +54,7 @@ export class IdentifierClassifier {
     }
 
     const normalized = isin.toUpperCase();
-    
+
     // Convert letters to numbers (A=10, B=11, ..., Z=35)
     let digits = '';
     for (const char of normalized) {
@@ -86,4 +86,3 @@ export class IdentifierClassifier {
     return sum % 10 === 0;
   }
 }
-

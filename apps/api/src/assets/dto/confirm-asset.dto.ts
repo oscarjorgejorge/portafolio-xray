@@ -43,7 +43,8 @@ export class ConfirmAssetDto {
 
   @ApiProperty({
     description: 'Morningstar URL for the asset',
-    example: 'https://global.morningstar.com/es/inversiones/fondos/0P0000YXJO/cotizacion',
+    example:
+      'https://global.morningstar.com/es/inversiones/fondos/0P0000YXJO/cotizacion',
   })
   @IsString()
   @IsNotEmpty()
@@ -57,4 +58,3 @@ export class ConfirmAssetDto {
   @IsOptional()
   ticker?: string;
 }
-

@@ -89,7 +89,10 @@ export class AssetsService {
         };
       }
 
-      if (resolution.status === 'needs_review' && resolution.allResults.length > 0) {
+      if (
+        resolution.status === 'needs_review' &&
+        resolution.allResults.length > 0
+      ) {
         // Return alternatives for user to pick
         const alternatives = resolution.allResults
           .filter((r) => r.morningstarId)
@@ -149,10 +152,7 @@ export class AssetsService {
   /**
    * Map Morningstar asset type to Prisma enum
    */
-  private mapAssetType(
-    resolvedType?: string,
-    hintType?: string,
-  ): AssetType {
+  private mapAssetType(resolvedType?: string, hintType?: string): AssetType {
     // Priority: resolved type from Morningstar, then user hint
     const typeToCheck = resolvedType || hintType;
 

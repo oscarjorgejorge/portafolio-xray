@@ -19,7 +19,10 @@ export class XRayService {
    */
   async generate(dto: GenerateXRayDto): Promise<GenerateXRayResponse> {
     // Validate total weight equals 100%
-    const totalWeight = dto.assets.reduce((sum, asset) => sum + asset.weight, 0);
+    const totalWeight = dto.assets.reduce(
+      (sum, asset) => sum + asset.weight,
+      0,
+    );
     if (Math.abs(totalWeight - 100) > 0.01) {
       throw new BadRequestException(
         `Total weight must equal 100%. Current total: ${totalWeight.toFixed(2)}%`,
@@ -44,19 +47,21 @@ export class XRayService {
    */
   private async buildMorningstarUrl(assets: XRayAssetDto[]): Promise<string> {
     const baseUrl = `${this.MORNINGSTAR_BASE_URL}/j2uwuwirpv/xraypdf/default.aspx`;
-    
+
     // Look up asset types from database
     const securityTokens: string[] = [];
     const values: number[] = [];
 
     for (const asset of assets) {
       // Look up asset type from database
-      const dbAsset = await this.assetsRepository.findByMorningstarId(asset.morningstarId);
-      
+      const dbAsset = await this.assetsRepository.findByMorningstarId(
+        asset.morningstarId,
+      );
+
       // Determine type code and exchange code
       let typeCode: string;
       let exchangeCode: string;
-      
+
       if (dbAsset) {
         // Use type from database
         if (dbAsset.type === 'STOCK') {
@@ -83,7 +88,7 @@ export class XRayService {
       // Generate security token: {ID}]typeCode]0]{EXCHANGE}$$ALL_1340
       const securityToken = `${asset.morningstarId}]${typeCode}]0]${exchangeCode}$$ALL_1340`;
       securityTokens.push(encodeURIComponent(securityToken));
-      
+
       // Convert weight percentage to absolute value (multiply by 100)
       values.push(Math.round(asset.weight * 100));
     }
@@ -132,4 +137,3 @@ export class XRayService {
     return assets;
   }
 }
-

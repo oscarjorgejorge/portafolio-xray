@@ -6,11 +6,7 @@ import { AssetsModule } from './assets/assets.module';
 import { XRayModule } from './xray/xray.module';
 
 @Module({
-  imports: [
-    PrismaModule,
-    AssetsModule,
-    XRayModule,
-  ],
+  imports: [PrismaModule, AssetsModule, XRayModule],
   controllers: [AppController],
   providers: [AppService],
 })

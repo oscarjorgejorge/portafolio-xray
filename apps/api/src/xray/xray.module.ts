@@ -10,4 +10,3 @@ import { AssetsModule } from '../assets/assets.module';
   exports: [XRayService],
 })
 export class XRayModule {}
-
