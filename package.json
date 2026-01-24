@@ -1,0 +1,24 @@
+{
+  "name": "portfolio-xray",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Portfolio X-Ray Generator - Monorepo",
+  "scripts": {
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^15.2.11"
+  },
+  "lint-staged": {
+    "apps/api/**/*.{ts,tsx}": [
+      "cd apps/api && npm run lint",
+      "cd apps/api && npm run type-check",
+      "cd apps/api && npm run test"
+    ],
+    "apps/web/**/*.{ts,tsx,js,jsx}": [
+      "cd apps/web && npm run lint",
+      "cd apps/web && npm run type-check"
+    ]
+  }
+}
