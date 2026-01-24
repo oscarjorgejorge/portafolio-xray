@@ -93,11 +93,7 @@ const nextConfig = {
     ignoreBuildErrors: false,
   },
 
-  // Optimize ESLint
-  eslint: {
-    // ESLint runs separately in dev mode, this only affects builds
-    ignoreDuringBuilds: false,
-  },
+  // ESLint is configured separately, not in next.config.js (Next.js 16+)
 
   // Optimize images (if you use next/image)
   images: {
@@ -113,6 +109,10 @@ const nextConfig = {
       bodySizeLimit: '2mb',
     },
   },
+
+  // Turbopack configuration (Next.js 16+ uses Turbopack by default)
+  // Empty config to silence warning - webpack config is for fallback only
+  turbopack: {},
 
   // Enable i18n routing if needed (currently using [locale] folder structure)
   // i18n: {

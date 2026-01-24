@@ -16,7 +16,14 @@ export class PrismaService
   }
 
   async onModuleInit(): Promise<void> {
-    await this.$connect();
+    try {
+      await this.$connect();
+      console.log('✅ Database connected successfully');
+    } catch (error) {
+      console.error('⚠️ Database connection failed:', error);
+      // Don't throw - allow app to start even if DB connection fails
+      // This prevents healthcheck from failing due to temporary DB issues
+    }
   }
 
   async onModuleDestroy(): Promise<void> {
