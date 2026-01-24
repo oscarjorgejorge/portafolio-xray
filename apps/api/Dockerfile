@@ -40,11 +40,14 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/prisma ./prisma
 
+# Regenerate Prisma client in production to ensure it's available
+RUN npx prisma generate
+
 # Expose port (Railway will set PORT env var)
 EXPOSE 3000
 
 # Note: Healthcheck is handled by Railway via railway.json
-# Railway will check /api endpoint automatically
+# Railway will check /api/health endpoint
 
 # Start the application
 CMD ["npm", "run", "start:prod"]
