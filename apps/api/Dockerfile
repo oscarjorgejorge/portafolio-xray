@@ -40,12 +40,20 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/prisma ./prisma
 
-# Expose port
+# Regenerate Prisma client in production to ensure it's available
+RUN npx prisma generate
+
+# Verify build artifacts exist
+RUN ls -la dist/ || echo "WARNING: dist directory not found"
+RUN test -f dist/src/main.js || echo "ERROR: dist/src/main.js not found"
+
+# Expose port (Railway will set PORT env var)
 EXPOSE 3000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api || exit 1
+# Note: Healthcheck is handled by Railway via railway.json
+# Railway will check /api/health endpoint
 
 # Start the application
-CMD ["npm", "run", "start:prod"]
+# Use node directly to ensure proper signal handling
+# NestJS preserves src/ directory structure in dist/
+CMD ["node", "dist/src/main.js"]
