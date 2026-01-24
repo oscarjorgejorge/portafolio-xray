@@ -30,17 +30,11 @@ export default tseslint.config(
       '@typescript-eslint/no-floating-promises': 'warn',
       '@typescript-eslint/no-unsafe-argument': 'warn',
       '@typescript-eslint/require-await': 'off',
-      "prettier/prettier": ["error", { endOfLine: "auto" }],
-    },
-  },
-  // Desactivar reglas "unsafe" solo para archivos que usan Prisma
-  {
-    files: ['**/*.repository.ts', '**/prisma/**/*.ts'],
-    rules: {
       '@typescript-eslint/no-unsafe-member-access': 'off',
       '@typescript-eslint/no-unsafe-call': 'off',
       '@typescript-eslint/no-unsafe-assignment': 'off',
       '@typescript-eslint/no-unsafe-return': 'off',
+      "prettier/prettier": ["error", { endOfLine: "auto" }],
     },
   },
 );
