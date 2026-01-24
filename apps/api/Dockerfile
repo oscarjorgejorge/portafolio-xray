@@ -40,12 +40,11 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/prisma ./prisma
 
-# Expose port
+# Expose port (Railway will set PORT env var)
 EXPOSE 3000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api || exit 1
+# Note: Healthcheck is handled by Railway via railway.json
+# Railway will check /api endpoint automatically
 
 # Start the application
 CMD ["npm", "run", "start:prod"]
