@@ -1,0 +1,46 @@
+[
+  {
+    "input": "0P0000006A",
+    "inputType": "MORNINGSTAR_ID",
+    "normalizedInput": "0P0000006A",
+    "timestamp": "2025-12-25T19:24:24.776Z",
+    "status": "needs_review",
+    "confidence": 0.375,
+    "bestMatch": {
+      "url": "https://global.morningstar.com/es/inversiones/fondos/0P0000006A/cotizacion",
+      "title": "Advanced Micro Devices Inc",
+      "snippet": "ID Principal: 0P0000006A | ID Secundario: 0P0000006A",
+      "morningstarId": "0P0000006A",
+      "domain": "global.morningstar.com",
+      "ticker": 3,
+      "score": 30,
+      "scoreBreakdown": {
+        "isinMatch": 0,
+        "tickerMatch": 0,
+        "nameMatch": 0,
+        "morningstarDomain": 20,
+        "typeMatch": 10
+      }
+    },
+    "allResults": [
+      {
+        "url": "https://global.morningstar.com/es/inversiones/fondos/0P0000006A/cotizacion",
+        "title": "Advanced Micro Devices Inc",
+        "snippet": "ID Principal: 0P0000006A | ID Secundario: 0P0000006A",
+        "morningstarId": "0P0000006A",
+        "domain": "global.morningstar.com",
+        "ticker": 3,
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "tickerMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      }
+    ],
+    "morningstarId": "0P0000006A",
+    "morningstarUrl": "https://global.morningstar.com/es/inversiones/fondos/0P0000006A/cotizacion"
+  }
+]

@@ -1,0 +1,62 @@
+[
+  {
+    "input": "LU1820812136",
+    "inputType": "ISIN",
+    "normalizedInput": "LU1820812136",
+    "timestamp": "2025-12-25T19:07:04.147Z",
+    "status": "needs_review",
+    "confidence": 0.375,
+    "bestMatch": {
+      "url": "https://global.morningstar.com/es/inversiones/fondos/0P0001EHST/cotizacion",
+      "title": "Capital Group Capital Income Builder (LUX) Z",
+      "snippet": "ID Principal: 0P0001EHST | ID Secundario: F0000112TP",
+      "morningstarId": "0P0001EHST",
+      "domain": "global.morningstar.com",
+      "score": 30,
+      "scoreBreakdown": {
+        "isinMatch": 0,
+        "nameMatch": 0,
+        "morningstarDomain": 20,
+        "typeMatch": 10
+      }
+    },
+    "allResults": [
+      {
+        "url": "https://global.morningstar.com/es/inversiones/fondos/0P0001EHST/cotizacion",
+        "title": "Capital Group Capital Income Builder (LUX) Z",
+        "snippet": "ID Principal: 0P0001EHST | ID Secundario: F0000112TP",
+        "morningstarId": "0P0001EHST",
+        "domain": "global.morningstar.com",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      },
+      {
+        "url": "https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=F0000112TP",
+        "title": "Capital Group Capital Income Builder (LUX) Z",
+        "snippet": "ID: F0000112TP",
+        "morningstarId": "F0000112TP",
+        "domain": "morningstar.es",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      }
+    ],
+    "morningstarId": "0P0001EHST",
+    "morningstarUrl": "https://global.morningstar.com/es/inversiones/fondos/0P0001EHST/cotizacion",
+    "verification": {
+      "verified": false,
+      "isinFound": null,
+      "nameFound": null,
+      "additionalInfo": {}
+    }
+  }
+]
