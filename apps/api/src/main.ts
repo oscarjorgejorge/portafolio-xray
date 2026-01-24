@@ -10,8 +10,12 @@ async function bootstrap(): Promise<void> {
     console.log(
       `💾 Database URL: ${process.env.DATABASE_URL ? 'Set' : 'Missing'}`,
     );
+    console.log(`🔌 PORT env var: ${process.env.PORT || 'not set'}`);
+    console.log(`🔌 API_PORT env var: ${process.env.API_PORT || 'not set'}`);
 
+    console.log(`📝 Creating NestJS application...`);
     const app = await NestFactory.create(AppModule);
+    console.log(`✅ NestJS application created successfully`);
 
     // Global prefix for all routes
     app.setGlobalPrefix('api');
@@ -62,9 +66,24 @@ async function bootstrap(): Promise<void> {
     );
     console.log(`📚 Swagger docs available at http://localhost:${port}/docs`);
   } catch (error) {
-    console.error('❌ Failed to start application:', error);
+    console.error('❌ Failed to start application:');
+    console.error('Error type:', error?.constructor?.name);
+    console.error('Error message:', error?.message);
+    console.error('Error stack:', error?.stack);
     process.exit(1);
   }
 }
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('❌ Uncaught Exception:', error);
+  process.exit(1);
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+  process.exit(1);
+});
 
 void bootstrap();

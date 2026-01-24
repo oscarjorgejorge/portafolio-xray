@@ -43,6 +43,10 @@ COPY --from=builder /app/prisma ./prisma
 # Regenerate Prisma client in production to ensure it's available
 RUN npx prisma generate
 
+# Verify build artifacts exist
+RUN ls -la dist/ || echo "WARNING: dist directory not found"
+RUN test -f dist/main.js || echo "ERROR: dist/main.js not found"
+
 # Expose port (Railway will set PORT env var)
 EXPOSE 3000
 
@@ -50,4 +54,5 @@ EXPOSE 3000
 # Railway will check /api/health endpoint
 
 # Start the application
-CMD ["npm", "run", "start:prod"]
+# Use node directly to ensure proper signal handling
+CMD ["node", "dist/main.js"]
