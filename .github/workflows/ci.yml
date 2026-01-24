@@ -58,6 +58,7 @@ jobs:
         working-directory: apps/api
         run: |
           npm ci
+          npx prisma generate
           npm run type-check
 
       - name: Type check Web

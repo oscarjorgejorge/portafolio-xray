@@ -41,7 +41,8 @@ async function bootstrap(): Promise<void> {
     credentials: true,
   });
 
-  const port = process.env.API_PORT ?? 4000;
+  // Railway sets PORT automatically, fallback to API_PORT or 4000
+  const port = process.env.PORT ?? process.env.API_PORT ?? 4000;
   await app.listen(port);
 
   console.log(`🚀 API running on http://localhost:${port}/api`);
