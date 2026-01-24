@@ -43,9 +43,20 @@ async function bootstrap(): Promise<void> {
 
   // Railway sets PORT automatically, fallback to API_PORT or 4000
   const port = process.env.PORT ?? process.env.API_PORT ?? 4000;
+
+  console.log(`📦 Starting API server...`);
+  console.log(`🔌 Port: ${port}`);
+  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(
+    `💾 Database URL: ${process.env.DATABASE_URL ? 'Set' : 'Missing'}`,
+  );
+
   await app.listen(port);
 
   console.log(`🚀 API running on http://localhost:${port}/api`);
+  console.log(
+    `💚 Healthcheck available at http://localhost:${port}/api/health`,
+  );
   console.log(`📚 Swagger docs available at http://localhost:${port}/docs`);
 }
 
