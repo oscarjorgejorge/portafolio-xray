@@ -2,14 +2,15 @@
 
 ## Overview
 
-This document describes the deployment architecture for Portfolio X-Ray using **Vercel** (frontend) and **Railway** (backend + database).
+This document describes the deployment architecture for Portfolio X-Ray using **Vercel** (frontend) and **Railway** (backend + database) with **native GitHub integrations** for automatic deployments.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                         GITHUB REPOSITORY                            │
-│                                                                      │
-│  Push/PR ──► GitHub Actions CI ──► Quality Gates ──► Deploy         │
-│              (lint, type-check, test, build)                        │
+│                         GITHUB REPOSITORY                           │
+│                                                                     │
+│  Push/PR ──► GitHub Actions CI ──► Quality Gates (lint, test, etc) │
+│                                                                     │
+│  Push to main/develop ──► Native Integrations ──► Auto Deploy      │
 └─────────────────────────────────────────────────────────────────────┘
                               │
             ┌─────────────────┴─────────────────┐
@@ -18,12 +19,17 @@ This document describes the deployment architecture for Portfolio X-Ray using **
 │        VERCEL           │       │        RAILWAY          │
 │   (apps/web - Next.js)  │       │   (apps/api - NestJS)   │
 │                         │       │                         │
+│ • Native GitHub Integration     │ • Native GitHub Integration
+│ • Auto deploy on push   │       │ • Auto deploy on push   │
 │ • Global Edge CDN       │       │ • EU-West region        │
 │ • Auto preview deploys  │  ──►  │ • PostgreSQL database   │
 │ • Free SSL              │       │ • Free SSL              │
 │ • ~50ms latency         │       │ • ~100-200ms latency    │
 └─────────────────────────┘       └─────────────────────────┘
 ```
+
+> **Note:** Deployments are handled automatically by Railway and Vercel native integrations.
+> GitHub Actions only runs quality checks (CI) and database migrations.
 
 ---
 
@@ -34,7 +40,7 @@ This document describes the deployment architecture for Portfolio X-Ray using **
 | Frontend | Next.js 16, React 19, TailwindCSS | Vercel |
 | Backend | NestJS 11, Prisma 7 | Railway |
 | Database | PostgreSQL 16 | Railway |
-| CI/CD | GitHub Actions | GitHub |
+| CI/CD | GitHub Actions + Native Integrations | GitHub + Platforms |
 
 ---
 
@@ -57,7 +63,9 @@ This document describes the deployment architecture for Portfolio X-Ray using **
 - Railway account (free tier available)
 - Node.js 20+ installed locally
 
-### Step 1: Railway Setup
+### Step 1: Railway Setup (API + Database)
+
+Railway uses native GitHub integration — no API tokens needed for deployments.
 
 1. **Create Railway Account**
    - Go to [railway.app](https://railway.app)
@@ -71,16 +79,23 @@ This document describes the deployment architecture for Portfolio X-Ray using **
 
 3. **Add PostgreSQL Database**
    - Click "New" → "Database" → "PostgreSQL"
-   - Note the `DATABASE_URL` from connection settings
+   - Note the `DATABASE_URL` from connection settings (needed for GitHub Secrets)
 
-4. **Add API Service**
+4. **Add API Service (GitHub Integration)**
    - Click "New" → "GitHub Repo"
    - Select your repository
-   - Set root directory: `apps/api`
-   - Set build command: `npm run build`
-   - Set start command: `npm run start:prod`
+   - Configure the service:
+     - **Root directory**: `apps/api`
+     - **Build command**: `npm run build`
+     - **Start command**: `npm run start:prod`
+     - **Watch paths**: `apps/api/**` (optional, for selective deploys)
 
-5. **Configure Environment Variables**
+5. **Configure Branch Deployment**
+   - Go to Service Settings → Triggers
+   - Set **Production branch**: `main`
+   - Enable automatic deployments on push
+
+6. **Configure Environment Variables**
    ```
    DATABASE_URL=<from PostgreSQL service>
    NODE_ENV=production
@@ -88,17 +103,14 @@ This document describes the deployment architecture for Portfolio X-Ray using **
    CORS_ORIGINS=https://portfolio-xray.vercel.app
    ```
 
-6. **Repeat for Development Project**
+7. **Repeat for Development Environment**
    - Create `portfolio-xray-dev` project
    - Same steps with development URLs
+   - Set **Trigger branch**: `develop`
 
-7. **Get Railway Tokens**
-   - Go to Account Settings → Tokens
-   - Create tokens for CI/CD:
-     - `RAILWAY_TOKEN_PROD`
-     - `RAILWAY_TOKEN_DEV`
+### Step 2: Vercel Setup (Web Frontend)
 
-### Step 2: Vercel Setup
+Vercel uses native GitHub integration — no API tokens needed for deployments.
 
 1. **Create Vercel Account**
    - Go to [vercel.com](https://vercel.com)
@@ -107,74 +119,103 @@ This document describes the deployment architecture for Portfolio X-Ray using **
 2. **Import Project**
    - Click "Add New" → "Project"
    - Import your GitHub repository
-   - Set root directory: `apps/web`
-   - Framework preset: Next.js (auto-detected)
+   - Configure the project:
+     - **Root directory**: `apps/web`
+     - **Framework preset**: Next.js (auto-detected)
+     - **Build command**: `npm run build` (default)
+     - **Output directory**: `.next` (default)
 
-3. **Configure Environment Variables**
+3. **Configure Production Branch**
+   - Go to Project Settings → Git
+   - Set **Production branch**: `main`
+   - Vercel automatically creates preview deployments for other branches
+
+4. **Configure Environment Variables**
+   
+   **Production Environment** (Settings → Environment Variables):
    ```
    NEXT_PUBLIC_API_URL=https://api-prod.up.railway.app
    NEXT_PUBLIC_ENV=production
    ```
+   
+   **Preview/Development Environment**:
+   ```
+   NEXT_PUBLIC_API_URL=https://api-dev.up.railway.app
+   NEXT_PUBLIC_ENV=development
+   ```
+   
+   > Tip: Set different values per environment using Vercel's environment dropdown.
 
-4. **Get Vercel Tokens**
-   - Go to Account Settings → Tokens
-   - Create a new token: `VERCEL_TOKEN`
-   - Note your `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID` from project settings
+5. **Configure Branch Deployments (Optional)**
+   - Go to Project Settings → Git → Ignored Build Step
+   - To limit which branches trigger builds, use:
+     ```bash
+     if [ "$VERCEL_GIT_COMMIT_REF" == "main" ] || [ "$VERCEL_GIT_COMMIT_REF" == "develop" ]; then exit 1; else exit 0; fi
+     ```
 
-### Step 3: GitHub Secrets
+### Step 3: GitHub Secrets (For Migrations Only)
+
+Since Railway and Vercel handle deployments via native integration, GitHub Secrets are only needed for database migrations.
 
 Add these secrets to your GitHub repository (Settings → Secrets and variables → Actions):
 
 ```
-# Vercel
-VERCEL_TOKEN=<your-vercel-token>
-VERCEL_ORG_ID=<your-org-id>
-VERCEL_PROJECT_ID=<your-project-id>
-
-# Railway
-RAILWAY_TOKEN_PROD=<production-token>
-RAILWAY_TOKEN_DEV=<development-token>
-
-# Database (for migrations)
-DATABASE_URL_PROD=<production-database-url>
-DATABASE_URL_DEV=<development-database-url>
+# Database URLs (for running migrations via GitHub Actions)
+DATABASE_URL_PROD=<production-database-url-from-railway>
+DATABASE_URL_DEV=<development-database-url-from-railway>
 ```
+
+> **Note:** You do NOT need Vercel or Railway API tokens anymore. Native integrations handle deployments automatically.
 
 ---
 
 ## CI/CD Pipeline
 
-### Quality Gates (On Every Push/PR)
+### How It Works
 
 ```mermaid
 flowchart LR
-    Push[Git Push] --> Quality[Quality Checks]
+    Push[Git Push] --> CI[GitHub Actions CI]
+    Push --> Railway[Railway Auto-Deploy]
+    Push --> Vercel[Vercel Auto-Deploy]
     
-    subgraph Quality [Parallel Jobs]
+    subgraph CI [GitHub Actions]
         Lint[ESLint]
         TypeCheck[TypeScript]
         Test[Jest Tests]
+        Build[Build Check]
+        Migrate[DB Migrations]
     end
     
-    Quality --> |All Pass| Build[Build]
-    Quality --> |Any Fail| Block[Block Merge]
+    subgraph Railway [Railway - Native Integration]
+        API[Deploy API]
+    end
     
-    Build --> |main| Prod[Deploy Prod]
-    Build --> |develop| Dev[Deploy Dev]
-    Build --> |PR| Preview[Vercel Preview]
+    subgraph Vercel [Vercel - Native Integration]
+        Web[Deploy Web]
+    end
 ```
+
+### Deployment Flow
+
+1. **Push to `main` or `develop`**
+2. **Parallel execution:**
+   - GitHub Actions runs CI checks (lint, type-check, test, build)
+   - Railway automatically deploys API (native integration)
+   - Vercel automatically deploys Web (native integration)
+3. **GitHub Actions runs database migrations** after CI passes
 
 ### Jobs Description
 
-| Job | What It Checks | Runs On |
-|-----|---------------|---------|
-| `lint` | ESLint errors in API + Web | Every push/PR |
-| `type-check` | TypeScript errors in API + Web | Every push/PR |
-| `test` | Jest unit tests in API | Every push/PR |
-| `build` | Production build succeeds | After quality gates pass |
-| `deploy-api` | Deploy API to Railway | On `main` or `develop` |
-| `deploy-web` | Deploy Web to Vercel | On `main` or `develop` |
-| `migrate` | Run Prisma migrations | After deploy |
+| Job | What It Does | Trigger |
+|-----|--------------|---------|
+| `lint` | ESLint checks for API + Web | Every push/PR |
+| `type-check` | TypeScript validation | Every push/PR |
+| `test` | Jest unit tests | Every push/PR |
+| `build` | Production build verification | Every push/PR |
+| `migrate` | Prisma database migrations | Push to main/develop |
+| ~~`deploy-api`~~ | ~~Deploy to Railway~~ | Handled by Railway native integration |
+| ~~`deploy-web`~~ | ~~Deploy to Vercel~~ | Handled by Vercel native integration |
 
 ### PR Status Display
 
@@ -272,6 +313,8 @@ NEXT_PUBLIC_ENV=development
 ## GitHub Actions Workflows
 
 ### `.github/workflows/ci.yml`
+
+Quality checks that run on every push and PR:
 
 ```yaml
 name: CI
@@ -378,66 +421,51 @@ jobs:
 
 ### `.github/workflows/deploy.yml`
 
+Database migrations only (deployments handled by native integrations):
+
 ```yaml
-name: Deploy
+# Database Migrations Workflow
+#
+# NOTE: API and Web deployments are handled automatically by native platform integrations:
+# - Railway: Auto-deploys API on push to main/develop (configured via GitHub integration)
+# - Vercel: Auto-deploys Web on push to main/develop (configured via GitHub integration)
+#
+# This workflow only handles database migrations after deployments are complete.
+
+name: Database Migrations
 
 on:
   push:
     branches: [main, develop]
+  workflow_dispatch: # Allow manual trigger for migrations
 
 env:
   NODE_VERSION: '20'
 
 jobs:
-  deploy-api:
-    name: Deploy API to Railway
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Install Railway CLI
-        run: npm install -g @railway/cli
-      
-      - name: Deploy to Railway
-        working-directory: apps/api
-        env:
-          RAILWAY_TOKEN: ${{ github.ref == 'refs/heads/main' && secrets.RAILWAY_TOKEN_PROD || secrets.RAILWAY_TOKEN_DEV }}
-        run: railway up --service api
-
-  deploy-web:
-    name: Deploy Web to Vercel
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Deploy to Vercel
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          working-directory: apps/web
-          vercel-args: ${{ github.ref == 'refs/heads/main' && '--prod' || '' }}
-
   migrate:
     name: Run Database Migrations
     runs-on: ubuntu-latest
-    needs: [deploy-api]
     steps:
-      - uses: actions/checkout@v4
-      
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-      
-      - name: Run migrations
+          cache: 'npm'
+          cache-dependency-path: apps/api/package-lock.json
+
+      - name: Install dependencies
+        working-directory: apps/api
+        run: npm ci
+
+      - name: Run Prisma migrations
         working-directory: apps/api
         env:
           DATABASE_URL: ${{ github.ref == 'refs/heads/main' && secrets.DATABASE_URL_PROD || secrets.DATABASE_URL_DEV }}
-        run: |
-          npm ci
-          npx prisma migrate deploy
+        run: npx prisma migrate deploy
 ```
 
 ---
@@ -566,6 +594,30 @@ jobs:
 - Verify `CORS_ORIGINS` includes frontend URL
 - Check for trailing slashes in URLs
 
+### Native Integration Issues
+
+**Railway not auto-deploying**
+- Verify GitHub integration is connected: Railway Dashboard → Project → Settings → GitHub
+- Check the trigger branch is correct (main/develop)
+- Ensure the root directory is set to `apps/api`
+- Check Railway service logs for build errors
+
+**Vercel not auto-deploying**
+- Verify GitHub integration is connected: Vercel Dashboard → Project → Settings → Git
+- Check the production branch setting
+- Ensure the root directory is set to `apps/web`
+- Check if "Ignored Build Step" is blocking the branch
+
+**Vercel preview deployments not working**
+- Verify the PR is against the correct branch (main or develop)
+- Check if there are build errors in the Vercel deployment logs
+- Ensure environment variables are set for Preview environment
+
+**Migrations failing**
+- Verify `DATABASE_URL_PROD` and `DATABASE_URL_DEV` are set in GitHub Secrets
+- Check the database is accessible from GitHub Actions
+- Ensure Prisma schema is in sync with migrations
+
 ### Useful Commands
 
 ```bash
@@ -615,16 +667,16 @@ If traffic grows significantly:
 ### Deploy Commands
 
 ```bash
-# Deploy to development (auto on push to develop)
+# Deploy to development (automatic on push to develop)
 git push origin develop
 
-# Deploy to production (auto on push to main)
+# Deploy to production (automatic on push to main)
 git push origin main
 
-# Manual Railway deploy
+# Manual Railway deploy (if needed)
 cd apps/api && railway up
 
-# Manual Vercel deploy
+# Manual Vercel deploy (if needed)
 cd apps/web && vercel --prod
 ```
 
@@ -635,3 +687,12 @@ cd apps/web && vercel --prod
 | Local | `localhost:3000` | `localhost:3001` | `localhost:5432` |
 | Dev | `*.vercel.app` | `*.railway.app` | Railway internal |
 | Prod | `*.vercel.app` | `*.railway.app` | Railway internal |
+
+### Required GitHub Secrets
+
+| Secret | Purpose |
+|--------|---------|
+| `DATABASE_URL_PROD` | Production database URL for migrations |
+| `DATABASE_URL_DEV` | Development database URL for migrations |
+
+> **Note:** No Vercel or Railway tokens needed — native integrations handle deployments automatically.
