@@ -1,0 +1,168 @@
+[
+  {
+    "input": "ELF",
+    "inputType": "TICKER",
+    "normalizedInput": "ELF",
+    "timestamp": "2025-12-25T19:07:56.956Z",
+    "status": "needs_review",
+    "confidence": 0.375,
+    "bestMatch": {
+      "url": "https://global.morningstar.com/es/inversiones/fondos/0P00018NVI/cotizacion",
+      "title": "e.l.f. Beauty Inc",
+      "snippet": "ID Principal: 0P00018NVI | ID Secundario: 0P00018NVI",
+      "morningstarId": "0P00018NVI",
+      "domain": "global.morningstar.com",
+      "score": 30,
+      "scoreBreakdown": {
+        "isinMatch": 0,
+        "nameMatch": 0,
+        "morningstarDomain": 20,
+        "typeMatch": 10
+      }
+    },
+    "allResults": [
+      {
+        "url": "https://global.morningstar.com/es/inversiones/fondos/0P00018NVI/cotizacion",
+        "title": "e.l.f. Beauty Inc",
+        "snippet": "ID Principal: 0P00018NVI | ID Secundario: 0P00018NVI",
+        "morningstarId": "0P00018NVI",
+        "domain": "global.morningstar.com",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      },
+      {
+        "url": "https://global.morningstar.com/es/inversiones/fondos/0P00005RON/cotizacion",
+        "title": "E-L Financial Corp Ltd",
+        "snippet": "ID Principal: 0P00005RON | ID Secundario: 0P00005RON",
+        "morningstarId": "0P00005RON",
+        "domain": "global.morningstar.com",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      },
+      {
+        "url": "https://global.morningstar.com/es/inversiones/fondos/0P0000DN9W/cotizacion",
+        "title": "Ellinas Finance Public Co Ltd",
+        "snippet": "ID Principal: 0P0000DN9W | ID Secundario: 0P0000DN9W",
+        "morningstarId": "0P0000DN9W",
+        "domain": "global.morningstar.com",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      },
+      {
+        "url": "https://global.morningstar.com/es/inversiones/fondos/0P0000CLJE/cotizacion",
+        "title": "E-L Financial Corp Ltd",
+        "snippet": "ID Principal: 0P0000CLJE | ID Secundario: 0P0000CLJE",
+        "morningstarId": "0P0000CLJE",
+        "domain": "global.morningstar.com",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      },
+      {
+        "url": "https://global.morningstar.com/es/inversiones/fondos/0P0000CUQM/cotizacion",
+        "title": "E-L Financial Corp Ltd 4 3/4 % Non-Cum Red First Pfd Shs Series 2",
+        "snippet": "ID Principal: 0P0000CUQM | ID Secundario: 0P0000CUQM",
+        "morningstarId": "0P0000CUQM",
+        "domain": "global.morningstar.com",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      },
+      {
+        "url": "https://global.morningstar.com/es/inversiones/fondos/0P0000ZAAG/cotizacion",
+        "title": "Deka DAX® ex Financials 30 UCITS ETF",
+        "snippet": "ID Principal: 0P0000ZAAG | ID Secundario: 0P0000ZAAG",
+        "morningstarId": "0P0000ZAAG",
+        "domain": "global.morningstar.com",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      },
+      {
+        "url": "https://global.morningstar.com/es/inversiones/fondos/0P0000ZCMT/cotizacion",
+        "title": "Deka DAX® ex Financials 30 UCITS ETF EUR",
+        "snippet": "ID Principal: 0P0000ZCMT | ID Secundario: 0P0000ZCMT",
+        "morningstarId": "0P0000ZCMT",
+        "domain": "global.morningstar.com",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      },
+      {
+        "url": "https://global.morningstar.com/es/inversiones/fondos/0P0001IAWI/cotizacion",
+        "title": "Deka Euro Corporates 0-3 Liquid UCITS ETF",
+        "snippet": "ID Principal: 0P0001IAWI | ID Secundario: 0P0001IAWI",
+        "morningstarId": "0P0001IAWI",
+        "domain": "global.morningstar.com",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      },
+      {
+        "url": "https://global.morningstar.com/es/inversiones/fondos/0P0001ID3L/cotizacion",
+        "title": "Deka Euro Corporates 0-3 Liquid UCITS ETF EUR",
+        "snippet": "ID Principal: 0P0001ID3L | ID Secundario: 0P0001ID3L",
+        "morningstarId": "0P0001ID3L",
+        "domain": "global.morningstar.com",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      },
+      {
+        "url": "https://global.morningstar.com/es/inversiones/fondos/0P00016PHS/cotizacion",
+        "title": "Deka EURO iSTOXX® ex Fin Dividend+ UCITS ETF",
+        "snippet": "ID Principal: 0P00016PHS | ID Secundario: 0P00016PHS",
+        "morningstarId": "0P00016PHS",
+        "domain": "global.morningstar.com",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      }
+    ],
+    "morningstarId": "0P00018NVI",
+    "morningstarUrl": "https://global.morningstar.com/es/inversiones/fondos/0P00018NVI/cotizacion"
+  }
+]

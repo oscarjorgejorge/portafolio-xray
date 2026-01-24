@@ -1,0 +1,190 @@
+[
+  {
+    "input": "AMD",
+    "inputType": "TICKER",
+    "normalizedInput": "AMD",
+    "timestamp": "2025-12-26T21:40:56.040Z",
+    "status": "needs_review",
+    "confidence": 0.42857142857142855,
+    "bestMatch": {
+      "url": "https://global.morningstar.com/es/inversiones/acciones/0P0000006A/cotizacion",
+      "title": "Advanced Micro Devices Inc",
+      "snippet": "ID Principal: 0P0000006A | Tipo: Accion",
+      "morningstarId": "0P0000006A",
+      "domain": "global.morningstar.com",
+      "assetType": "Accion",
+      "score": 30,
+      "scoreBreakdown": {
+        "isinMatch": 0,
+        "tickerMatch": 0,
+        "nameMatch": 0,
+        "morningstarDomain": 20,
+        "typeMatch": 10
+      }
+    },
+    "allResults": [
+      {
+        "url": "https://global.morningstar.com/es/inversiones/acciones/0P0000006A/cotizacion",
+        "title": "Advanced Micro Devices Inc",
+        "snippet": "ID Principal: 0P0000006A | Tipo: Accion",
+        "morningstarId": "0P0000006A",
+        "domain": "global.morningstar.com",
+        "assetType": "Accion",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "tickerMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      },
+      {
+        "url": "https://global.morningstar.com/es/inversiones/acciones/0P0000ESX9/cotizacion",
+        "title": "Advanced Micro Devices Inc",
+        "snippet": "ID Principal: 0P0000ESX9 | Tipo: Accion",
+        "morningstarId": "0P0000ESX9",
+        "domain": "global.morningstar.com",
+        "assetType": "Accion",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "tickerMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      },
+      {
+        "url": "https://global.morningstar.com/es/inversiones/acciones/0P0000EYEX/cotizacion",
+        "title": "Advanced Micro Devices Inc",
+        "snippet": "ID Principal: 0P0000EYEX | Tipo: Accion",
+        "morningstarId": "0P0000EYEX",
+        "domain": "global.morningstar.com",
+        "assetType": "Accion",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "tickerMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      },
+      {
+        "url": "https://global.morningstar.com/es/inversiones/acciones/0P0000EEOC/cotizacion",
+        "title": "Advanced Micro Devices Inc",
+        "snippet": "ID Principal: 0P0000EEOC | Tipo: Accion",
+        "morningstarId": "0P0000EEOC",
+        "domain": "global.morningstar.com",
+        "assetType": "Accion",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "tickerMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      },
+      {
+        "url": "https://global.morningstar.com/es/inversiones/acciones/0P0000C95I/cotizacion",
+        "title": "Advanced Micro Devices Inc",
+        "snippet": "ID Principal: 0P0000C95I | Tipo: Accion",
+        "morningstarId": "0P0000C95I",
+        "domain": "global.morningstar.com",
+        "assetType": "Accion",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "tickerMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      },
+      {
+        "url": "https://global.morningstar.com/es/inversiones/fondos/0P00015OWP/cotizacion",
+        "title": "Neuberger Berman Emerging Market Debt - Local Currency Fund SGD A Monthly Distributing Class- Hedged",
+        "snippet": "ID Principal: 0P00015OWP | Tipo: Fondo",
+        "morningstarId": "0P00015OWP",
+        "domain": "global.morningstar.com",
+        "assetType": "Fondo",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "tickerMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      },
+      {
+        "url": "https://global.morningstar.com/es/inversiones/fondos/F00000VL02/cotizacion",
+        "title": "Neuberger Berman Emerging Market Debt - Local Currency Fund SGD A Monthly Distributing Class- Hedged",
+        "snippet": "ID Secundario: F00000VL02 | Tipo: Fondo",
+        "morningstarId": "F00000VL02",
+        "domain": "global.morningstar.com",
+        "assetType": "Fondo",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "tickerMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      },
+      {
+        "url": "https://global.morningstar.com/es/inversiones/fondos/0P0000YGGJ/cotizacion",
+        "title": "Neuberger Berman Global Senior Floating Rate Income Fund AUD A (Monthly) Distributing Class - Hedged",
+        "snippet": "ID Principal: 0P0000YGGJ | Tipo: Fondo",
+        "morningstarId": "0P0000YGGJ",
+        "domain": "global.morningstar.com",
+        "assetType": "Fondo",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "tickerMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      },
+      {
+        "url": "https://global.morningstar.com/es/inversiones/fondos/F00000PSUN/cotizacion",
+        "title": "Neuberger Berman Global Senior Floating Rate Income Fund AUD A (Monthly) Distributing Class - Hedged",
+        "snippet": "ID Secundario: F00000PSUN | Tipo: Fondo",
+        "morningstarId": "F00000PSUN",
+        "domain": "global.morningstar.com",
+        "assetType": "Fondo",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "tickerMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      },
+      {
+        "url": "https://global.morningstar.com/es/inversiones/fondos/0P0000YGGS/cotizacion",
+        "title": "Neuberger Berman Global Senior Floating Rate Income Fund GBP A (Monthly) Distributing Class - Hedged",
+        "snippet": "ID Principal: 0P0000YGGS | Tipo: Fondo",
+        "morningstarId": "0P0000YGGS",
+        "domain": "global.morningstar.com",
+        "assetType": "Fondo",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "tickerMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      }
+    ],
+    "morningstarId": "0P0000006A",
+    "morningstarUrl": "https://global.morningstar.com/es/inversiones/acciones/0P0000006A/cotizacion"
+  }
+]

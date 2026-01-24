@@ -1,0 +1,82 @@
+[
+  {
+    "input": "IE00BBL4VX78",
+    "inputType": "ISIN",
+    "normalizedInput": "IE00BBL4VX78",
+    "timestamp": "2025-12-25T18:56:39.632Z",
+    "status": "needs_review",
+    "confidence": 0.375,
+    "bestMatch": {
+      "url": "https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=F00000THA5",
+      "title": "Federated Hermes Asia exJpn Eq R EURAccH",
+      "snippet": "",
+      "morningstarId": "F00000THA5",
+      "domain": "morningstar.es",
+      "score": 30,
+      "scoreBreakdown": {
+        "isinMatch": 0,
+        "nameMatch": 0,
+        "morningstarDomain": 20,
+        "typeMatch": 10
+      }
+    },
+    "allResults": [
+      {
+        "url": "https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=F00000THA5",
+        "title": "Federated Hermes Asia exJpn Eq R EURAccH",
+        "snippet": "",
+        "morningstarId": "F00000THA5",
+        "domain": "morningstar.es",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      }
+    ],
+    "morningstarId": "F00000THA5",
+    "morningstarUrl": "https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=F00000THA5"
+  },
+  {
+    "input": "LU1897414303",
+    "inputType": "ISIN",
+    "normalizedInput": "LU1897414303",
+    "timestamp": "2025-12-25T18:56:41.884Z",
+    "status": "needs_review",
+    "confidence": 0.375,
+    "bestMatch": {
+      "url": "https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=F000011G2R",
+      "title": "Janus Henderson Hrzn Biotec A2 USD",
+      "snippet": "",
+      "morningstarId": "F000011G2R",
+      "domain": "morningstar.es",
+      "score": 30,
+      "scoreBreakdown": {
+        "isinMatch": 0,
+        "nameMatch": 0,
+        "morningstarDomain": 20,
+        "typeMatch": 10
+      }
+    },
+    "allResults": [
+      {
+        "url": "https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=F000011G2R",
+        "title": "Janus Henderson Hrzn Biotec A2 USD",
+        "snippet": "",
+        "morningstarId": "F000011G2R",
+        "domain": "morningstar.es",
+        "score": 30,
+        "scoreBreakdown": {
+          "isinMatch": 0,
+          "nameMatch": 0,
+          "morningstarDomain": 20,
+          "typeMatch": 10
+        }
+      }
+    ],
+    "morningstarId": "F000011G2R",
+    "morningstarUrl": "https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=F000011G2R"
+  }
+]

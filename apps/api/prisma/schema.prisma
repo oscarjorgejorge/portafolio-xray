@@ -1,0 +1,39 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// V1 Entity - Asset Resolution Cache
+model Asset {
+  id            String      @id @default(uuid())
+  isin          String      @unique
+  morningstarId String      @unique @map("morningstar_id")
+  ticker        String?
+  name          String
+  type          AssetType
+  url           String      // Morningstar URL from resolution
+  source        AssetSource
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  @@map("assets")
+}
+
+enum AssetType {
+  ETF
+  FUND
+  STOCK
+  ETC
+}
+
+enum AssetSource {
+  manual
+  web_search
+  imported
+}
