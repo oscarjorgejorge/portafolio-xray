@@ -1,49 +1,25 @@
-﻿name: Deploy
+# Database Migrations Workflow
+#
+# NOTE: API and Web deployments are handled automatically by native platform integrations:
+# - Railway: Auto-deploys API on push to main/develop (configured via GitHub integration)
+# - Vercel: Auto-deploys Web on push to main/develop (configured via GitHub integration)
+#
+# This workflow only handles database migrations after deployments are complete.
+
+name: Database Migrations
 
 on:
   push:
     branches: [main, develop]
+  workflow_dispatch: # Allow manual trigger for migrations
 
 env:
   NODE_VERSION: '20'
 
 jobs:
-  deploy-api:
-    name: Deploy API to Railway
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install Railway CLI
-        run: npm install -g @railway/cli
-
-      - name: Deploy to Railway
-        working-directory: apps/api
-        env:
-          RAILWAY_TOKEN: ${{ github.ref == 'refs/heads/main' && secrets.RAILWAY_TOKEN_PROD || secrets.RAILWAY_TOKEN_DEV }}
-        run: railway up --service api
-
-  deploy-web:
-    name: Deploy Web to Vercel
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Deploy to Vercel
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          working-directory: apps/web
-          vercel-args: ${{ github.ref == 'refs/heads/main' && '--prod' || '' }}
-
   migrate:
     name: Run Database Migrations
     runs-on: ubuntu-latest
-    needs: [deploy-api]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
