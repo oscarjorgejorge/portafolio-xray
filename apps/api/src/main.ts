@@ -67,9 +67,13 @@ async function bootstrap(): Promise<void> {
     console.log(`📚 Swagger docs available at http://localhost:${port}/docs`);
   } catch (error) {
     console.error('❌ Failed to start application:');
-    console.error('Error type:', error?.constructor?.name);
-    console.error('Error message:', error?.message);
-    console.error('Error stack:', error?.stack);
+    if (error instanceof Error) {
+      console.error('Error type:', error.constructor.name);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+    } else {
+      console.error('Unknown error:', error);
+    }
     process.exit(1);
   }
 }
@@ -82,7 +86,13 @@ process.on('uncaughtException', (error) => {
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+  console.error('❌ Unhandled Rejection at:', promise);
+  if (reason instanceof Error) {
+    console.error('Reason:', reason.message);
+    console.error('Stack:', reason.stack);
+  } else {
+    console.error('Reason:', reason);
+  }
   process.exit(1);
 });
 
