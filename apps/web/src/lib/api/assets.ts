@@ -12,6 +12,7 @@ export interface Asset {
   url: string;
   source: 'manual' | 'web_search' | 'imported';
   isinPending?: boolean;
+  isinManual?: boolean; // True when ISIN was manually entered by user
   createdAt: string;
   updatedAt: string;
 }

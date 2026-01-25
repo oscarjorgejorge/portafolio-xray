@@ -97,6 +97,7 @@ export const AssetRow: React.FC<AssetRowProps> = ({
                   <EditableIsin
                     assetId={asset.asset.id}
                     currentIsin={asset.asset.isin}
+                    isinManual={asset.asset.isinManual}
                     onIsinUpdated={handleIsinResolved}
                   />
                 )}
