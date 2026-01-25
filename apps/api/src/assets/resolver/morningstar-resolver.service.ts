@@ -126,30 +126,31 @@ export class MorningstarResolverService {
   /**
    * Build Morningstar URL for a given ID
    * @param id - Morningstar ID
-   * @param securityType - Security type (2 = fund, 3 = stock)
+   * @param assetType - Asset type (ETF, Fondo, Accion)
    * @param marketId - Optional market ID for multi-market support (e.g., 'lu', 'de', 'it')
    */
   private buildMorningstarUrl(
     id: string,
-    securityType: number | string | undefined,
+    assetType: MorningstarAssetType = 'Fondo',
     marketId?: string,
   ): string {
-    const type =
-      typeof securityType === 'number'
-        ? securityType
-        : parseInt(securityType || '2', 10);
+    // Map asset type to URL path segments
+    const pathMap: Record<MorningstarAssetType, { es: string; en: string }> = {
+      ETF: { es: 'etfs', en: 'etfs' },
+      Fondo: { es: 'fondos', en: 'funds' },
+      Accion: { es: 'acciones', en: 'stocks' },
+      Desconocido: { es: 'fondos', en: 'funds' }, // Default to funds for unknown
+    };
+
+    const paths = pathMap[assetType] || pathMap.Fondo;
 
     // If marketId is provided, use the en-eu format with marketID parameter
     if (marketId) {
-      const assetPath = type === 3 ? 'stocks' : 'funds';
-      return `https://global.morningstar.com/en-eu/investments/${assetPath}/${id}/quote?marketID=${marketId}`;
+      return `https://global.morningstar.com/en-eu/investments/${paths.en}/${id}/quote?marketID=${marketId}`;
     }
 
-    // Default: Spanish market (original behavior)
-    if (type === 3) {
-      return `https://global.morningstar.com/es/inversiones/acciones/${id}/cotizacion`;
-    }
-    return `https://global.morningstar.com/es/inversiones/fondos/${id}/cotizacion`;
+    // Default: Spanish market
+    return `https://global.morningstar.com/es/inversiones/${paths.es}/${id}/cotizacion`;
   }
 
   // ============================================
@@ -275,10 +276,15 @@ export class MorningstarResolverService {
             const rawType = item.tt ?? item.Type ?? item.type;
             const securityType = item.t ?? item.tt ?? item.Type ?? 2;
             const isStock = securityType === 3 || securityType === '3';
-            const detectedAssetType: MorningstarAssetType = isStock
-              ? 'Accion'
-              : rawType === 'CE' || rawType === 'ET'
-                ? 'ETF'
+
+            // IMPORTANT: Prioritize rawType (CE/ET) for ETF detection
+            // Some ETPs/ETFs may have securityType=3 (stock) because they trade on exchanges
+            // but rawType correctly identifies them as CE (Collective Investment/ETF)
+            const isETF = rawType === 'CE' || rawType === 'ET';
+            const detectedAssetType: MorningstarAssetType = isETF
+              ? 'ETF'
+              : isStock
+                ? 'Accion'
                 : 'Fondo';
 
             // For funds, prioritize IDs starting with "F" over "0P"
@@ -322,7 +328,7 @@ export class MorningstarResolverService {
               const isinString = item.isin;
 
               results.push({
-                url: this.buildMorningstarUrl(principalId, securityType),
+                url: this.buildMorningstarUrl(principalId, detectedAssetType),
                 title: item.n ?? '',
                 snippet: `ID Principal: ${principalId} | Tipo: ${detectedAssetType}${isinString ? ` | ISIN: ${isinString}` : ''}`,
                 morningstarId: principalId,
@@ -336,7 +342,7 @@ export class MorningstarResolverService {
               // Add secondary ID if different
               if (secondaryId && secondaryId !== principalId) {
                 results.push({
-                  url: this.buildMorningstarUrl(secondaryId, securityType),
+                  url: this.buildMorningstarUrl(secondaryId, detectedAssetType),
                   title: item.n ?? '',
                   snippet: `ID Secundario: ${secondaryId} | Tipo: ${detectedAssetType}${isinString ? ` | ISIN: ${isinString}` : ''}`,
                   morningstarId: secondaryId,
@@ -453,7 +459,10 @@ export class MorningstarResolverService {
         if (Array.isArray(data) && data.length > 0) {
           this.logger.debug(`[GLOBAL] Found ${data.length} results`);
           return data.slice(0, 5).map((item: GlobalMorningstarItem) => ({
-            url: `https://global.morningstar.com/es/inversiones/fondos/${item.securityId ?? item.id ?? ''}/cotizacion`,
+            url: this.buildMorningstarUrl(
+              item.securityId ?? item.id ?? '',
+              'Fondo', // Default to fund, will be corrected by main API
+            ),
             title: item.name ?? item.legalName ?? '',
             snippet: `${item.isin ?? ''} | ${item.ticker ?? ''}`,
             morningstarId: item.securityId ?? item.id ?? null,
@@ -473,15 +482,19 @@ export class MorningstarResolverService {
 
   /**
    * Strategy D: DuckDuckGo (fallback)
-   * Searches both Spanish (/inversiones/fondos/) and English (/investments/funds/) paths
+   * Searches Spanish and English paths for funds, ETFs, and stocks
    */
   private async searchDuckDuckGo(query: string): Promise<SearchResult[]> {
     this.logger.debug(`[DDG] Searching DuckDuckGo for: ${query}`);
 
-    // Search both Spanish and English paths
+    // Search both Spanish and English paths for all asset types
     const searchQueries = [
       `site:global.morningstar.com/*/inversiones/fondos "${query}"`,
+      `site:global.morningstar.com/*/inversiones/etfs "${query}"`,
+      `site:global.morningstar.com/*/inversiones/acciones "${query}"`,
       `site:global.morningstar.com/*/investments/funds "${query}"`,
+      `site:global.morningstar.com/*/investments/etfs "${query}"`,
+      `site:global.morningstar.com/*/investments/stocks "${query}"`,
     ];
 
     const allResults: SearchResult[] = [];
@@ -768,60 +781,91 @@ export class MorningstarResolverService {
   }
 
   /**
-   * Verify fund page with multi-market fallback
-   * If the fund is not available in the default Spanish market, try other European markets
+   * Verify fund page with multi-market and multi-type fallback
+   * If the fund is not available in the default Spanish market, try:
+   * 1. Different asset types (ETF, Fondo) in Spanish market
+   * 2. Different European markets with each asset type
    */
   private async verifyFundPageWithFallback(
     morningstarId: string,
     expectedIsin: string,
-    securityType: number | string = 2,
+    assetType: MorningstarAssetType = 'Fondo',
   ): Promise<{
     verification: VerificationResult;
     workingUrl: string;
     marketId?: string;
+    detectedAssetType?: MorningstarAssetType;
   }> {
-    // First, try the default Spanish market URL
-    const defaultUrl = this.buildMorningstarUrl(morningstarId, securityType);
-    let verification = await this.verifyFundPage(defaultUrl, expectedIsin);
+    // Asset types to try (prioritize the provided type first)
+    const assetTypesToTry: MorningstarAssetType[] =
+      assetType === 'ETF'
+        ? ['ETF', 'Fondo']
+        : assetType === 'Fondo'
+          ? ['Fondo', 'ETF']
+          : [assetType, 'Fondo', 'ETF'];
 
-    // If the fund is available in Spanish market, return immediately
-    if (verification.additionalInfo?.marketNotAvailable !== 'true') {
-      return { verification, workingUrl: defaultUrl };
-    }
+    // First, try all asset types in the default Spanish market
+    for (const tryAssetType of assetTypesToTry) {
+      const defaultUrl = this.buildMorningstarUrl(morningstarId, tryAssetType);
+      const verification = await this.verifyFundPage(defaultUrl, expectedIsin);
 
-    this.logger.log(
-      `[FALLBACK] Fund ${morningstarId} not available in ES market, trying other markets...`,
-    );
-
-    // Try other European markets
-    for (const marketId of this.EUROPEAN_MARKETS) {
-      const marketUrl = this.buildMorningstarUrl(
-        morningstarId,
-        securityType,
-        marketId,
-      );
-      this.logger.debug(`[FALLBACK] Trying market: ${marketId}`);
-
-      verification = await this.verifyFundPage(marketUrl, expectedIsin);
-
-      // If we found the fund (not "market not available" and has ISIN or name)
+      // If found (not "market not available" and has ISIN)
       if (
         verification.additionalInfo?.marketNotAvailable !== 'true' &&
-        (verification.isinFound || verification.nameFound)
+        verification.isinFound
       ) {
         this.logger.log(
-          `[FALLBACK] Fund ${morningstarId} found in ${marketId.toUpperCase()} market` +
-            (verification.isinFound
-              ? ` (ISIN: ${verification.isinFound})`
-              : ''),
+          `[FALLBACK] Found ${morningstarId} as ${tryAssetType} in ES market (ISIN: ${verification.isinFound})`,
         );
-        return { verification, workingUrl: marketUrl, marketId };
+        return {
+          verification,
+          workingUrl: defaultUrl,
+          detectedAssetType: tryAssetType,
+        };
       }
     }
 
-    // If no market worked, return the original result
+    this.logger.log(
+      `[FALLBACK] ${morningstarId} not available in ES market with any type, trying other markets...`,
+    );
+
+    // Try other European markets with each asset type
+    for (const marketId of this.EUROPEAN_MARKETS) {
+      for (const tryAssetType of assetTypesToTry) {
+        const marketUrl = this.buildMorningstarUrl(
+          morningstarId,
+          tryAssetType,
+          marketId,
+        );
+        this.logger.debug(
+          `[FALLBACK] Trying market: ${marketId}, type: ${tryAssetType}`,
+        );
+
+        const verification = await this.verifyFundPage(marketUrl, expectedIsin);
+
+        // If we found the fund (not "market not available" and has ISIN)
+        if (
+          verification.additionalInfo?.marketNotAvailable !== 'true' &&
+          verification.isinFound
+        ) {
+          this.logger.log(
+            `[FALLBACK] Found ${morningstarId} as ${tryAssetType} in ${marketId.toUpperCase()} market (ISIN: ${verification.isinFound})`,
+          );
+          return {
+            verification,
+            workingUrl: marketUrl,
+            marketId,
+            detectedAssetType: tryAssetType,
+          };
+        }
+      }
+    }
+
+    // If no combination worked, return the original result
+    const defaultUrl = this.buildMorningstarUrl(morningstarId, assetType);
+    const verification = await this.verifyFundPage(defaultUrl, expectedIsin);
     this.logger.warn(
-      `[FALLBACK] Fund ${morningstarId} not found in any European market`,
+      `[FALLBACK] ${morningstarId} not found in any European market with any asset type`,
     );
     return { verification, workingUrl: defaultUrl };
   }
@@ -939,7 +983,12 @@ export class MorningstarResolverService {
         verification: verResult,
         workingUrl,
         marketId,
-      } = await this.verifyFundPageWithFallback(bestMatch.morningstarId, '');
+        detectedAssetType,
+      } = await this.verifyFundPageWithFallback(
+        bestMatch.morningstarId,
+        '',
+        bestMatch.assetType || 'Fondo',
+      );
       verification = verResult;
 
       // Update the URL if we found a working market
@@ -948,6 +997,16 @@ export class MorningstarResolverService {
         if (marketId) {
           bestMatch.snippet = `${bestMatch.snippet} | Market: ${marketId.toUpperCase()}`;
         }
+      }
+
+      // Update asset type if we detected a different one
+      if (detectedAssetType && detectedAssetType !== bestMatch.assetType) {
+        bestMatch.assetType = detectedAssetType;
+      }
+
+      // Update ISIN if found from verification
+      if (verification?.isinFound && !bestMatch.isin) {
+        bestMatch.isin = verification.isinFound;
       }
 
       status = 'resolved';
@@ -966,11 +1025,48 @@ export class MorningstarResolverService {
         `[DIRECT] No search results for Morningstar ID ${normalizedInput}, trying direct verification...`,
       );
 
+      // Try each asset type path to find the correct one
+      const assetTypesToTry: MorningstarAssetType[] = [
+        'Fondo',
+        'ETF',
+        'Accion',
+      ];
+      let foundAssetType: MorningstarAssetType = 'Fondo';
+      let verResultFound: VerificationResult | null = null;
+      let workingUrlFound = '';
+      let marketIdFound: string | undefined;
+
+      for (const tryAssetType of assetTypesToTry) {
+        const {
+          verification: verResult,
+          workingUrl,
+          marketId,
+        } = await this.verifyFundPageWithFallback(
+          normalizedInput,
+          '',
+          tryAssetType,
+        );
+
+        if (verResult.isinFound || verResult.nameFound) {
+          foundAssetType = tryAssetType;
+          verResultFound = verResult;
+          workingUrlFound = workingUrl;
+          marketIdFound = marketId;
+          break;
+        }
+      }
+
       const {
         verification: verResult,
         workingUrl,
         marketId,
-      } = await this.verifyFundPageWithFallback(normalizedInput, '');
+      } = verResultFound
+        ? {
+            verification: verResultFound,
+            workingUrl: workingUrlFound,
+            marketId: marketIdFound,
+          }
+        : await this.verifyFundPageWithFallback(normalizedInput, '', 'Fondo');
       verification = verResult;
 
       // If we found the fund in any market
@@ -979,10 +1075,11 @@ export class MorningstarResolverService {
         const syntheticMatch: ScoredResult = {
           url: workingUrl,
           title: verification.nameFound || normalizedInput,
-          snippet: `Direct resolution${marketId ? ` | Market: ${marketId.toUpperCase()}` : ''}`,
+          snippet: `Direct resolution | Tipo: ${foundAssetType}${marketId ? ` | Market: ${marketId.toUpperCase()}` : ''}`,
           morningstarId: normalizedInput,
           domain: 'global.morningstar.com',
           isin: verification.isinFound || undefined,
+          assetType: foundAssetType,
           score: 100,
           scoreBreakdown: {
             isinMatch: 0,
@@ -998,7 +1095,7 @@ export class MorningstarResolverService {
         status = 'resolved';
         confidence = 1.0;
         this.logger.log(
-          `[DIRECT] Fund resolved via direct verification: ${normalizedInput}${verification.isinFound ? ` (ISIN: ${verification.isinFound})` : ''}${marketId ? ` (market: ${marketId})` : ''}`,
+          `[DIRECT] ${foundAssetType} resolved via direct verification: ${normalizedInput}${verification.isinFound ? ` (ISIN: ${verification.isinFound})` : ''}${marketId ? ` (market: ${marketId})` : ''}`,
         );
       }
     }
@@ -1008,9 +1105,11 @@ export class MorningstarResolverService {
         verification: verResult,
         workingUrl,
         marketId,
+        detectedAssetType,
       } = await this.verifyFundPageWithFallback(
         bestMatch.morningstarId,
         normalizedInput,
+        bestMatch.assetType || 'Fondo',
       );
       verification = verResult;
 
@@ -1022,6 +1121,11 @@ export class MorningstarResolverService {
         }
       }
 
+      // Update asset type if we detected a different one
+      if (detectedAssetType && detectedAssetType !== bestMatch.assetType) {
+        bestMatch.assetType = detectedAssetType;
+      }
+
       if (verification.verified) {
         bestMatch.score += 50;
         bestMatch.scoreBreakdown.isinMatch = 50;
@@ -1031,6 +1135,56 @@ export class MorningstarResolverService {
         }
 
         scoredResults = scoredResults.sort((a, b) => b.score - a.score);
+      }
+    }
+    // NEW: For FREE_TEXT/TICKER searches, verify page to extract ISIN if not available from API
+    else if (
+      bestMatch?.morningstarId &&
+      !bestMatch.isin &&
+      (inputType === 'FREE_TEXT' || inputType === 'TICKER')
+    ) {
+      this.logger.log(
+        `[VERIFY] No ISIN from API for ${inputType} search, verifying page to extract ISIN...`,
+      );
+
+      const {
+        verification: verResult,
+        workingUrl,
+        marketId,
+        detectedAssetType,
+      } = await this.verifyFundPageWithFallback(
+        bestMatch.morningstarId,
+        '',
+        bestMatch.assetType || 'Fondo',
+      );
+      verification = verResult;
+
+      // Update the URL if we found a working market or different asset type
+      if (workingUrl !== bestMatch.url) {
+        bestMatch.url = workingUrl;
+        if (marketId) {
+          bestMatch.snippet = `${bestMatch.snippet} | Market: ${marketId.toUpperCase()}`;
+        }
+      }
+
+      // Update asset type if we detected a different one (e.g., was FUND but found as ETF)
+      if (detectedAssetType && detectedAssetType !== bestMatch.assetType) {
+        this.logger.log(
+          `[VERIFY] Corrected asset type: ${bestMatch.assetType} -> ${detectedAssetType}`,
+        );
+        bestMatch.assetType = detectedAssetType;
+      }
+
+      // If we found the ISIN from the page, update the bestMatch
+      if (verification?.isinFound) {
+        bestMatch.isin = verification.isinFound;
+        this.logger.log(
+          `[VERIFY] Extracted ISIN from page: ${verification.isinFound}`,
+        );
+      }
+
+      if (verification?.nameFound && !bestMatch.title) {
+        bestMatch.title = verification.nameFound;
       }
     }
 
