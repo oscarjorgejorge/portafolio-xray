@@ -14,7 +14,7 @@ sequenceDiagram
     participant Morningstar as Morningstar<br/>(External)
 
     User->>Frontend: Enter ISIN + weight
-    Frontend->>API: POST /api/assets/resolve
+    Frontend->>API: POST /assets/resolve
     API->>AssetService: resolveAsset(isin)
     AssetService->>AssetRepo: findByIsin(isin)
     AssetRepo->>DB: SELECT * FROM assets WHERE isin = ?
@@ -44,7 +44,7 @@ sequenceDiagram
 
     User->>Frontend: Add more assets...
     User->>Frontend: Click "Generate X-Ray"
-    Frontend->>API: POST /api/xray/generate
+    Frontend->>API: POST /xray/generate
     API->>API: Build Morningstar URL with IDs + weights
     API-->>Frontend: { morningstarUrl, shareableUrl }
     Frontend-->>User: Show link + "Open PDF" button
@@ -66,7 +66,7 @@ sequenceDiagram
     participant Resolver as Resolver
 
     User->>Frontend: Enter ISIN
-    Frontend->>API: POST /api/assets/resolve
+    Frontend->>API: POST /assets/resolve
     API->>AssetService: resolveAsset(isin)
     AssetService->>Resolver: resolve(isin)
     Resolver-->>AssetService: { alternatives: [...], confidence: 0.5 }
@@ -75,7 +75,7 @@ sequenceDiagram
     Frontend-->>User: Show alternatives to pick
 
     User->>Frontend: Select correct asset
-    Frontend->>API: POST /api/assets/confirm
+    Frontend->>API: POST /assets/confirm
     API->>AssetService: confirmAsset(isin, morningstarId)
     AssetService->>AssetService: Save with source: 'manual'
     AssetService-->>API: { asset, status: 'confirmed' }
@@ -98,19 +98,19 @@ sequenceDiagram
     participant DB as Database
 
     User->>Frontend: Click "Save X-Ray"
-    Frontend->>API: GET /api/auth/me
+    Frontend->>API: GET /auth/me
     
     alt Not logged in
         API-->>Frontend: 401 Unauthorized
         Frontend-->>User: Show login modal
         User->>Frontend: Login with Google
-        Frontend->>API: POST /api/auth/google
+        Frontend->>API: POST /auth/google
         API->>AuthService: authenticateGoogle(token)
         AuthService-->>API: { user, accessToken }
         API-->>Frontend: Logged in
     end
 
-    Frontend->>API: POST /api/xrays
+    Frontend->>API: POST /xrays
     Note right of Frontend: { title, isPublic, assets: [...] }
     API->>XRayService: createXRay(userId, data)
     XRayService->>XRayService: Generate unique slug
@@ -137,7 +137,7 @@ sequenceDiagram
     participant DB as Database
 
     User->>Frontend: Visit /explore
-    Frontend->>API: GET /api/explore?page=1
+    Frontend->>API: GET /explore?page=1
     API->>XRayService: getPublicXRays(filters)
     XRayService->>DB: SELECT * FROM xrays WHERE isPublic = true
     DB-->>XRayService: XRays list
@@ -146,7 +146,7 @@ sequenceDiagram
     Frontend-->>User: Display X-Ray cards
 
     User->>Frontend: Click on X-Ray
-    Frontend->>API: GET /api/xrays/:slug
+    Frontend->>API: GET /xrays/:slug
     API->>XRayService: getBySlug(slug)
     XRayService->>DB: SELECT with assets JOIN
     DB-->>XRayService: XRay + assets
@@ -155,7 +155,7 @@ sequenceDiagram
     Frontend-->>User: Show X-Ray details
 
     User->>Frontend: Click "Add to Favorites"
-    Frontend->>API: POST /api/favorites
+    Frontend->>API: POST /favorites
     API->>SocialService: addFavorite(userId, xrayId)
     SocialService->>DB: INSERT INTO favorites
     DB-->>SocialService: Created

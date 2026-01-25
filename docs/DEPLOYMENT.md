@@ -144,6 +144,8 @@ Vercel uses native GitHub integration — no API tokens needed for deployments.
    NEXT_PUBLIC_ENV=development
    ```
    
+   > **Note:** The API URL should NOT include `/api` suffix - routes are served directly from the root (e.g., `/assets/resolve`).
+   
    > Tip: Set different values per environment using Vercel's environment dropdown.
 
 5. **Configure Branch Deployments (Optional)**
@@ -267,7 +269,7 @@ CMD ["npm", "run", "start:prod"]
     "dockerfilePath": "Dockerfile"
   },
   "deploy": {
-    "healthcheckPath": "/api",
+    "healthcheckPath": "/health",
     "healthcheckTimeout": 30,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 3
@@ -301,8 +303,8 @@ CORS_ORIGINS=http://localhost:3000
 ### `apps/web/.env.example`
 
 ```env
-# API URL - changes per environment
-NEXT_PUBLIC_API_URL=http://localhost:3001
+# API URL - changes per environment (no /api suffix needed)
+NEXT_PUBLIC_API_URL=http://localhost:4000
 
 # Environment identifier
 NEXT_PUBLIC_ENV=development
