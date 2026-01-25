@@ -100,8 +100,10 @@ Railway uses native GitHub integration — no API tokens needed for deployments.
    DATABASE_URL=<from PostgreSQL service>
    NODE_ENV=production
    PORT=3000
-   CORS_ORIGINS=https://portfolio-xray.vercel.app
+   CORS_ORIGINS=https://portfolio-xray.vercel.app,https://portafolio-xray.vercel.app
    ```
+   
+   > **Note:** Vercel preview deployments (`*.vercel.app`) are automatically allowed by the API.
 
 7. **Repeat for Development Environment**
    - Create `portfolio-xray-dev` project
@@ -143,6 +145,8 @@ Vercel uses native GitHub integration — no API tokens needed for deployments.
    NEXT_PUBLIC_API_URL=https://api-dev.up.railway.app
    NEXT_PUBLIC_ENV=development
    ```
+   
+   > **Note:** The API URL should NOT include `/api` suffix - routes are served directly from the root (e.g., `/assets/resolve`).
    
    > Tip: Set different values per environment using Vercel's environment dropdown.
 
@@ -267,7 +271,7 @@ CMD ["npm", "run", "start:prod"]
     "dockerfilePath": "Dockerfile"
   },
   "deploy": {
-    "healthcheckPath": "/api",
+    "healthcheckPath": "/health",
     "healthcheckTimeout": 30,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 3
@@ -301,8 +305,8 @@ CORS_ORIGINS=http://localhost:3000
 ### `apps/web/.env.example`
 
 ```env
-# API URL - changes per environment
-NEXT_PUBLIC_API_URL=http://localhost:3001
+# API URL - changes per environment (no /api suffix needed)
+NEXT_PUBLIC_API_URL=http://localhost:4000
 
 # Environment identifier
 NEXT_PUBLIC_ENV=development

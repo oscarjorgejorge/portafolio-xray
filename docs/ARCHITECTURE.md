@@ -152,32 +152,32 @@
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/assets/resolve` | Resolve ISIN to Morningstar ID |
-| GET | `/api/assets/:id` | Get cached asset details |
-| POST | `/api/xray/generate` | Generate Morningstar URL |
+| POST | `/assets/resolve` | Resolve ISIN to Morningstar ID |
+| GET | `/assets/:id` | Get cached asset details |
+| POST | `/xray/generate` | Generate Morningstar URL |
 
 ### V2 Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/auth/register` | Register user |
-| POST | `/api/auth/login` | Login user |
-| GET | `/api/auth/me` | Get current user |
-| GET | `/api/xrays` | List user X-Rays |
-| POST | `/api/xrays` | Save X-Ray |
-| GET | `/api/xrays/:slug` | Get X-Ray by slug |
-| PUT | `/api/xrays/:id` | Update X-Ray |
-| DELETE | `/api/xrays/:id` | Delete X-Ray |
+| POST | `/auth/register` | Register user |
+| POST | `/auth/login` | Login user |
+| GET | `/auth/me` | Get current user |
+| GET | `/xrays` | List user X-Rays |
+| POST | `/xrays` | Save X-Ray |
+| GET | `/xrays/:slug` | Get X-Ray by slug |
+| PUT | `/xrays/:id` | Update X-Ray |
+| DELETE | `/xrays/:id` | Delete X-Ray |
 
 ### V3 Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/explore` | List public X-Rays |
-| POST | `/api/favorites` | Add to favorites |
-| DELETE | `/api/favorites/:id` | Remove from favorites |
-| GET | `/api/xrays/:id/comments` | List comments |
-| POST | `/api/xrays/:id/comments` | Add comment |
+| GET | `/explore` | List public X-Rays |
+| POST | `/favorites` | Add to favorites |
+| DELETE | `/favorites/:id` | Remove from favorites |
+| GET | `/xrays/:id/comments` | List comments |
+| POST | `/xrays/:id/comments` | Add comment |
 
 ---
 
