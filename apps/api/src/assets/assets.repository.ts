@@ -7,7 +7,7 @@ export class AssetsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async findByIsin(isin: string): Promise<Asset | null> {
-    return this.prisma.asset.findUnique({
+    return this.prisma.asset.findFirst({
       where: { isin: isin.toUpperCase() },
     });
   }
@@ -63,10 +63,31 @@ export class AssetsRepository {
     ticker?: string;
   }): Promise<Asset> {
     const isin = data.isin.toUpperCase();
-    return this.prisma.asset.upsert({
+
+    // First try to find by ISIN
+    const existingByIsin = await this.prisma.asset.findFirst({
       where: { isin },
+    });
+
+    if (existingByIsin) {
+      return this.prisma.asset.update({
+        where: { id: existingByIsin.id },
+        data: {
+          morningstarId: data.morningstarId,
+          name: data.name,
+          type: data.type,
+          url: data.url,
+          source: data.source,
+          ticker: data.ticker,
+        },
+      });
+    }
+
+    // If not found by ISIN, try by morningstarId (upsert)
+    return this.prisma.asset.upsert({
+      where: { morningstarId: data.morningstarId },
       update: {
-        morningstarId: data.morningstarId,
+        isin,
         name: data.name,
         type: data.type,
         url: data.url,
@@ -81,6 +102,68 @@ export class AssetsRepository {
         url: data.url,
         source: data.source,
         ticker: data.ticker,
+      },
+    });
+  }
+
+  /**
+   * Create or update asset by Morningstar ID (used when ISIN is not available)
+   */
+  async upsertByMorningstarId(data: {
+    isin: string | null;
+    morningstarId: string;
+    name: string;
+    type: AssetType;
+    url: string;
+    source: AssetSource;
+    ticker?: string;
+    isinPending?: boolean;
+  }): Promise<Asset> {
+    return this.prisma.asset.upsert({
+      where: { morningstarId: data.morningstarId },
+      update: {
+        isin: data.isin?.toUpperCase() ?? null,
+        name: data.name,
+        type: data.type,
+        url: data.url,
+        source: data.source,
+        ticker: data.ticker,
+        isinPending: data.isinPending ?? false,
+      },
+      create: {
+        isin: data.isin?.toUpperCase() ?? null,
+        morningstarId: data.morningstarId,
+        name: data.name,
+        type: data.type,
+        url: data.url,
+        source: data.source,
+        ticker: data.ticker,
+        isinPending: data.isinPending ?? false,
+      },
+    });
+  }
+
+  /**
+   * Update ISIN for an asset and mark enrichment as complete
+   */
+  async updateIsin(assetId: string, isin: string): Promise<Asset> {
+    return this.prisma.asset.update({
+      where: { id: assetId },
+      data: {
+        isin: isin.toUpperCase(),
+        isinPending: false,
+      },
+    });
+  }
+
+  /**
+   * Mark ISIN enrichment as complete (even if ISIN was not found)
+   */
+  async markIsinEnrichmentComplete(assetId: string): Promise<Asset> {
+    return this.prisma.asset.update({
+      where: { id: assetId },
+      data: {
+        isinPending: false,
       },
     });
   }

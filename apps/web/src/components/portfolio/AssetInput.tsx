@@ -24,7 +24,7 @@ export const AssetInput: React.FC<AssetInputProps> = ({
 
   const checkDuplicate = (
     identifier: string,
-    resolvedAsset?: { isin?: string; morningstarId?: string }
+    resolvedAsset?: { isin?: string | null; morningstarId?: string }
   ): boolean => {
     return existingAssets.some((existingAsset) => {
       // Check by identifier (ISIN, ticker, etc.)
@@ -74,6 +74,7 @@ export const AssetInput: React.FC<AssetInputProps> = ({
           asset: data.asset,
           weight: 0,
           status: 'resolved',
+          isinPending: data.isinPending || data.asset.isinPending || false,
         };
         onAssetResolved(portfolioAsset);
         setInput('');

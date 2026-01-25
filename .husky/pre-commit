@@ -1,1 +1,29 @@
+# Check that package-lock.json exists for each app
+echo "Checking package-lock.json files..."
+
+if [ -f "apps/api/package.json" ] && [ ! -f "apps/api/package-lock.json" ]; then
+  echo "Error: apps/api/package-lock.json is missing. Run 'npm install' in apps/api"
+  exit 1
+fi
+
+if [ -f "apps/web/package.json" ] && [ ! -f "apps/web/package-lock.json" ]; then
+  echo "Error: apps/web/package-lock.json is missing. Run 'npm install' in apps/web"
+  exit 1
+fi
+
+# Run lint-staged
 npx lint-staged
+
+# Type check if any TypeScript files are staged
+STAGED_TS_API=$(git diff --cached --name-only --diff-filter=ACM | grep "^apps/api/.*\.ts$" || true)
+STAGED_TS_WEB=$(git diff --cached --name-only --diff-filter=ACM | grep "^apps/web/.*\.tsx\?$" || true)
+
+if [ -n "$STAGED_TS_API" ]; then
+  echo "Type checking API..."
+  npm run type-check --prefix apps/api
+fi
+
+if [ -n "$STAGED_TS_WEB" ]; then
+  echo "Type checking Web..."
+  npm run type-check --prefix apps/web
+fi

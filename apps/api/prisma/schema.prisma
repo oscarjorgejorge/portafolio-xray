@@ -12,16 +12,18 @@ datasource db {
 // V1 Entity - Asset Resolution Cache
 model Asset {
   id            String      @id @default(uuid())
-  isin          String      @unique
+  isin          String?     // Can be null when pending enrichment
   morningstarId String      @unique @map("morningstar_id")
   ticker        String?
   name          String
   type          AssetType
   url           String      // Morningstar URL from resolution
   source        AssetSource
+  isinPending   Boolean     @default(false) @map("isin_pending") // True when ISIN enrichment is in progress
   createdAt     DateTime    @default(now()) @map("created_at")
   updatedAt     DateTime    @updatedAt @map("updated_at")
 
+  @@index([isin]) // Index for lookups, but not unique (allows null)
   @@map("assets")
 }
 

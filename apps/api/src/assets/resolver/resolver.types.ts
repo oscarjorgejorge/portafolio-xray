@@ -17,6 +17,7 @@ export interface SearchResult {
   morningstarId: string | null;
   domain: string;
   ticker?: string;
+  isin?: string;
   assetType?: MorningstarAssetType;
   rawType?: string;
 }

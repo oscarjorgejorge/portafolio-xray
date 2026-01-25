@@ -1,7 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { PortfolioAsset, AllocationMode } from '@/types';
+import { Spinner } from '@/components/ui/Spinner';
+import { EditableIsin } from './EditableIsin';
+import { useIsinPolling } from '@/lib/hooks/useIsinPolling';
+import type { Asset } from '@/lib/api/assets';
 
 interface AssetRowProps {
   asset: PortfolioAsset;
@@ -9,6 +13,7 @@ interface AssetRowProps {
   onWeightChange: (id: string, weight: number) => void;
   onRemove: (id: string) => void;
   onOpenManualInput?: (id: string) => void;
+  onAssetUpdated?: (id: string, updatedAsset: Asset) => void;
   error?: string;
 }
 
@@ -18,6 +23,7 @@ export const AssetRow: React.FC<AssetRowProps> = ({
   onWeightChange,
   onRemove,
   onOpenManualInput,
+  onAssetUpdated,
   error,
 }) => {
   const [showTooltip, setShowTooltip] = useState(false);
@@ -26,6 +32,24 @@ export const AssetRow: React.FC<AssetRowProps> = ({
     const value = parseFloat(e.target.value) || 0;
     onWeightChange(asset.id, value);
   };
+
+  // Handle ISIN polling callback
+  const handleIsinResolved = useCallback(
+    (updatedAsset: Asset) => {
+      if (onAssetUpdated) {
+        onAssetUpdated(asset.id, updatedAsset);
+      }
+    },
+    [asset.id, onAssetUpdated]
+  );
+
+  // Use ISIN polling hook
+  const isinPending = asset.isinPending || asset.asset?.isinPending || false;
+  useIsinPolling({
+    assetId: asset.asset?.id,
+    isinPending,
+    onIsinResolved: handleIsinResolved,
+  });
 
   return (
     <div className="border border-slate-200 rounded-lg p-4 bg-white">
@@ -64,7 +88,18 @@ export const AssetRow: React.FC<AssetRowProps> = ({
               </h4>
               <div className="flex items-center gap-2 sm:gap-4 text-sm text-slate-600 mt-1 flex-wrap">
                 <span className="font-medium uppercase">{asset.asset.type}</span>
-                <span>{asset.asset.isin}</span>
+                {isinPending ? (
+                  <span className="flex items-center gap-1 text-slate-500">
+                    <Spinner size="sm" className="text-blue-500" />
+                    <span className="text-xs">Fetching ISIN...</span>
+                  </span>
+                ) : (
+                  <EditableIsin
+                    assetId={asset.asset.id}
+                    currentIsin={asset.asset.isin}
+                    onIsinUpdated={handleIsinResolved}
+                  />
+                )}
                 {asset.asset.morningstarId && (
                   <span>
                     <span className="font-medium">Morningstar ID:</span> {asset.asset.morningstarId}
