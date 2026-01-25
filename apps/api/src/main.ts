@@ -44,8 +44,38 @@ async function bootstrap(): Promise<void> {
     SwaggerModule.setup('docs', app, document);
 
     // CORS configuration
+    // Supports multiple origins (comma-separated) and Vercel preview URLs
+    const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:3000')
+      .split(',')
+      .map((origin) => origin.trim());
+
     app.enableCors({
-      origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+      origin: (
+        origin: string | undefined,
+        callback: (err: Error | null, allow?: boolean) => void,
+      ) => {
+        // Allow requests with no origin (like mobile apps or curl)
+        if (!origin) {
+          callback(null, true);
+          return;
+        }
+
+        // Check if origin is in the allowed list
+        if (allowedOrigins.includes(origin)) {
+          callback(null, true);
+          return;
+        }
+
+        // Allow Vercel preview deployments (*.vercel.app)
+        if (origin.endsWith('.vercel.app')) {
+          callback(null, true);
+          return;
+        }
+
+        // Reject other origins
+        console.warn(`CORS blocked origin: ${origin}`);
+        callback(new Error('Not allowed by CORS'), false);
+      },
       credentials: true,
     });
 

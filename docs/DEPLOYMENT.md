@@ -100,8 +100,10 @@ Railway uses native GitHub integration — no API tokens needed for deployments.
    DATABASE_URL=<from PostgreSQL service>
    NODE_ENV=production
    PORT=3000
-   CORS_ORIGINS=https://portfolio-xray.vercel.app
+   CORS_ORIGINS=https://portfolio-xray.vercel.app,https://portafolio-xray.vercel.app
    ```
+   
+   > **Note:** Vercel preview deployments (`*.vercel.app`) are automatically allowed by the API.
 
 7. **Repeat for Development Environment**
    - Create `portfolio-xray-dev` project
