@@ -7,6 +7,7 @@ import type { Asset } from '@/lib/api/assets';
 interface EditableIsinProps {
   assetId: string;
   currentIsin: string | null;
+  isinManual?: boolean; // True if ISIN was manually entered
   onIsinUpdated: (updatedAsset: Asset) => void;
 }
 
@@ -16,6 +17,7 @@ const ISIN_REGEX = /^[A-Z]{2}[A-Z0-9]{10}$/;
 export const EditableIsin: React.FC<EditableIsinProps> = ({
   assetId,
   currentIsin,
+  isinManual = false,
   onIsinUpdated,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -109,7 +111,19 @@ export const EditableIsin: React.FC<EditableIsinProps> = ({
   // Display mode: show ISIN or "not available" with edit button
   if (!isEditing) {
     if (currentIsin) {
-      return <span>{currentIsin}</span>;
+      return (
+        <span className="inline-flex items-center gap-1">
+          {currentIsin}
+          {isinManual && (
+            <span
+              className="text-xs text-amber-600 font-medium"
+              title="ISIN entered manually"
+            >
+              (manual)
+            </span>
+          )}
+        </span>
+      );
     }
 
     return (

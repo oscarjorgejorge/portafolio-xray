@@ -145,13 +145,21 @@ export class AssetsRepository {
 
   /**
    * Update ISIN for an asset and mark enrichment as complete
+   * @param assetId - Asset UUID
+   * @param isin - New ISIN value
+   * @param isManual - Whether the ISIN was manually entered by user (default: false)
    */
-  async updateIsin(assetId: string, isin: string): Promise<Asset> {
+  async updateIsin(
+    assetId: string,
+    isin: string,
+    isManual = false,
+  ): Promise<Asset> {
     return this.prisma.asset.update({
       where: { id: assetId },
       data: {
         isin: isin.toUpperCase(),
         isinPending: false,
+        isinManual: isManual,
       },
     });
   }

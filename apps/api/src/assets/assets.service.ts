@@ -199,7 +199,7 @@ export class AssetsService {
   }
 
   /**
-   * Update ISIN for an existing asset
+   * Update ISIN for an existing asset (manual entry by user)
    * @param id - Asset UUID
    * @param isin - New ISIN value
    */
@@ -211,7 +211,7 @@ export class AssetsService {
     }
 
     this.logger.log(`Manually updating ISIN for asset ${id}: ${isin}`);
-    return this.assetsRepository.updateIsin(id, isin);
+    return this.assetsRepository.updateIsin(id, isin, true); // Mark as manually entered
   }
 
   /**
