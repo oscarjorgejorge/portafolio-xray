@@ -216,7 +216,7 @@ model Comment {
 ### V1: Asset Resolution
 
 ```typescript
-// POST /api/assets/resolve
+// POST /assets/resolve
 // Request
 interface ResolveAssetRequest {
   input: string;  // ISIN, Morningstar ID, or ticker
@@ -242,7 +242,7 @@ interface ResolveAssetResponse {
 ### V1: X-Ray Generation
 
 ```typescript
-// POST /api/xray/generate
+// POST /xray/generate
 // Request
 interface GenerateXRayRequest {
   assets: {
@@ -261,7 +261,7 @@ interface GenerateXRayResponse {
 ### V2: Portfolio CRUD
 
 ```typescript
-// POST /api/portfolios
+// POST /portfolios
 interface CreatePortfolioRequest {
   name: string;
   description?: string;
@@ -272,7 +272,7 @@ interface CreatePortfolioRequest {
   }[];
 }
 
-// GET /api/portfolios/:slug
+// GET /portfolios/:slug
 interface PortfolioResponse {
   id: string;
   name: string;

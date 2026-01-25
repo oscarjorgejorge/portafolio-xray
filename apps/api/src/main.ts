@@ -17,9 +17,6 @@ async function bootstrap(): Promise<void> {
     const app = await NestFactory.create(AppModule);
     console.log(`✅ NestJS application created successfully`);
 
-    // Global prefix for all routes
-    app.setGlobalPrefix('api');
-
     // Enable validation pipes
     app.useGlobalPipes(
       new ValidationPipe({
@@ -60,10 +57,8 @@ async function bootstrap(): Promise<void> {
     // Listen on 0.0.0.0 to accept connections from Railway
     await app.listen(port, '0.0.0.0');
 
-    console.log(`🚀 API running on http://localhost:${port}/api`);
-    console.log(
-      `💚 Healthcheck available at http://localhost:${port}/api/health`,
-    );
+    console.log(`🚀 API running on http://localhost:${port}`);
+    console.log(`💚 Healthcheck available at http://localhost:${port}/health`);
     console.log(`📚 Swagger docs available at http://localhost:${port}/docs`);
   } catch (error) {
     console.error('❌ Failed to start application:');
