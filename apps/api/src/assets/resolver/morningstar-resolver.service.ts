@@ -325,7 +325,13 @@ export class MorningstarResolverService {
 
             if (principalId) {
               const tickerString = item.ticker;
-              const isinString = item.isin;
+              // Validate ISIN from API - only use if it's a valid ISIN format
+              // The Morningstar API sometimes returns garbage (e.g., "CANADAFRENCH" for stocks)
+              const rawIsinString = item.isin;
+              const isinString =
+                rawIsinString && this.isValidIsin(rawIsinString)
+                  ? rawIsinString.toUpperCase()
+                  : undefined;
 
               results.push({
                 url: this.buildMorningstarUrl(principalId, detectedAssetType),
@@ -348,7 +354,7 @@ export class MorningstarResolverService {
                   morningstarId: secondaryId,
                   domain: 'global.morningstar.com',
                   ticker: tickerString,
-                  isin: isinString,
+                  isin: isinString, // Already validated above
                   assetType: detectedAssetType,
                   rawType: rawType,
                 });
@@ -754,9 +760,43 @@ export class MorningstarResolverService {
         }
       }
 
-      // Additional info
+      // Additional info - ticker extraction with multiple fallback strategies
+      // 1. From URL parameter (most reliable): ?ticker=CELH
+      const urlTickerMatch = url.match(/[?&]ticker=([A-Z0-9]{1,10})/i);
+      if (urlTickerMatch?.[1]) {
+        result.additionalInfo.ticker = urlTickerMatch[1].toUpperCase();
+        this.logger.debug(
+          `[VERIFY] Extracted ticker from URL: ${result.additionalInfo.ticker}`,
+        );
+      }
+
+      // 2. From page title (e.g., "CELH Precio de las acciones de Celsius...")
+      if (!result.additionalInfo.ticker) {
+        const titleTickerMatch = pageTitle.match(
+          /^([A-Z]{1,5})\s+(?:Precio|Price|Quote)/i,
+        );
+        if (titleTickerMatch?.[1]) {
+          result.additionalInfo.ticker = titleTickerMatch[1].toUpperCase();
+          this.logger.debug(
+            `[VERIFY] Extracted ticker from title: ${result.additionalInfo.ticker}`,
+          );
+        }
+      }
+
+      // 3. Fallback: Look for Ticker/Symbol label in page text
+      if (!result.additionalInfo.ticker) {
+        const textTickerMatch = pageText.match(
+          /(?:Ticker|Symbol)[:\s]*([A-Z0-9]{1,10})/i,
+        );
+        if (textTickerMatch?.[1]) {
+          result.additionalInfo.ticker = textTickerMatch[1]
+            .trim()
+            .toUpperCase();
+        }
+      }
+
+      // Other additional info
       const infoPatterns: Record<string, RegExp> = {
-        ticker: /(?:Ticker|Symbol)[:\s]*([A-Z0-9]{1,10})/i,
         category: /(?:Categoría|Category)[:\s]*([^\n\r<]{3,50})/i,
         currency: /(?:Divisa|Currency)[:\s]*([A-Z]{3})/i,
       };

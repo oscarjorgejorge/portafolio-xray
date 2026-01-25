@@ -88,12 +88,29 @@ export class AssetsService {
         // 1. ISIN from search result (API response)
         // 2. ISIN found during page verification
         // 3. null (will be enriched asynchronously)
-        const isin =
+        // IMPORTANT: Always validate ISIN format before storing - the Morningstar API
+        // sometimes returns garbage in the isin field (e.g., "CANADAFRENCH" for stocks)
+        const candidateIsin =
           identifierType === IdentifierType.ISIN
             ? input
             : resolution.bestMatch?.isin ||
               resolution.verification?.isinFound ||
               null;
+
+        // Validate ISIN format AND checksum (ISO 6166 Luhn algorithm)
+        // This rejects garbage like "CANADAFRENCH" which passes format check but fails checksum
+        const isin =
+          candidateIsin &&
+          IdentifierClassifier.validateISINChecksum(candidateIsin)
+            ? candidateIsin.toUpperCase()
+            : null;
+
+        // Log if we rejected an invalid ISIN candidate
+        if (candidateIsin && !isin) {
+          this.logger.warn(
+            `Rejected invalid ISIN candidate "${candidateIsin}" for ${input} - not a valid ISIN format`,
+          );
+        }
 
         // Determine if we need to enrich ISIN in background
         const needsIsinEnrichment =
@@ -106,9 +123,11 @@ export class AssetsService {
           type: assetType,
           url: resolution.morningstarUrl || '',
           source: AssetSource.web_search,
+          // Prefer ticker from page verification (extracted from URL/title) over API ticker
+          // because Morningstar API sometimes returns garbage tickers (e.g., "cv" instead of "CELH")
           ticker:
-            resolution.bestMatch?.ticker ||
-            resolution.verification?.additionalInfo?.ticker,
+            resolution.verification?.additionalInfo?.ticker ||
+            resolution.bestMatch?.ticker,
           isinPending: needsIsinEnrichment,
         });
 
