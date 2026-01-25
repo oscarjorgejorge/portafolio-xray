@@ -413,3 +413,46 @@ Response: Updated Asset object
 - Must start with 2 uppercase letters (country code)
 - Followed by 10 alphanumeric characters
 - Returns 400 for invalid format, 404 if asset not found
+
+### Prompt 59
+porque no encontraste este fondo? F000011OEO puedes intentarlo por aqui? (Screenshots showing fund not available in ES market but available in DE, IT, LU, CH markets)
+
+**Root Cause Analysis:**
+- Fund `F000011OEO` exists in Morningstar but is not available in the Spanish (ES) market
+- The API was only querying the ES market endpoint (`/es/inversiones/fondos/`)
+- The fund is available in other European markets: Germany (DE), Italy (IT), Luxembourg (LU), Switzerland (CH)
+- Morningstar shows a "This title is not available in the selected market" page when accessing funds not available in a specific market
+
+**Implementation - Multi-Market Fallback:**
+
+1. **Added European markets list for fallback:**
+   - `['lu', 'de', 'it', 'ch', 'gb', 'fr', 'nl', 'at', 'be']`
+   - Luxembourg (LU) first as most UCITS funds are domiciled there
+
+2. **Modified `buildMorningstarUrl` to support `marketID` parameter:**
+   - Default: Spanish market URL (`/es/inversiones/fondos/{ID}/cotizacion`)
+   - With marketID: EU format (`/en-eu/investments/funds/{ID}/quote?marketID=xx`)
+
+3. **Added detection of "market not available":**
+   - Detects HTTP 404 responses as "not available in this market"
+   - Detects text patterns like "no está disponible en el mercado"
+
+4. **Implemented `verifyFundPageWithFallback` method:**
+   - First tries default Spanish market
+   - If HTTP 404 or "not available", tries other European markets sequentially
+   - Stops at first market that works and returns the working URL
+
+5. **Updated `resolve` method:**
+   - For Morningstar IDs with no search results, tries direct verification with multi-market fallback
+   - Creates synthetic match when fund is found via direct market verification
+   - Updates URL to use the market where the fund is available
+
+6. **Extended DuckDuckGo search:**
+   - Now searches both `/inversiones/fondos/` (ES) and `/investments/funds/` (EN) paths
+
+**Result:**
+- `F000011OEO` now resolves successfully:
+  - **ISIN:** `LU1911703426`
+  - **Name:** BlackRock Strategic Funds - Managed Index Portfolios Growth Vermoegensstrategie Wachstum EUR
+  - **URL:** `https://global.morningstar.com/en-eu/investments/funds/F000011OEO/quote?marketID=lu`
+  - **Market:** Luxembourg (LU)
