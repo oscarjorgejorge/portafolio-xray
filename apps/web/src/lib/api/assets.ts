@@ -4,13 +4,14 @@ export type AssetType = 'ETF' | 'FUND' | 'STOCK' | 'ETC';
 
 export interface Asset {
   id: string;
-  isin: string;
+  isin: string | null;
   morningstarId: string;
   ticker?: string | null;
   name: string;
   type: AssetType;
   url: string;
   source: 'manual' | 'web_search' | 'imported';
+  isinPending?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -26,6 +27,7 @@ export interface ResolveAssetResponse {
   success: boolean;
   source: 'cache' | 'resolved' | 'manual_required';
   asset?: Asset;
+  isinPending?: boolean;
   alternatives?: AlternativeAsset[];
   error?: string;
 }
@@ -68,6 +70,14 @@ export async function confirmAsset(
  */
 export async function getAssetById(id: string): Promise<Asset> {
   const response = await apiClient.get<Asset>(`/assets/${id}`);
+  return response.data;
+}
+
+/**
+ * Update ISIN for an existing asset
+ */
+export async function updateAssetIsin(id: string, isin: string): Promise<Asset> {
+  const response = await apiClient.patch<Asset>(`/assets/${id}/isin`, { isin });
   return response.data;
 }
 

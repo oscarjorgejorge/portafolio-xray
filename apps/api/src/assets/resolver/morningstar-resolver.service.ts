@@ -291,14 +291,16 @@ export class MorningstarResolverService {
 
             if (principalId) {
               const tickerString = item.ticker;
+              const isinString = item.isin;
 
               results.push({
                 url: this.buildMorningstarUrl(principalId, securityType),
                 title: item.n ?? '',
-                snippet: `ID Principal: ${principalId} | Tipo: ${detectedAssetType}`,
+                snippet: `ID Principal: ${principalId} | Tipo: ${detectedAssetType}${isinString ? ` | ISIN: ${isinString}` : ''}`,
                 morningstarId: principalId,
                 domain: 'global.morningstar.com',
                 ticker: tickerString,
+                isin: isinString,
                 assetType: detectedAssetType,
                 rawType: rawType,
               });
@@ -308,10 +310,11 @@ export class MorningstarResolverService {
                 results.push({
                   url: this.buildMorningstarUrl(secondaryId, securityType),
                   title: item.n ?? '',
-                  snippet: `ID Secundario: ${secondaryId} | Tipo: ${detectedAssetType}`,
+                  snippet: `ID Secundario: ${secondaryId} | Tipo: ${detectedAssetType}${isinString ? ` | ISIN: ${isinString}` : ''}`,
                   morningstarId: secondaryId,
                   domain: 'global.morningstar.com',
                   ticker: tickerString,
+                  isin: isinString,
                   assetType: detectedAssetType,
                   rawType: rawType,
                 });
@@ -504,6 +507,41 @@ export class MorningstarResolverService {
   // PAGE VERIFICATION
   // ============================================
 
+  // Valid ISIN country code prefixes (excludes Morningstar ID prefixes like F0, 0P)
+  private readonly VALID_ISIN_PREFIXES = [
+    'LU',
+    'IE',
+    'DE',
+    'FR',
+    'GB',
+    'NL',
+    'CH',
+    'AT',
+    'ES',
+    'IT',
+    'BE',
+    'SE',
+    'NO',
+    'DK',
+    'FI',
+    'PT',
+    'US',
+    'CA',
+    'JP',
+    'AU',
+    'HK',
+    'SG',
+  ];
+
+  /**
+   * Check if a string is a valid ISIN (not a Morningstar ID)
+   */
+  private isValidIsin(candidate: string): boolean {
+    if (!candidate || candidate.length !== 12) return false;
+    const prefix = candidate.substring(0, 2).toUpperCase();
+    return this.VALID_ISIN_PREFIXES.includes(prefix);
+  }
+
   private async verifyFundPage(
     url: string,
     expectedIsin: string,
@@ -534,31 +572,68 @@ export class MorningstarResolverService {
 
       const html = await response.text();
       const $ = cheerio.load(html);
+
+      // Collect all potential ISINs found
+      const foundIsins: string[] = [];
+
+      // Strategy 1: Check meta tags (most reliable for SSR pages)
+      // Meta keywords often contains the ISIN: "LU2485535293 Resumen, Fund Name..."
+      const metaKeywords = $('meta[name="keywords"]').attr('content') || '';
+      const metaDescription =
+        $('meta[name="description"]').attr('content') || '';
+      const metaContent = `${metaKeywords} ${metaDescription}`;
+
+      this.logger.debug(
+        `[VERIFY] Meta keywords: ${metaKeywords.substring(0, 100)}...`,
+      );
+
+      // Strategy 2: Check title and h1 (often contains ISIN)
+      const pageTitle = $('title').text() || '';
+      const h1Text = $('h1').first().text() || '';
+
+      // Strategy 3: Check body text
       const pageText = $('body').text();
 
-      // Search for ISIN in HTML
-      const isinPatterns = [
-        /ISIN[:\s]*([A-Z]{2}[A-Z0-9]{10})/gi,
-        /\b([A-Z]{2}[A-Z0-9]{10})\b/g,
-      ];
+      // Combined text to search (prioritize meta tags)
+      const allTextSources = [metaContent, pageTitle, h1Text, pageText];
 
-      for (const pattern of isinPatterns) {
-        const matches = pageText.match(pattern);
+      // ISIN pattern: 2 letter country code + 10 alphanumeric
+      const isinPattern = /\b([A-Z]{2}[A-Z0-9]{10})\b/gi;
+
+      for (const textSource of allTextSources) {
+        const matches = textSource.match(isinPattern);
         if (matches) {
           for (const match of matches) {
-            const isinMatch = match.match(/([A-Z]{2}[A-Z0-9]{10})/);
-            if (isinMatch) {
-              const foundIsin = isinMatch[1].toUpperCase();
-              result.isinFound = foundIsin;
-
-              if (foundIsin === expectedIsin.toUpperCase()) {
-                result.verified = true;
-                this.logger.log(`[VERIFY] ISIN confirmed: ${foundIsin}`);
-                break;
-              }
+            const candidate = match.toUpperCase();
+            if (
+              this.isValidIsin(candidate) &&
+              !foundIsins.includes(candidate)
+            ) {
+              foundIsins.push(candidate);
+              this.logger.debug(`[VERIFY] Found valid ISIN: ${candidate}`);
             }
           }
-          if (result.verified) break;
+        }
+        // If we found ISINs in meta tags, prioritize those and stop
+        if (foundIsins.length > 0 && textSource === metaContent) {
+          this.logger.debug(`[VERIFY] Using ISIN from meta tags`);
+          break;
+        }
+      }
+
+      this.logger.debug(
+        `[VERIFY] Found ${foundIsins.length} potential ISINs: ${foundIsins.join(', ') || 'none'}`,
+      );
+
+      // Use the first valid ISIN found
+      if (foundIsins.length > 0) {
+        result.isinFound = foundIsins[0];
+
+        if (expectedIsin && result.isinFound === expectedIsin.toUpperCase()) {
+          result.verified = true;
+          this.logger.log(`[VERIFY] ISIN confirmed: ${result.isinFound}`);
+        } else if (result.isinFound) {
+          this.logger.log(`[VERIFY] ISIN extracted: ${result.isinFound}`);
         }
       }
 
@@ -706,17 +781,24 @@ export class MorningstarResolverService {
     let confidence = 0;
     let verification: VerificationResult | undefined = undefined;
 
-    // If input is a Morningstar ID and we have an exact match, resolve immediately
+    // If input is a Morningstar ID and we have an exact match, verify page to extract ISIN
     if (
       inputType === 'MORNINGSTAR_ID' &&
       bestMatch?.morningstarId &&
       bestMatch.morningstarId.toUpperCase() === normalizedInput
     ) {
+      // Verify the page to extract the real ISIN
+      verification = await this.verifyFundPage(bestMatch.url, '');
+
       status = 'resolved';
       confidence = 1.0;
       this.logger.log(
-        `Exact Morningstar ID match found: ${normalizedInput} -> ${bestMatch.morningstarId}`,
+        `Exact Morningstar ID match found: ${normalizedInput} -> ${bestMatch.morningstarId}${verification?.isinFound ? ` (ISIN: ${verification.isinFound})` : ''}`,
       );
+
+      if (verification?.nameFound) {
+        bestMatch.title = verification.nameFound;
+      }
     }
     // If we have a candidate with Morningstar ID and it's ISIN, VERIFY
     else if (bestMatch?.morningstarId && inputType === 'ISIN') {

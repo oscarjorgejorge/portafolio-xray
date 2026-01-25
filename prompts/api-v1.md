@@ -360,3 +360,56 @@ perfecto, continua con el plan
 
 ### Prompt 55
 First A, after B, and C (update prompts, test CI locally, guide platform setup)
+
+---
+
+## ISIN Resolution & Manual Edit Feature
+
+### Prompt 56
+why this isin was not available? (Screenshot showing "ISIN not available" for F00001E3AK)
+
+**Root Cause Analysis:**
+- The Morningstar API doesn't always return ISIN in its response
+- Page verification was failing because Morningstar uses client-side rendering
+- The ISIN was visible in browser but not in server-side fetched HTML
+- Background enrichment via DuckDuckGo also failed to find it
+
+### Prompt 57
+you can try to scrape from other morning start endpoint, using this code as example to check how you can get it (Screenshot showing ISIN in meta keywords tag)
+
+**Implementation:**
+- Updated `verifyFundPage` in `MorningstarResolverService` to extract ISIN from `<meta name="keywords">` tag
+- Added validation for valid ISIN country code prefixes (LU, IE, DE, FR, GB, etc.)
+- Prioritizes meta tags over body text for more reliable extraction
+- Added re-resolution logic in `AssetsService`: when cached asset has `isin: null` and `isinPending: false`, it re-resolves to try again
+- Successfully extracted ISIN `LU2485535293` for F00001E3AK
+
+### Prompt 58
+from this situation, I think it will be good idea to add an option to add it manually
+
+**Implementation:**
+- Created `EditableIsin` component for inline ISIN editing
+- Added `PATCH /assets/:id/isin` endpoint to API
+- Added `UpdateIsinDto` with ISIN format validation
+- Added `updateAssetIsin` function to frontend API client
+- Integrated into `AssetRow` component
+
+**UX Flow:**
+1. Shows "ISIN not available" with pencil icon on hover
+2. Click transforms into input field with save/cancel buttons
+3. Client-side validation (12 chars, 2 letters + 10 alphanumeric)
+4. Server-side validation and persistence
+5. Keyboard support: Enter to save, Escape to cancel
+
+**API Endpoint:**
+```
+PATCH /assets/:id/isin
+Body: { "isin": "LU2485535293" }
+Response: Updated Asset object
+```
+
+**Validation:**
+- ISIN must be exactly 12 characters
+- Must start with 2 uppercase letters (country code)
+- Followed by 10 alphanumeric characters
+- Returns 400 for invalid format, 404 if asset not found

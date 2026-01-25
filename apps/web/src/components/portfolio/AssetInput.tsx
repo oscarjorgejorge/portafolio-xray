@@ -74,6 +74,7 @@ export const AssetInput: React.FC<AssetInputProps> = ({
           asset: data.asset,
           weight: 0,
           status: 'resolved',
+          isinPending: data.isinPending || data.asset.isinPending || false,
         };
         onAssetResolved(portfolioAsset);
         setInput('');

@@ -17,6 +17,7 @@ export interface PortfolioAsset {
     | 'low_confidence';
   error?: string;
   alternatives?: AlternativeAsset[];
+  isinPending?: boolean; // True when ISIN enrichment is in progress
 }
 
 /**

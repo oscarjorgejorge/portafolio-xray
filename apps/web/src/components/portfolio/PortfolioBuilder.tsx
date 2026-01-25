@@ -15,7 +15,7 @@ import type { PortfolioAsset, AllocationMode } from '@/types';
 import { useMutation } from '@tanstack/react-query';
 import { generateXRay } from '@/lib/api/xray';
 import { useRouter } from 'next/navigation';
-import { confirmAsset, type AssetType } from '@/lib/api/assets';
+import { confirmAsset, type AssetType, type Asset } from '@/lib/api/assets';
 
 interface PortfolioBuilderProps {
   initialAssets?: PortfolioAsset[];
@@ -118,6 +118,21 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
   const handleRemove = (id: string) => {
     setAssets((prev) => prev.filter((asset) => asset.id !== id));
     clearShareableUrls();
+  };
+
+  // Handle asset update when ISIN is resolved
+  const handleAssetUpdated = (id: string, updatedAsset: Asset) => {
+    setAssets((prev) =>
+      prev.map((asset) =>
+        asset.id === id
+          ? {
+              ...asset,
+              asset: updatedAsset,
+              isinPending: updatedAsset.isinPending || false,
+            }
+          : asset
+      )
+    );
   };
 
   const handleAlternativeSelected = (
@@ -252,6 +267,7 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
                   allocationMode={allocationMode}
                   onWeightChange={handleWeightChange}
                   onRemove={handleRemove}
+                  onAssetUpdated={handleAssetUpdated}
                   onOpenManualInput={(id) => {
                     const assetToEdit = assets.find((a) => a.id === id);
                     if (assetToEdit) {
