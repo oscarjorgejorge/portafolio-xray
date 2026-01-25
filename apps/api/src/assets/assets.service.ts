@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { AssetsRepository } from './assets.repository';
 import { MorningstarResolverService } from './resolver';
+import { IsinEnrichmentService } from './isin-enrichment.service';
 import { ResolveAssetDto, ConfirmAssetDto } from './dto';
 import { Asset, AssetSource, AssetType } from '@prisma/client';
 import {
@@ -12,6 +13,7 @@ export interface ResolveAssetResponse {
   success: boolean;
   source: 'cache' | 'resolved' | 'manual_required';
   asset?: Asset;
+  isinPending?: boolean;
   alternatives?: Array<{
     morningstarId: string;
     name: string;
@@ -28,6 +30,7 @@ export class AssetsService {
   constructor(
     private readonly assetsRepository: AssetsRepository,
     private readonly morningstarResolver: MorningstarResolverService,
+    private readonly isinEnrichmentService: IsinEnrichmentService,
   ) {}
 
   async resolve(dto: ResolveAssetDto): Promise<ResolveAssetResponse> {
@@ -44,12 +47,23 @@ export class AssetsService {
     }
 
     if (cachedAsset) {
-      this.logger.log(`Cache hit for: ${input}`);
-      return {
-        success: true,
-        source: 'cache',
-        asset: cachedAsset,
-      };
+      // If cached asset has no ISIN and enrichment is complete (failed), re-resolve to try again
+      const needsReResolution = !cachedAsset.isin && !cachedAsset.isinPending;
+
+      if (!needsReResolution) {
+        this.logger.log(`Cache hit for: ${input}`);
+        return {
+          success: true,
+          source: 'cache',
+          asset: cachedAsset,
+          isinPending: cachedAsset.isinPending,
+        };
+      }
+
+      this.logger.log(
+        `Cache hit for: ${input}, but ISIN missing - attempting re-resolution`,
+      );
+      // Continue to re-resolution logic below
     }
 
     // Step 2: If not in cache, use Morningstar resolver
@@ -65,27 +79,62 @@ export class AssetsService {
           dto.assetType,
         );
 
-        const savedAsset = await this.assetsRepository.upsertByIsin({
-          isin: identifierType === IdentifierType.ISIN ? input : input,
+        const fundName =
+          resolution.bestMatch?.title ||
+          resolution.verification?.nameFound ||
+          'Unknown';
+
+        // Use the input as ISIN only if it's an ISIN, otherwise use:
+        // 1. ISIN from search result (API response)
+        // 2. ISIN found during page verification
+        // 3. null (will be enriched asynchronously)
+        const isin =
+          identifierType === IdentifierType.ISIN
+            ? input
+            : resolution.bestMatch?.isin ||
+              resolution.verification?.isinFound ||
+              null;
+
+        // Determine if we need to enrich ISIN in background
+        const needsIsinEnrichment =
+          !isin && identifierType !== IdentifierType.ISIN;
+
+        const savedAsset = await this.assetsRepository.upsertByMorningstarId({
+          isin: isin,
           morningstarId: resolution.morningstarId,
-          name:
-            resolution.bestMatch?.title ||
-            resolution.verification?.nameFound ||
-            'Unknown',
+          name: fundName,
           type: assetType,
           url: resolution.morningstarUrl || '',
           source: AssetSource.web_search,
-          ticker: resolution.verification?.additionalInfo?.ticker,
+          ticker:
+            resolution.bestMatch?.ticker ||
+            resolution.verification?.additionalInfo?.ticker,
+          isinPending: needsIsinEnrichment,
         });
 
+        if (isin && identifierType !== IdentifierType.ISIN) {
+          this.logger.log(
+            `Extracted ISIN: ${isin} (source: ${resolution.bestMatch?.isin ? 'API' : 'page verification'})`,
+          );
+        }
+
         this.logger.log(
-          `Resolved and cached: ${input} -> ${resolution.morningstarId}`,
+          `Resolved and cached: ${input} -> ${resolution.morningstarId}${needsIsinEnrichment ? ' (ISIN enrichment pending)' : ''}`,
         );
+
+        // Fire-and-forget: enrich ISIN in background if needed
+        if (needsIsinEnrichment) {
+          this.isinEnrichmentService.enrichIsinInBackground(
+            savedAsset.id,
+            fundName,
+          );
+        }
 
         return {
           success: true,
           source: 'resolved',
           asset: savedAsset,
+          isinPending: needsIsinEnrichment,
         };
       }
 
@@ -147,6 +196,22 @@ export class AssetsService {
       source: AssetSource.manual,
       ticker: dto.ticker,
     });
+  }
+
+  /**
+   * Update ISIN for an existing asset
+   * @param id - Asset UUID
+   * @param isin - New ISIN value
+   */
+  async updateIsin(id: string, isin: string): Promise<Asset> {
+    // First verify the asset exists
+    const asset = await this.assetsRepository.findById(id);
+    if (!asset) {
+      throw new NotFoundException(`Asset with id "${id}" not found`);
+    }
+
+    this.logger.log(`Manually updating ISIN for asset ${id}: ${isin}`);
+    return this.assetsRepository.updateIsin(id, isin);
   }
 
   /**

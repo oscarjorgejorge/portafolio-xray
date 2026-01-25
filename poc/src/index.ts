@@ -165,17 +165,17 @@ function mapMorningstarType(rawType: string | undefined): AssetType {
 }
 
 // Genera la URL correcta según el tipo de activo
-function buildMorningstarUrl(id: string, securityType: number | string | undefined): string {
-  // securityType: 2 = Fondo/ETF, 3 = Acción
-  const type = typeof securityType === 'number' ? securityType : parseInt(securityType || '2', 10);
-  
-  if (type === 3) {
-    // Acción
-    return `https://global.morningstar.com/es/inversiones/acciones/${id}/cotizacion`;
-  } else {
-    // Fondo o ETF (type 2 u otros)
-    return `https://global.morningstar.com/es/inversiones/fondos/${id}/cotizacion`;
-  }
+function buildMorningstarUrl(id: string, assetType: AssetType = 'Fondo'): string {
+  // Map asset type to URL path segments
+  const pathMap: Record<AssetType, string> = {
+    ETF: 'etfs',
+    Fondo: 'fondos',
+    Accion: 'acciones',
+    Desconocido: 'fondos', // Default to funds for unknown
+  };
+
+  const path = pathMap[assetType] || 'fondos';
+  return `https://global.morningstar.com/es/inversiones/${path}/${id}/cotizacion`;
 }
 
 // Estrategia A: API de búsqueda de Morningstar.es (¡LA MEJOR!)
@@ -215,22 +215,26 @@ async function searchMorningstarAPI(query: string): Promise<SearchResult[]> {
           
           // Extraer tipo de activo
           const rawType = item.tt || item.Type || item.type;
-          const assetType = mapMorningstarType(rawType);
+          const securityType = item.t || item.tt || item.Type || 2;
+          const isStock = securityType === 3 || securityType === '3';
+          
+          // IMPORTANTE: Priorizar rawType (CE/ET) para detectar ETFs
+          // Algunos ETPs/ETFs pueden tener securityType=3 (stock) porque cotizan en bolsa
+          // pero rawType los identifica correctamente como CE (Collective Investment/ETF)
+          const isETF = rawType === 'CE' || rawType === 'ET';
+          const detectedAssetType: AssetType = isETF
+            ? 'ETF'
+            : isStock
+              ? 'Accion'
+              : 'Fondo';
           
           if (principalId) {
-            // El campo 't' indica el tipo: 2=Fondo/ETF, 3=Acción
-            const securityType = item.t || item.tt || item.Type || 2;
-            const isStock = securityType === 3 || securityType === '3';
-            const detectedAssetType: AssetType = isStock ? 'Accion' : (rawType === 'CE' || rawType === 'ET' ? 'ETF' : 'Fondo');
-            
             console.log(chalk.gray(`  📄 [API] Encontrado: ${item.n} (ID: ${principalId}, Tipo: ${detectedAssetType})`));
             
-            // URL según el tipo de activo
-            // Nota: item.t es el tipo numérico (2=Fondo, 3=Acción), item.ticker es el string del ticker
             const tickerString = typeof item.ticker === 'string' ? item.ticker : undefined;
             
             results.push({
-              url: buildMorningstarUrl(principalId, securityType),
+              url: buildMorningstarUrl(principalId, detectedAssetType),
               title: item.n || '',
               snippet: `ID Principal: ${principalId} | Tipo: ${detectedAssetType}`,
               morningstarId: principalId,
@@ -243,7 +247,7 @@ async function searchMorningstarAPI(query: string): Promise<SearchResult[]> {
             // Si hay ID secundario diferente (el SecId), añadirlo como alternativo
             if (secondaryId) {
               results.push({
-                url: buildMorningstarUrl(secondaryId, securityType),
+                url: buildMorningstarUrl(secondaryId, detectedAssetType),
                 title: item.n || '',
                 snippet: `ID Secundario: ${secondaryId} | Tipo: ${detectedAssetType}`,
                 morningstarId: secondaryId,

@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Get,
+  Patch,
   Body,
   Param,
   HttpCode,
@@ -10,7 +11,7 @@ import {
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { AssetsService } from './assets.service';
 import type { ResolveAssetResponse } from './assets.service';
-import { ResolveAssetDto, ConfirmAssetDto } from './dto';
+import { ResolveAssetDto, ConfirmAssetDto, UpdateIsinDto } from './dto';
 import type { Asset } from '@prisma/client';
 
 @ApiTags('assets')
@@ -96,5 +97,36 @@ export class AssetsController {
   })
   async confirm(@Body() dto: ConfirmAssetDto): Promise<Asset> {
     return this.assetsService.confirm(dto);
+  }
+
+  @Patch(':id/isin')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Update ISIN for an asset',
+    description:
+      'Manually update the ISIN for an existing asset. Use this when automatic ISIN extraction failed.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Internal asset UUID',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'ISIN updated successfully',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid ISIN format',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Asset not found',
+  })
+  async updateIsin(
+    @Param('id') id: string,
+    @Body() dto: UpdateIsinDto,
+  ): Promise<Asset> {
+    return this.assetsService.updateIsin(id, dto.isin);
   }
 }
