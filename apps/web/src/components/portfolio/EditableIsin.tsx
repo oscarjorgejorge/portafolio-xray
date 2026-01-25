@@ -22,6 +22,7 @@ export const EditableIsin: React.FC<EditableIsinProps> = ({
   const [inputValue, setInputValue] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [showTooltip, setShowTooltip] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Focus input when entering edit mode
@@ -112,27 +113,37 @@ export const EditableIsin: React.FC<EditableIsinProps> = ({
     }
 
     return (
-      <button
-        onClick={handleStartEdit}
-        className="inline-flex items-center gap-1 text-slate-400 italic hover:text-blue-600 transition-colors group"
-        title="Click to add ISIN manually"
-      >
-        <span>ISIN not available</span>
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 transition-opacity"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
+      <div className="relative inline-flex items-center">
+        <span className="text-slate-400 italic">ISIN not available</span>
+        <button
+          onClick={handleStartEdit}
+          onMouseEnter={() => setShowTooltip(true)}
+          onMouseLeave={() => setShowTooltip(false)}
+          className="ml-1.5 p-1 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
+          aria-label="Ingresa manualmente el ISIN"
         >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-          />
-        </svg>
-      </button>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-4 w-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+            />
+          </svg>
+        </button>
+        {showTooltip && (
+          <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 px-2 py-1 bg-slate-900 text-white text-xs rounded shadow-lg z-10 whitespace-nowrap">
+            Ingresa manualmente el ISIN
+            <div className="absolute top-1/2 -left-1 -translate-y-1/2 h-2 w-2 bg-slate-900 rotate-45"></div>
+          </div>
+        )}
+      </div>
     );
   }
 

@@ -384,7 +384,15 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
               url
             )
           }
-          onCancel={() => setSelectedAssetForAlternatives(null)}
+          onCancel={() => {
+            // Remove the asset from the list when user cancels
+            if (selectedAssetForAlternatives) {
+              setAssets((prev) =>
+                prev.filter((asset) => asset.id !== selectedAssetForAlternatives.id)
+              );
+            }
+            setSelectedAssetForAlternatives(null);
+          }}
         />
       )}
 
@@ -400,7 +408,15 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
               url
             )
           }
-          onCancel={() => setSelectedAssetForManual(null)}
+          onCancel={() => {
+            // Remove the asset from the list when user cancels
+            if (selectedAssetForManual) {
+              setAssets((prev) =>
+                prev.filter((asset) => asset.id !== selectedAssetForManual.id)
+              );
+            }
+            setSelectedAssetForManual(null);
+          }}
         />
       )}
 
