@@ -11,6 +11,49 @@ export const DEFAULT_RESOLVER_CONFIG: ResolverConfig = {
 };
 
 /**
+ * Scoring weights for result matching
+ * Higher values indicate higher priority/confidence
+ */
+export const SCORE_WEIGHTS = {
+  /** Exact Morningstar ID match (highest priority) */
+  MORNINGSTAR_ID_EXACT_MATCH: 100,
+  /** ISIN found in result text */
+  ISIN_MATCH: 50,
+  /** Ticker symbol matches exactly */
+  TICKER_MATCH: 40,
+  /** Maximum score for partial name match (scaled by match percentage) */
+  NAME_MATCH_MAX: 30,
+  /** Result from a Morningstar domain */
+  MORNINGSTAR_DOMAIN: 20,
+  /** Result has a valid Morningstar ID */
+  HAS_MORNINGSTAR_ID: 10,
+  /** Bonus for fund IDs starting with "F" (preferred format) */
+  FUND_F_ID_BONUS: 15,
+  /** Bonus when page verification confirms ISIN */
+  VERIFICATION_BONUS: 50,
+} as const;
+
+/**
+ * Maximum possible scores for confidence calculation per input type
+ * Used to normalize scores to 0-1 confidence range
+ */
+export const MAX_SCORES = {
+  /** When page is verified or input is Morningstar ID */
+  VERIFIED: 130,
+  /** When input is a Morningstar ID */
+  MORNINGSTAR_ID: 130,
+  /** When input is a ticker symbol */
+  TICKER: 70,
+  /** When input is free text or ISIN */
+  DEFAULT: 80,
+} as const;
+
+/**
+ * Minimum word length to consider for name matching
+ */
+export const MIN_WORD_LENGTH_FOR_MATCHING = 3;
+
+/**
  * European markets to try when a fund is not available in the default market (ES)
  * Ordered by likelihood of fund availability (Luxembourg is most common for UCITS funds)
  */

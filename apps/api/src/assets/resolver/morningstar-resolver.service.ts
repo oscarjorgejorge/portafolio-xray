@@ -7,7 +7,7 @@ import {
   VerificationResult,
 } from './resolver.types';
 import { normalizeInput, classifyInput } from './utils/input-normalizer';
-import { DEFAULT_RESOLVER_CONFIG } from './utils/constants';
+import { DEFAULT_RESOLVER_CONFIG, SCORE_WEIGHTS } from './utils/constants';
 
 // Search strategies
 import { ApiSearchStrategy } from './strategies/api-search.strategy';
@@ -372,8 +372,8 @@ export class MorningstarResolverService {
     }
 
     if (verification.verified) {
-      bestMatch.score += 50;
-      bestMatch.scoreBreakdown.isinMatch = 50;
+      bestMatch.score += SCORE_WEIGHTS.VERIFICATION_BONUS;
+      bestMatch.scoreBreakdown.isinMatch = SCORE_WEIGHTS.VERIFICATION_BONUS;
 
       if (verification.nameFound) {
         bestMatch.title = verification.nameFound;

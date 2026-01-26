@@ -6,10 +6,16 @@ import {
   ResolverConfig,
 } from '../resolver.types';
 import { normalizeInput } from '../utils/input-normalizer';
-import { DEFAULT_RESOLVER_CONFIG } from '../utils/constants';
+import {
+  DEFAULT_RESOLVER_CONFIG,
+  SCORE_WEIGHTS,
+  MAX_SCORES,
+  MIN_WORD_LENGTH_FOR_MATCHING,
+} from '../utils/constants';
 
 /**
  * Service responsible for scoring search results based on match quality
+ * Uses configurable weights from constants for maintainability
  */
 @Injectable()
 export class ResultScorerService {
@@ -36,60 +42,63 @@ export class ResultScorerService {
       `${result.title} ${result.snippet} ${result.url}`.toUpperCase();
     const normalizedInput = normalizeInput(originalInput);
 
-    // +100 if Morningstar ID matches exactly (highest priority)
+    // Exact Morningstar ID match (highest priority)
     if (
       inputType === 'MORNINGSTAR_ID' &&
       result.morningstarId &&
       result.morningstarId.toUpperCase() === normalizedInput
     ) {
-      breakdown.morningstarIdMatch = 100;
+      breakdown.morningstarIdMatch = SCORE_WEIGHTS.MORNINGSTAR_ID_EXACT_MATCH;
     }
 
-    // +50 if ISIN appears in result
+    // ISIN appears in result
     if (inputType === 'ISIN' && textToSearch.includes(normalizedInput)) {
-      breakdown.isinMatch = 50;
+      breakdown.isinMatch = SCORE_WEIGHTS.ISIN_MATCH;
     }
 
-    // +40 if ticker matches exactly
+    // Ticker matches exactly
     if (inputType === 'TICKER') {
       const tickerPattern = new RegExp(`\\b${normalizedInput}\\b`, 'i');
       const tickerValue =
         typeof result.ticker === 'string' ? result.ticker.toUpperCase() : '';
       if (tickerPattern.test(result.title) || tickerValue === normalizedInput) {
-        breakdown.tickerMatch = 40;
+        breakdown.tickerMatch = SCORE_WEIGHTS.TICKER_MATCH;
       }
     }
 
-    // +30 for partial name match (FREE_TEXT)
+    // Partial name match (FREE_TEXT) - scaled by match percentage
     if (inputType === 'FREE_TEXT') {
-      const words = normalizedInput.split(' ').filter((w) => w.length > 3);
+      const words = normalizedInput
+        .split(' ')
+        .filter((w) => w.length > MIN_WORD_LENGTH_FOR_MATCHING);
       const matchedWords = words.filter((w) => textToSearch.includes(w));
       breakdown.nameMatch = Math.round(
-        (matchedWords.length / Math.max(words.length, 1)) * 30,
+        (matchedWords.length / Math.max(words.length, 1)) *
+          SCORE_WEIGHTS.NAME_MATCH_MAX,
       );
     }
 
-    // +20 for Morningstar domain
+    // Morningstar domain bonus
     if (
       this.config.domains.some((d) =>
         result.domain.includes(d.replace('www.', '')),
       )
     ) {
-      breakdown.morningstarDomain = 20;
+      breakdown.morningstarDomain = SCORE_WEIGHTS.MORNINGSTAR_DOMAIN;
     }
 
-    // +10 for valid Morningstar ID
+    // Valid Morningstar ID bonus
     if (result.morningstarId) {
-      breakdown.typeMatch = 10;
+      breakdown.typeMatch = SCORE_WEIGHTS.HAS_MORNINGSTAR_ID;
     }
 
-    // +15 bonus for fund IDs starting with "F" (preferred format for funds)
+    // Fund IDs starting with "F" bonus (preferred format for funds)
     if (
       result.morningstarId &&
       result.assetType === 'Fondo' &&
       result.morningstarId.toUpperCase().startsWith('F')
     ) {
-      breakdown.typeMatch += 15;
+      breakdown.typeMatch += SCORE_WEIGHTS.FUND_F_ID_BONUS;
     }
 
     const totalScore = Object.values(breakdown).reduce((a, b) => a + b, 0);
@@ -149,21 +158,37 @@ export class ResultScorerService {
 
   /**
    * Calculate confidence score based on the best match
+   * Normalizes the score to a 0-1 range based on input type
    */
   calculateConfidence(
     bestMatch: ScoredResult,
     inputType: InputType,
     verified: boolean,
   ): number {
-    const maxScore = verified
-      ? 130
-      : inputType === 'MORNINGSTAR_ID'
-        ? 130
-        : inputType === 'TICKER'
-          ? 70
-          : 80;
-
+    const maxScore = this.getMaxScoreForInputType(inputType, verified);
     return Math.min(bestMatch.score / maxScore, 1);
+  }
+
+  /**
+   * Get the maximum possible score for an input type
+   * Used for confidence normalization
+   */
+  private getMaxScoreForInputType(
+    inputType: InputType,
+    verified: boolean,
+  ): number {
+    if (verified) {
+      return MAX_SCORES.VERIFIED;
+    }
+
+    switch (inputType) {
+      case 'MORNINGSTAR_ID':
+        return MAX_SCORES.MORNINGSTAR_ID;
+      case 'TICKER':
+        return MAX_SCORES.TICKER;
+      default:
+        return MAX_SCORES.DEFAULT;
+    }
   }
 
   /**
@@ -171,5 +196,12 @@ export class ResultScorerService {
    */
   getMinConfidence(): number {
     return this.config.minConfidence;
+  }
+
+  /**
+   * Get the verification bonus score (for external use)
+   */
+  getVerificationBonus(): number {
+    return SCORE_WEIGHTS.VERIFICATION_BONUS;
   }
 }
