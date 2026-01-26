@@ -456,3 +456,67 @@ porque no encontraste este fondo? F000011OEO puedes intentarlo por aqui? (Screen
   - **Name:** BlackRock Strategic Funds - Managed Index Portfolios Growth Vermoegensstrategie Wachstum EUR
   - **URL:** `https://global.morningstar.com/en-eu/investments/funds/F000011OEO/quote?marketID=lu`
   - **Market:** Luxembourg (LU)
+
+---
+
+## Security & Code Quality Improvements
+
+### Prompt 60
+as a senior software developer and following the best practices, analyse how it can be improved, refactored... etc
+
+**Analysis Summary:**
+Comprehensive code review covering:
+- Testing gaps (only 1 test file exists)
+- Security middleware missing (rate limiting, helmet)
+- Large files needing refactoring (`morningstar-resolver.service.ts` at 1300 lines)
+- Frontend component bloat (`PortfolioBuilder.tsx` at 440+ lines)
+- Type duplication between apps
+- Configuration management improvements
+
+### Prompt 61
+I want to do test after some refactorisation and improvements, lets start with Missing Security Middleware
+
+**Implementation - Security Middleware:**
+
+1. **Installed packages:**
+   - `helmet` - Sets various HTTP headers to protect against common web vulnerabilities
+   - `@nestjs/throttler` - Rate limiting module for NestJS
+   - `@types/helmet` - TypeScript definitions
+
+2. **Created `src/common/filters/throttler-exception.filter.ts`:**
+   - Custom exception filter for rate limit errors
+   - Returns user-friendly JSON response with `retryAfter` hint
+   - Response includes: `success`, `statusCode`, `error`, `message`, `retryAfter`, `timestamp`
+
+3. **Updated `src/app.module.ts`:**
+   - Added `ThrottlerModule.forRoot()` with multi-tier rate limits:
+     - **Short:** 5 requests per second (burst protection)
+     - **Medium:** 20 requests per 10 seconds
+     - **Long:** 60 requests per minute per IP
+   - Registered `ThrottlerGuard` globally via `APP_GUARD`
+
+4. **Updated `src/main.ts`:**
+   - Added Helmet middleware with configuration:
+     - Content Security Policy (CSP) for XSS protection
+     - Cross-Origin policies configured for API flexibility
+     - Swagger UI compatibility settings
+   - Registered `ThrottlerExceptionFilter` globally
+   - Added startup logs for security middleware status
+
+5. **Updated `src/app.controller.ts`:**
+   - Added `@SkipThrottle()` decorator on `/health` endpoint
+   - Health endpoint excluded from rate limiting for monitoring tools
+
+**Security Headers Added by Helmet:**
+- `Content-Security-Policy` - Prevents XSS attacks
+- `X-Content-Type-Options: nosniff` - Prevents MIME-type sniffing
+- `X-Frame-Options: SAMEORIGIN` - Prevents clickjacking
+- `X-XSS-Protection` - Legacy XSS filter
+- `Strict-Transport-Security` - Forces HTTPS
+- `Referrer-Policy` - Controls referrer information
+
+**Verification:**
+- ✅ Lint passed
+- ✅ Type-check passed
+- ✅ Build passed
+- ✅ Tests passed (1/1)

@@ -88,6 +88,13 @@ export const AssetRow: React.FC<AssetRowProps> = ({
               </h4>
               <div className="flex items-center gap-2 sm:gap-4 text-sm text-slate-600 mt-1 flex-wrap">
                 <span className="font-medium uppercase">{asset.asset.type}</span>
+                {/* Show ticker if available */}
+                {asset.asset.ticker && (
+                  <span>
+                    <span className="font-medium">Ticker:</span> {asset.asset.ticker}
+                  </span>
+                )}
+                {/* Show ISIN section: pending spinner, editable ISIN, or nothing */}
                 {isinPending ? (
                   <span className="flex items-center gap-1 text-slate-500">
                     <Spinner size="sm" className="text-blue-500" />
@@ -225,15 +232,6 @@ export const AssetRow: React.FC<AssetRowProps> = ({
             <p className="hidden md:block mb-2 text-xs text-red-600" role="alert">
               {error}
             </p>
-          )}
-          {/* Bottom row: Ticker, etc. */}
-          {asset.asset.ticker && (
-            <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600">
-              <span>
-                <span className="font-medium">Ticker:</span>{' '}
-                {asset.asset.ticker}
-              </span>
-            </div>
           )}
         </>
       ) : (
