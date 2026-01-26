@@ -584,3 +584,104 @@ vamos a solucionar el primer problema
 - ✅ Lint passed
 - ✅ Type-check passed
 - ✅ Build passed
+
+### Prompt 64
+como senior backend developper analiza la api, y dime que mejoras y optmizaciones son necesarias teniendo en cuenta las buenas practicas (la parte de los test los implementaremos mas adelante) (no quiero una nada overkill o super complejidad, quiero mejoras, buenas practicas, optimizaciones)
+
+**Analysis Summary:**
+Comprehensive code review identifying improvements organized by priority:
+
+**High Priority:**
+1. Health Check Incompleto - `/health` endpoint no verifica la DB
+2. Problema N+1 en XRayService - queries secuenciales en loop
+3. Falta validación UUID en parámetros
+
+**Medium Priority:**
+4. Constantes hardcoded en XRayService
+5. Response DTOs faltantes (expone modelo Prisma directamente)
+6. Transformación automática en DTOs (normalizar ISINs)
+7. Compresión gzip
+8. Global Exception Filter
+
+**Low Priority:**
+9. Correlation ID para tracing
+10. Logger condicional por entorno
+11. Graceful shutdown mejorado
+12. Validación ISIN checksum en DTO
+
+### Prompt 65
+procede con esta mejora: Health Check Incompleto
+
+**Implementation - Comprehensive Health Check:**
+
+1. **Created `src/health/` module with:**
+   - `dto/health-response.dto.ts` - DTO with `HealthStatus` and `ComponentStatus` enums
+   - `health.service.ts` - Service with `check()` and `liveness()` methods
+   - `health.controller.ts` - Controller with 3 endpoints
+   - `health.module.ts` - Module encapsulation
+   - `index.ts` - Exports
+
+2. **Health Endpoints:**
+   - `GET /health` - Readiness check (verifies DB connectivity)
+   - `GET /health/live` - Liveness probe (lightweight, no external deps)
+   - `GET /health/ready` - Alias for `/health` (Kubernetes convention)
+
+3. **Database Health Check:**
+   - Executes `SELECT 1` to verify DB connectivity
+   - Measures response time in milliseconds
+   - Returns `connected` or `disconnected` status
+
+4. **Response Structure:**
+   ```json
+   {
+     "status": "ok",
+     "timestamp": "2025-01-26T10:30:00.000Z",
+     "version": "1.0.0",
+     "database": "connected",
+     "databaseResponseTimeMs": 5
+   }
+   ```
+
+5. **Updated Files:**
+   - `app.module.ts` - Imports HealthModule
+   - `app.controller.ts` - Removed old `/health` endpoint
+   - `app.service.ts` - Updated welcome message with version
+   - `main.ts` - Updated logs and Swagger tags
+
+**Verification:**
+- ✅ Type-check passed
+
+### Prompt 66
+y luego con esta Global exception filter, actualiza prompts, commit y push
+
+**Implementation - Global Exception Filter:**
+
+1. **Created `src/common/filters/all-exceptions.filter.ts`:**
+   - Catches all unhandled exceptions
+   - Provides consistent error response format
+   - Handles HttpException (400, 401, 403, 404, etc.)
+   - Handles validation errors from class-validator
+   - Returns 500 for unknown errors with safe message
+
+2. **Error Response Structure:**
+   ```json
+   {
+     "success": false,
+     "statusCode": 400,
+     "error": "Bad Request",
+     "message": "Validation failed: field must be a string",
+     "path": "/assets/resolve",
+     "timestamp": "2025-01-26T10:30:00.000Z"
+   }
+   ```
+
+3. **Logging Behavior:**
+   - 5xx errors → `logger.error()` with stack trace
+   - 4xx errors → `logger.warn()` without stack
+
+4. **Updated Files:**
+   - `common/filters/index.ts` - Exports AllExceptionsFilter
+   - `main.ts` - Registers both filters globally
+
+**Verification:**
+- ✅ Type-check passed

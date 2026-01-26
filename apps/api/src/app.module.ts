@@ -7,6 +7,7 @@ import { ConfigModule } from './config';
 import { PrismaModule } from './prisma/prisma.module';
 import { AssetsModule } from './assets/assets.module';
 import { XRayModule } from './xray/xray.module';
+import { HealthModule } from './health/health.module';
 import { HttpClientModule } from './common/http';
 
 @Module({
@@ -36,6 +37,7 @@ import { HttpClientModule } from './common/http';
       },
     ]),
     PrismaModule,
+    HealthModule,
     AssetsModule,
     XRayModule,
   ],

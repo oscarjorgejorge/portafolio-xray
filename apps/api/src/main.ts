@@ -4,7 +4,10 @@ import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
-import { ThrottlerExceptionFilter } from './common/filters';
+import {
+  ThrottlerExceptionFilter,
+  AllExceptionsFilter,
+} from './common/filters';
 import type { AppConfig } from './config';
 
 const logger = new Logger('Bootstrap');
@@ -58,8 +61,14 @@ async function bootstrap(): Promise<void> {
       }),
     );
 
-    // Global exception filters
-    app.useGlobalFilters(new ThrottlerExceptionFilter());
+    // Global exception filters (order matters: specific filters last, catch-all first)
+    // AllExceptionsFilter catches all unhandled exceptions
+    // ThrottlerExceptionFilter handles rate limiting errors specifically
+    app.useGlobalFilters(
+      new AllExceptionsFilter(),
+      new ThrottlerExceptionFilter(),
+    );
+    logger.log('Global exception filters enabled');
     logger.log('Rate limiting enabled (5/s, 20/10s, 60/min per IP)');
 
     // Swagger configuration (only in non-production or if explicitly enabled)
@@ -70,6 +79,7 @@ async function bootstrap(): Promise<void> {
           'API for generating Morningstar X-Ray reports. Resolves ISINs to Morningstar IDs and generates portfolio analysis URLs.',
         )
         .setVersion('1.0')
+        .addTag('health', 'Health check endpoints for monitoring')
         .addTag('assets', 'Asset resolution and cache management')
         .addTag('xray', 'X-Ray URL generation')
         .build();
@@ -114,7 +124,9 @@ async function bootstrap(): Promise<void> {
     await app.listen(port, '0.0.0.0');
 
     logger.log(`API running on http://localhost:${port}`);
-    logger.log(`Healthcheck available at http://localhost:${port}/health`);
+    logger.log(`Health check endpoints:`);
+    logger.log(`  - Readiness: http://localhost:${port}/health`);
+    logger.log(`  - Liveness:  http://localhost:${port}/health/live`);
 
     if (!isProduction || process.env.ENABLE_SWAGGER === 'true') {
       logger.log(`Swagger docs available at http://localhost:${port}/docs`);
