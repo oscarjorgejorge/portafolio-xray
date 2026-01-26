@@ -6,9 +6,12 @@ import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { AssetsModule } from './assets/assets.module';
 import { XRayModule } from './xray/xray.module';
+import { HttpClientModule } from './common/http';
 
 @Module({
   imports: [
+    // Global HTTP client for all modules
+    HttpClientModule,
     // Rate limiting configuration
     // - ttl: Time window in milliseconds (60000ms = 1 minute)
     // - limit: Maximum requests per IP within the time window
