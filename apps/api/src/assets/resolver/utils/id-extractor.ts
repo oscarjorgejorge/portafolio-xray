@@ -1,4 +1,5 @@
 import { VALID_ISIN_PREFIXES } from './constants';
+import { safeUrlParse } from './error-handler';
 
 /**
  * Patterns for extracting Morningstar IDs from URLs
@@ -15,8 +16,12 @@ const MORNINGSTAR_ID_PATTERNS = [
 
 /**
  * Extract Morningstar ID from a URL
+ * @param url - URL to extract ID from
+ * @returns Morningstar ID or null if not found
  */
 export function extractMorningstarId(url: string): string | null {
+  if (!url) return null;
+
   for (const pattern of MORNINGSTAR_ID_PATTERNS) {
     const match = url.match(pattern);
     if (match && match[1]) {
@@ -28,18 +33,25 @@ export function extractMorningstarId(url: string): string | null {
 
 /**
  * Extract domain from a URL
+ * Uses safe URL parsing to handle invalid URLs gracefully
+ * @param url - URL to extract domain from
+ * @returns Domain name or empty string if parsing fails
  */
 export function extractDomain(url: string): string {
-  try {
-    const urlObj = new URL(url);
-    return urlObj.hostname.replace('www.', '');
-  } catch {
+  if (!url) return '';
+
+  const parsedUrl = safeUrlParse(url);
+  if (!parsedUrl) {
     return '';
   }
+
+  return parsedUrl.hostname.replace('www.', '');
 }
 
 /**
  * Check if a string is a valid ISIN (not a Morningstar ID)
+ * @param candidate - String to validate as ISIN
+ * @returns true if valid ISIN format with recognized country prefix
  */
 export function isValidIsin(candidate: string): boolean {
   if (!candidate || candidate.length !== 12) return false;

@@ -5,6 +5,7 @@ import {
   buildGlobalSearchUrl,
   buildMorningstarUrl,
 } from '../utils/url-builder';
+import { safeJsonParse } from '../utils/error-handler';
 import { HttpClientService } from '../../../common/http';
 
 /**
@@ -44,30 +45,42 @@ export class GlobalSearchStrategy implements SearchStrategy {
 
   /**
    * Parse API response text into search results
+   * Uses safe JSON parsing with proper error logging
    */
   private parseApiResponse(text: string): SearchResult[] {
-    try {
-      const data = JSON.parse(text) as GlobalMorningstarItem[];
+    const data = safeJsonParse<GlobalMorningstarItem[]>(
+      text,
+      this.logger,
+      this.name,
+    );
 
-      if (Array.isArray(data) && data.length > 0) {
-        this.logger.debug(`[${this.name}] Found ${data.length} results`);
-        return data.slice(0, 5).map((item: GlobalMorningstarItem) => ({
-          url: buildMorningstarUrl(
-            item.securityId ?? item.id ?? '',
-            'Fondo', // Default to fund, will be corrected by main API
-          ),
-          title: item.name ?? item.legalName ?? '',
-          snippet: `${item.isin ?? ''} | ${item.ticker ?? ''}`,
-          morningstarId: item.securityId ?? item.id ?? null,
-          domain: 'global.morningstar.com',
-          ticker: item.ticker,
-        }));
-      }
-    } catch {
-      // Not valid JSON, return empty
-      this.logger.debug(`[${this.name}] Invalid JSON response`);
+    if (!data) {
+      this.logger.debug(`[${this.name}] Response is not valid JSON`);
+      return [];
     }
 
-    return [];
+    if (!Array.isArray(data)) {
+      this.logger.debug(`[${this.name}] Response is not an array`);
+      return [];
+    }
+
+    if (data.length === 0) {
+      this.logger.debug(`[${this.name}] Empty response array`);
+      return [];
+    }
+
+    this.logger.debug(`[${this.name}] Found ${data.length} results`);
+
+    return data.slice(0, 5).map((item: GlobalMorningstarItem) => ({
+      url: buildMorningstarUrl(
+        item.securityId ?? item.id ?? '',
+        'Fondo', // Default to fund, will be corrected by main API
+      ),
+      title: item.name ?? item.legalName ?? '',
+      snippet: `${item.isin ?? ''} | ${item.ticker ?? ''}`,
+      morningstarId: item.securityId ?? item.id ?? null,
+      domain: 'global.morningstar.com',
+      ticker: item.ticker,
+    }));
   }
 }

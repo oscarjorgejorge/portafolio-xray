@@ -8,6 +8,7 @@ import { SearchStrategy } from './search-strategy.interface';
 import { MORNINGSTAR_TYPE_MAP } from '../utils/constants';
 import { buildApiSearchUrl, buildMorningstarUrl } from '../utils/url-builder';
 import { isValidIsin } from '../utils/id-extractor';
+import { safeJsonParse } from '../utils/error-handler';
 import { HttpClientService } from '../../../common/http';
 
 /**
@@ -44,23 +45,36 @@ export class ApiSearchStrategy implements SearchStrategy {
 
   /**
    * Parse API response text into search results
+   * Uses safe JSON parsing with proper error handling
    */
   private parseApiResponse(text: string): SearchResult[] {
     const results: SearchResult[] = [];
     const jsonMatches = text.match(/\{[^{}]+\}/g);
 
-    if (jsonMatches) {
-      for (const jsonStr of jsonMatches) {
-        try {
-          const item = JSON.parse(jsonStr) as MorningstarApiItem;
-          const parsed = this.parseApiItem(item);
-          if (parsed) {
-            results.push(...parsed);
-          }
-        } catch {
-          // Ignore invalid JSON
+    if (!jsonMatches) {
+      this.logger.debug(`[${this.name}] No JSON objects found in response`);
+      return results;
+    }
+
+    let parseFailures = 0;
+
+    for (const jsonStr of jsonMatches) {
+      const item = safeJsonParse<MorningstarApiItem>(jsonStr);
+
+      if (item) {
+        const parsed = this.parseApiItem(item);
+        if (parsed) {
+          results.push(...parsed);
         }
+      } else {
+        parseFailures++;
       }
+    }
+
+    if (parseFailures > 0) {
+      this.logger.debug(
+        `[${this.name}] Skipped ${parseFailures} invalid JSON fragments`,
+      );
     }
 
     if (results.length > 0) {
