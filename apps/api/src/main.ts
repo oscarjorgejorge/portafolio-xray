@@ -1,7 +1,9 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
+import { ThrottlerExceptionFilter } from './common/filters';
 
 async function bootstrap(): Promise<void> {
   try {
@@ -17,6 +19,28 @@ async function bootstrap(): Promise<void> {
     const app = await NestFactory.create(AppModule);
     console.log(`✅ NestJS application created successfully`);
 
+    // Security: Helmet middleware for HTTP headers
+    // Configures various HTTP headers to help protect your app from well-known web vulnerabilities
+    app.use(
+      helmet({
+        // Content Security Policy - controls resources the browser is allowed to load
+        contentSecurityPolicy: {
+          directives: {
+            defaultSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'"], // Allow inline styles for Swagger UI
+            scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // Allow scripts for Swagger UI
+            imgSrc: ["'self'", 'data:', 'https:'],
+          },
+        },
+        // Cross-Origin-Embedder-Policy - prevents loading cross-origin resources
+        crossOriginEmbedderPolicy: false, // Disabled for API flexibility
+        // Cross-Origin-Resource-Policy - controls which origins can load resources
+        crossOriginResourcePolicy: { policy: 'cross-origin' }, // Allow cross-origin for API
+      }),
+    );
+    console.log(`🛡️ Helmet security middleware enabled`);
+    console.log(`🚦 Rate limiting enabled (5/s, 20/10s, 60/min per IP)`);
+
     // Enable validation pipes
     app.useGlobalPipes(
       new ValidationPipe({
@@ -28,6 +52,9 @@ async function bootstrap(): Promise<void> {
         },
       }),
     );
+
+    // Global exception filters
+    app.useGlobalFilters(new ThrottlerExceptionFilter());
 
     // Swagger configuration
     const config = new DocumentBuilder()
