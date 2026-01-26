@@ -1,6 +1,8 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { GenerateXRayDto, XRayAssetDto } from './dto';
 import { AssetsRepository } from '../assets/assets.repository';
+import type { AppConfig } from '../config';
 
 export interface GenerateXRayResponse {
   morningstarUrl: string;
@@ -9,10 +11,16 @@ export interface GenerateXRayResponse {
 
 @Injectable()
 export class XRayService {
-  private readonly MORNINGSTAR_BASE_URL =
-    process.env.MORNINGSTAR_BASE_URL || 'https://lt.morningstar.com';
+  private readonly morningstarBaseUrl: string;
 
-  constructor(private readonly assetsRepository: AssetsRepository) {}
+  constructor(
+    private readonly assetsRepository: AssetsRepository,
+    private readonly configService: ConfigService<AppConfig, true>,
+  ) {
+    this.morningstarBaseUrl = this.configService.get('morningstarBaseUrl', {
+      infer: true,
+    });
+  }
 
   /**
    * Generate Morningstar X-Ray URL from portfolio assets
@@ -46,7 +54,7 @@ export class XRayService {
    * Format: https://lt.morningstar.com/j2uwuwirpv/xraypdf/default.aspx?LanguageId=es-ES&PortfolioType=2&SecurityTokenList=...&values=...
    */
   private async buildMorningstarUrl(assets: XRayAssetDto[]): Promise<string> {
-    const baseUrl = `${this.MORNINGSTAR_BASE_URL}/j2uwuwirpv/xraypdf/default.aspx`;
+    const baseUrl = `${this.morningstarBaseUrl}/j2uwuwirpv/xraypdf/default.aspx`;
 
     // Look up asset types from database
     const securityTokens: string[] = [];

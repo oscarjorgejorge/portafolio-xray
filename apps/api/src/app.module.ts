@@ -3,6 +3,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { ConfigModule } from './config';
 import { PrismaModule } from './prisma/prisma.module';
 import { AssetsModule } from './assets/assets.module';
 import { XRayModule } from './xray/xray.module';
@@ -10,6 +11,8 @@ import { HttpClientModule } from './common/http';
 
 @Module({
   imports: [
+    // Configuration module - validates env vars at startup
+    ConfigModule,
     // Global HTTP client for all modules
     HttpClientModule,
     // Rate limiting configuration

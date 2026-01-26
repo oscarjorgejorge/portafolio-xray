@@ -520,3 +520,67 @@ I want to do test after some refactorisation and improvements, lets start with M
 - ✅ Type-check passed
 - ✅ Build passed
 - ✅ Tests passed (1/1)
+
+### Prompt 62
+como senior backend developper analiza la api, y dime que mejoras y optmizaciones son necesarias teniendo en cuenta las buenas practicas (la parte de los test los implementaremos mas adelante)
+
+**Analysis Summary:**
+Comprehensive code review identifying 13 areas for improvement:
+1. Configuration and Environment Variables (hardcoded, no validation)
+2. Structured Logging (using console.log)
+3. Global Exception Filter (only ThrottlerException handled)
+4. Health Check improvements (no dependency checks)
+5. Database connection resilience
+6. Caching layer (missing)
+7. Timeouts and Circuit Breaker
+8. ISIN validation improvements
+9. N+1 query in XRayService
+10. Response format consistency
+11. Request ID for traceability
+12. Graceful shutdown
+13. OpenAPI responses
+
+### Prompt 63
+vamos a solucionar el primer problema
+
+**Implementation - Configuration with Validation:**
+
+1. **Installed packages:**
+   - `@nestjs/config` - Configuration module for NestJS
+   - `zod` - TypeScript-first schema validation
+
+2. **Created `src/config/` module with:**
+   - `env.schema.ts` - Zod schema for environment variables validation
+   - `configuration.ts` - Configuration factory with typed AppConfig interface
+   - `config.module.ts` - Global ConfigModule setup
+   - `index.ts` - Exports
+
+3. **Environment Variables Validated:**
+   - `NODE_ENV` - Required, enum: development/production/test
+   - `PORT` - Optional, defaults to 4000
+   - `DATABASE_URL` - Required, must be valid URL
+   - `MORNINGSTAR_BASE_URL` - Optional, defaults to lt.morningstar.com
+   - `CORS_ORIGINS` - Optional, comma-separated list
+
+4. **Updated Files:**
+   - `app.module.ts` - Imports ConfigModule at top
+   - `main.ts` - Uses ConfigService with type-safe access and `{ infer: true }`
+   - `xray.service.ts` - Injects ConfigService for MORNINGSTAR_BASE_URL
+   - `prisma.service.ts` - Uses NestJS Logger, documents validation guarantee
+
+5. **Type-Safe Access Pattern:**
+   ```typescript
+   const configService = app.get(ConfigService<AppConfig, true>);
+   const port = configService.get('port', { infer: true });
+   ```
+
+6. **Benefits:**
+   - Fails fast at startup if required env vars are missing
+   - Type-safe configuration access throughout the app
+   - Single source of truth for all config
+   - Clear validation error messages
+
+**Verification:**
+- ✅ Lint passed
+- ✅ Type-check passed
+- ✅ Build passed
