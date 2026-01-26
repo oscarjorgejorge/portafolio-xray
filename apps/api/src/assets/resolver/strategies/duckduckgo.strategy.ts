@@ -6,9 +6,19 @@ import { buildDuckDuckGoUrl } from '../utils/url-builder';
 import { extractMorningstarId, extractDomain } from '../utils/id-extractor';
 import { HttpClientService } from '../../../common/http';
 
+/** Maximum concurrent requests to avoid rate limiting */
+const MAX_CONCURRENCY = 3;
+
+/** Minimum results needed before early exit */
+const MIN_RESULTS_FOR_EARLY_EXIT = 5;
+
+/** Delay between batches to avoid rate limiting (ms) */
+const BATCH_DELAY = 100;
+
 /**
  * Strategy D: DuckDuckGo (fallback)
  * Searches Spanish and English paths for funds, ETFs, and stocks
+ * Optimized with concurrency control and early exit for better performance
  */
 @Injectable()
 export class DuckDuckGoStrategy implements SearchStrategy {
@@ -18,30 +28,89 @@ export class DuckDuckGoStrategy implements SearchStrategy {
   constructor(private readonly httpClient: HttpClientService) {}
 
   /**
-   * Search queries for different asset types and languages
+   * Search patterns ordered by priority (Spanish first, then English)
+   * Grouped by asset type for batch processing
    */
-  private readonly SEARCH_PATTERNS = [
-    'site:global.morningstar.com/*/inversiones/fondos',
-    'site:global.morningstar.com/*/inversiones/etfs',
-    'site:global.morningstar.com/*/inversiones/acciones',
-    'site:global.morningstar.com/*/investments/funds',
-    'site:global.morningstar.com/*/investments/etfs',
-    'site:global.morningstar.com/*/investments/stocks',
+  private readonly SEARCH_PATTERN_BATCHES = [
+    // Batch 1: Spanish patterns (highest priority for ES locale)
+    [
+      'site:global.morningstar.com/*/inversiones/fondos',
+      'site:global.morningstar.com/*/inversiones/etfs',
+      'site:global.morningstar.com/*/inversiones/acciones',
+    ],
+    // Batch 2: English patterns (fallback)
+    [
+      'site:global.morningstar.com/*/investments/funds',
+      'site:global.morningstar.com/*/investments/etfs',
+      'site:global.morningstar.com/*/investments/stocks',
+    ],
   ];
 
   async search(query: string): Promise<SearchResult[]> {
     this.logger.debug(`[${this.name}] Searching DuckDuckGo for: ${query}`);
 
-    // Execute all searches in parallel for better performance
-    const searchPromises = this.SEARCH_PATTERNS.map((pattern) =>
-      this.searchSingle(`${pattern} "${query}"`),
-    );
+    const allResults: SearchResult[] = [];
 
-    const results = await Promise.all(searchPromises);
-    const allResults = results.flat();
+    // Process batches with early exit optimization
+    for (const batch of this.SEARCH_PATTERN_BATCHES) {
+      const batchResults = await this.searchBatchWithConcurrency(batch, query);
+      allResults.push(...batchResults);
+
+      // Early exit if we have enough results
+      if (allResults.length >= MIN_RESULTS_FOR_EARLY_EXIT) {
+        this.logger.debug(
+          `[${this.name}] Early exit: found ${allResults.length} results`,
+        );
+        break;
+      }
+
+      // Small delay between batches to be respectful to DuckDuckGo
+      if (batch !== this.SEARCH_PATTERN_BATCHES.at(-1)) {
+        await this.delay(BATCH_DELAY);
+      }
+    }
 
     // Deduplicate by Morningstar ID
-    return this.deduplicateResults(allResults);
+    const uniqueResults = this.deduplicateResults(allResults);
+
+    this.logger.debug(
+      `[${this.name}] Total unique results: ${uniqueResults.length}`,
+    );
+
+    return uniqueResults;
+  }
+
+  /**
+   * Execute a batch of searches with concurrency control
+   * Uses Promise.allSettled for resilience against partial failures
+   */
+  private async searchBatchWithConcurrency(
+    patterns: string[],
+    query: string,
+  ): Promise<SearchResult[]> {
+    const results: SearchResult[] = [];
+
+    // Process in chunks respecting MAX_CONCURRENCY
+    for (let i = 0; i < patterns.length; i += MAX_CONCURRENCY) {
+      const chunk = patterns.slice(i, i + MAX_CONCURRENCY);
+
+      const searchPromises = chunk.map((pattern) =>
+        this.searchSingle(`${pattern} "${query}"`),
+      );
+
+      // Use allSettled to handle individual failures gracefully
+      const settledResults = await Promise.allSettled(searchPromises);
+
+      for (const result of settledResults) {
+        if (result.status === 'fulfilled') {
+          results.push(...result.value);
+        } else {
+          this.logger.debug(`[${this.name}] Search failed: ${result.reason}`);
+        }
+      }
+    }
+
+    return results;
   }
 
   /**
@@ -65,7 +134,7 @@ export class DuckDuckGoStrategy implements SearchStrategy {
 
     const response = await this.httpClient.get<string>(searchUrl, {
       responseType: 'html',
-      timeout: 10000,
+      timeout: 8000, // Reduced timeout for faster fallback
     });
 
     if (!response.ok || !response.data) {
@@ -110,10 +179,13 @@ export class DuckDuckGoStrategy implements SearchStrategy {
       }
     });
 
-    if (results.length > 0) {
-      this.logger.debug(`[${this.name}] Found ${results.length} results`);
-    }
-
     return results;
+  }
+
+  /**
+   * Delay helper
+   */
+  private delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
