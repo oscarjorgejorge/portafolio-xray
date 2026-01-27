@@ -1,23 +1,55 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
+import {
+  ThrottlerExceptionFilter,
+  AllExceptionsFilter,
+} from './common/filters';
+import type { AppConfig } from './config';
+
+const logger = new Logger('Bootstrap');
 
 async function bootstrap(): Promise<void> {
   try {
-    console.log(`📦 Starting API server...`);
-    console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(
-      `💾 Database URL: ${process.env.DATABASE_URL ? 'Set' : 'Missing'}`,
+    logger.log('Starting API server...');
+
+    // Create the application - ConfigModule validates env vars here
+    const app = await NestFactory.create(AppModule, {
+      logger: ['error', 'warn', 'log', 'debug'],
+    });
+
+    // Get validated configuration with type-safe access
+    const configService = app.get(ConfigService<AppConfig, true>);
+    const nodeEnv = configService.get('nodeEnv', { infer: true });
+    const port = configService.get('port', { infer: true });
+    const corsOrigins = configService.get('corsOrigins', { infer: true });
+    const isProduction = configService.get('isProduction', { infer: true });
+
+    logger.log(`Environment: ${nodeEnv}`);
+    logger.log(`Port: ${port}`);
+    logger.log(`Production mode: ${isProduction}`);
+
+    // Security: Helmet middleware for HTTP headers
+    app.use(
+      helmet({
+        contentSecurityPolicy: {
+          directives: {
+            defaultSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+            imgSrc: ["'self'", 'data:', 'https:'],
+          },
+        },
+        crossOriginEmbedderPolicy: false,
+        crossOriginResourcePolicy: { policy: 'cross-origin' },
+      }),
     );
-    console.log(`🔌 PORT env var: ${process.env.PORT || 'not set'}`);
-    console.log(`🔌 API_PORT env var: ${process.env.API_PORT || 'not set'}`);
+    logger.log('Helmet security middleware enabled');
 
-    console.log(`📝 Creating NestJS application...`);
-    const app = await NestFactory.create(AppModule);
-    console.log(`✅ NestJS application created successfully`);
-
-    // Enable validation pipes
+    // Validation pipes
     app.useGlobalPipes(
       new ValidationPipe({
         whitelist: true,
@@ -29,39 +61,48 @@ async function bootstrap(): Promise<void> {
       }),
     );
 
-    // Swagger configuration
-    const config = new DocumentBuilder()
-      .setTitle('Portfolio X-Ray API')
-      .setDescription(
-        'API for generating Morningstar X-Ray reports. Resolves ISINs to Morningstar IDs and generates portfolio analysis URLs.',
-      )
-      .setVersion('1.0')
-      .addTag('assets', 'Asset resolution and cache management')
-      .addTag('xray', 'X-Ray URL generation')
-      .build();
+    // Global exception filters (order matters: specific filters last, catch-all first)
+    // AllExceptionsFilter catches all unhandled exceptions
+    // ThrottlerExceptionFilter handles rate limiting errors specifically
+    app.useGlobalFilters(
+      new AllExceptionsFilter(),
+      new ThrottlerExceptionFilter(),
+    );
+    logger.log('Global exception filters enabled');
+    logger.log('Rate limiting enabled (5/s, 20/10s, 60/min per IP)');
 
-    const document = SwaggerModule.createDocument(app, config);
-    SwaggerModule.setup('docs', app, document);
+    // Swagger configuration (only in non-production or if explicitly enabled)
+    if (!isProduction || process.env.ENABLE_SWAGGER === 'true') {
+      const config = new DocumentBuilder()
+        .setTitle('Portfolio X-Ray API')
+        .setDescription(
+          'API for generating Morningstar X-Ray reports. Resolves ISINs to Morningstar IDs and generates portfolio analysis URLs.',
+        )
+        .setVersion('1.0')
+        .addTag('health', 'Health check endpoints for monitoring')
+        .addTag('assets', 'Asset resolution and cache management')
+        .addTag('xray', 'X-Ray URL generation')
+        .build();
 
-    // CORS configuration
-    // Supports multiple origins (comma-separated) and Vercel preview URLs
-    const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:3000')
-      .split(',')
-      .map((origin) => origin.trim());
+      const document = SwaggerModule.createDocument(app, config);
+      SwaggerModule.setup('docs', app, document);
+      logger.log('Swagger documentation enabled at /docs');
+    }
 
+    // CORS configuration using validated config
     app.enableCors({
       origin: (
         origin: string | undefined,
         callback: (err: Error | null, allow?: boolean) => void,
       ) => {
-        // Allow requests with no origin (like mobile apps or curl)
+        // Allow requests with no origin (mobile apps, curl, etc.)
         if (!origin) {
           callback(null, true);
           return;
         }
 
         // Check if origin is in the allowed list
-        if (allowedOrigins.includes(origin)) {
+        if (corsOrigins.includes(origin)) {
           callback(null, true);
           return;
         }
@@ -73,51 +114,60 @@ async function bootstrap(): Promise<void> {
         }
 
         // Reject other origins
-        console.warn(`CORS blocked origin: ${origin}`);
+        logger.warn(`CORS blocked origin: ${origin}`);
         callback(new Error('Not allowed by CORS'), false);
       },
       credentials: true,
     });
 
-    // Railway sets PORT automatically, fallback to API_PORT or 4000
-    const port = process.env.PORT ?? process.env.API_PORT ?? 4000;
-
-    console.log(`🔌 Port: ${port}`);
-
-    // Listen on 0.0.0.0 to accept connections from Railway
+    // Listen on 0.0.0.0 to accept connections from containers/cloud platforms
     await app.listen(port, '0.0.0.0');
 
-    console.log(`🚀 API running on http://localhost:${port}`);
-    console.log(`💚 Healthcheck available at http://localhost:${port}/health`);
-    console.log(`📚 Swagger docs available at http://localhost:${port}/docs`);
-  } catch (error) {
-    console.error('❌ Failed to start application:');
-    if (error instanceof Error) {
-      console.error('Error type:', error.constructor.name);
-      console.error('Error message:', error.message);
-      console.error('Error stack:', error.stack);
-    } else {
-      console.error('Unknown error:', error);
+    logger.log(`API running on http://localhost:${port}`);
+    logger.log(`Health check endpoints:`);
+    logger.log(`  - Readiness: http://localhost:${port}/health`);
+    logger.log(`  - Liveness:  http://localhost:${port}/health/live`);
+
+    if (!isProduction || process.env.ENABLE_SWAGGER === 'true') {
+      logger.log(`Swagger docs available at http://localhost:${port}/docs`);
     }
+  } catch (error) {
+    logger.error('Failed to start application');
+
+    if (error instanceof Error) {
+      logger.error(`Error type: ${error.constructor.name}`);
+      logger.error(`Error message: ${error.message}`);
+
+      if (error.stack) {
+        logger.error(`Stack trace: ${error.stack}`);
+      }
+    } else {
+      logger.error(`Unknown error: ${String(error)}`);
+    }
+
     process.exit(1);
   }
 }
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (error) => {
-  console.error('❌ Uncaught Exception:', error);
+  logger.error('Uncaught Exception:', error);
   process.exit(1);
 });
 
 // Handle unhandled promise rejections
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('❌ Unhandled Rejection at:', promise);
+process.on('unhandledRejection', (reason) => {
+  logger.error('Unhandled Promise Rejection');
+
   if (reason instanceof Error) {
-    console.error('Reason:', reason.message);
-    console.error('Stack:', reason.stack);
+    logger.error(`Reason: ${reason.message}`);
+    if (reason.stack) {
+      logger.error(`Stack: ${reason.stack}`);
+    }
   } else {
-    console.error('Reason:', reason);
+    logger.error(`Reason: ${String(reason)}`);
   }
+
   process.exit(1);
 });
 

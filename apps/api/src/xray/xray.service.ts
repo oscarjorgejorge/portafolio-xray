@@ -1,6 +1,9 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { GenerateXRayDto, XRayAssetDto } from './dto';
 import { AssetsRepository } from '../assets/assets.repository';
+import type { AppConfig } from '../config';
+import type { Asset } from '@prisma/client';
 
 export interface GenerateXRayResponse {
   morningstarUrl: string;
@@ -9,10 +12,16 @@ export interface GenerateXRayResponse {
 
 @Injectable()
 export class XRayService {
-  private readonly MORNINGSTAR_BASE_URL =
-    process.env.MORNINGSTAR_BASE_URL || 'https://lt.morningstar.com';
+  private readonly morningstarBaseUrl: string;
 
-  constructor(private readonly assetsRepository: AssetsRepository) {}
+  constructor(
+    private readonly assetsRepository: AssetsRepository,
+    private readonly configService: ConfigService<AppConfig, true>,
+  ) {
+    this.morningstarBaseUrl = this.configService.get('morningstarBaseUrl', {
+      infer: true,
+    });
+  }
 
   /**
    * Generate Morningstar X-Ray URL from portfolio assets
@@ -46,44 +55,24 @@ export class XRayService {
    * Format: https://lt.morningstar.com/j2uwuwirpv/xraypdf/default.aspx?LanguageId=es-ES&PortfolioType=2&SecurityTokenList=...&values=...
    */
   private async buildMorningstarUrl(assets: XRayAssetDto[]): Promise<string> {
-    const baseUrl = `${this.MORNINGSTAR_BASE_URL}/j2uwuwirpv/xraypdf/default.aspx`;
+    const baseUrl = `${this.morningstarBaseUrl}/j2uwuwirpv/xraypdf/default.aspx`;
 
-    // Look up asset types from database
+    // Batch lookup: single query instead of N queries
+    const morningstarIds = assets.map((a) => a.morningstarId);
+    const dbAssets =
+      await this.assetsRepository.findManyByMorningstarIds(morningstarIds);
+
+    // Create a map for O(1) lookups
+    const assetMap = new Map(dbAssets.map((a) => [a.morningstarId, a]));
+
     const securityTokens: string[] = [];
     const values: number[] = [];
 
     for (const asset of assets) {
-      // Look up asset type from database
-      const dbAsset = await this.assetsRepository.findByMorningstarId(
-        asset.morningstarId,
-      );
+      const dbAsset = assetMap.get(asset.morningstarId);
 
       // Determine type code and exchange code
-      let typeCode: string;
-      let exchangeCode: string;
-
-      if (dbAsset) {
-        // Use type from database
-        if (dbAsset.type === 'STOCK') {
-          typeCode = '3';
-          exchangeCode = 'E0WWE';
-        } else {
-          // FUND, ETF, ETC all use type code 2
-          typeCode = '2';
-          exchangeCode = 'FOESP';
-        }
-      } else {
-        // Fallback: infer from Morningstar ID format
-        // IDs starting with F are funds, 0P could be anything but default to fund
-        if (asset.morningstarId.toUpperCase().startsWith('F')) {
-          typeCode = '2';
-          exchangeCode = 'FOESP';
-        } else {
-          // Default to fund for unknown types
-          typeCode = '2';
-          exchangeCode = 'FOESP';
-        }
-      }
+      const { typeCode, exchangeCode } = this.getAssetCodes(dbAsset);
 
       // Generate security token: {ID}]typeCode]0]{EXCHANGE}$$ALL_1340
       const securityToken = `${asset.morningstarId}]${typeCode}]0]${exchangeCode}$$ALL_1340`;
@@ -101,6 +90,27 @@ export class XRayService {
     url.searchParams.set('values', values.join('%7C'));
 
     return url.toString();
+  }
+
+  /**
+   * Get type code and exchange code for an asset
+   * @param dbAsset - Asset from database (if found)
+   */
+  private getAssetCodes(dbAsset: Asset | undefined): {
+    typeCode: string;
+    exchangeCode: string;
+  } {
+    if (dbAsset) {
+      // Use type from database
+      if (dbAsset.type === 'STOCK') {
+        return { typeCode: '3', exchangeCode: 'E0WWE' };
+      }
+      // FUND, ETF, ETC all use type code 2
+      return { typeCode: '2', exchangeCode: 'FOESP' };
+    }
+
+    // Default to fund for unknown types
+    return { typeCode: '2', exchangeCode: 'FOESP' };
   }
 
   /**

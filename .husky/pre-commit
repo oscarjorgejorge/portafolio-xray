@@ -21,9 +21,15 @@ STAGED_TS_WEB=$(git diff --cached --name-only --diff-filter=ACM | grep "^apps/we
 if [ -n "$STAGED_TS_API" ]; then
   echo "Type checking API..."
   npm run type-check --prefix apps/api
+  
+  echo "Running API tests..."
+  npm test --prefix apps/api
 fi
 
 if [ -n "$STAGED_TS_WEB" ]; then
   echo "Type checking Web..."
   npm run type-check --prefix apps/web
+  
+  echo "Running Web tests..."
+  npm test --prefix apps/web
 fi
