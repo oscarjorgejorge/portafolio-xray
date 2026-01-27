@@ -1,23 +1,44 @@
+/**
+ * Unified identifier type enum
+ * Used across the application for consistent type classification
+ */
 export enum IdentifierType {
   ISIN = 'ISIN',
   MORNINGSTAR_ID = 'MORNINGSTAR_ID',
-  UNKNOWN = 'UNKNOWN',
+  TICKER = 'TICKER',
+  FREE_TEXT = 'FREE_TEXT',
 }
 
+/**
+ * Centralized identifier classification and validation utilities
+ * Provides consistent input normalization and type detection across the API
+ */
 export class IdentifierClassifier {
   // ISIN: 2 letters (country code) + 10 alphanumeric characters
   private static readonly ISIN_REGEX = /^[A-Z]{2}[A-Z0-9]{10}$/;
 
   // Morningstar ID patterns:
   // - 0P followed by 8 alphanumeric (e.g., 0P00018NVI)
-  // - F0 followed by alphanumeric (funds)
+  // - F0 followed by alphanumeric (funds, e.g., F00000THA5)
   private static readonly MS_ID_REGEX = /^(0P[A-Z0-9]{8}|F0[A-Z0-9]{8,10})$/i;
+
+  // Ticker: 1-5 uppercase letters
+  private static readonly TICKER_REGEX = /^[A-Z]{1,5}$/;
+
+  /**
+   * Normalize input string for consistent processing
+   * Trims whitespace, converts to uppercase, and normalizes multiple spaces
+   */
+  static normalizeInput(input: string): string {
+    return input.trim().toUpperCase().replace(/\s+/g, ' ');
+  }
 
   /**
    * Classify the type of identifier
+   * Detects ISIN, Morningstar ID, Ticker, or Free Text
    */
   static classify(input: string): IdentifierType {
-    const normalized = input.trim().toUpperCase();
+    const normalized = this.normalizeInput(input);
 
     if (this.isISIN(normalized)) {
       return IdentifierType.ISIN;
@@ -27,7 +48,11 @@ export class IdentifierClassifier {
       return IdentifierType.MORNINGSTAR_ID;
     }
 
-    return IdentifierType.UNKNOWN;
+    if (this.isTicker(normalized)) {
+      return IdentifierType.TICKER;
+    }
+
+    return IdentifierType.FREE_TEXT;
   }
 
   /**
@@ -42,6 +67,13 @@ export class IdentifierClassifier {
    */
   static isMorningstarId(input: string): boolean {
     return this.MS_ID_REGEX.test(input.toUpperCase());
+  }
+
+  /**
+   * Check if input looks like a stock ticker (1-5 uppercase letters)
+   */
+  static isTicker(input: string): boolean {
+    return this.TICKER_REGEX.test(input.toUpperCase());
   }
 
   /**

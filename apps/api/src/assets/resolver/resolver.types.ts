@@ -3,8 +3,10 @@
  * Ported from POC for API integration
  */
 
-// Input type classification
-export type InputType = 'ISIN' | 'MORNINGSTAR_ID' | 'TICKER' | 'FREE_TEXT';
+import { IdentifierType } from '../../common/utils/identifier-classifier';
+
+// Re-export InputType from centralized classifier for backward compatibility
+export type InputType = IdentifierType;
 
 // Asset type according to Morningstar
 export type MorningstarAssetType = 'Fondo' | 'ETF' | 'Accion' | 'Desconocido';

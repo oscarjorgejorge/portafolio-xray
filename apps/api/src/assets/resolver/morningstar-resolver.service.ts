@@ -6,7 +6,10 @@ import {
   MorningstarAssetType,
   VerificationResult,
 } from './resolver.types';
-import { normalizeInput, classifyInput } from './utils/input-normalizer';
+import {
+  IdentifierClassifier,
+  IdentifierType,
+} from '../../common/utils/identifier-classifier';
 import { DEFAULT_RESOLVER_CONFIG, SCORE_WEIGHTS } from './utils/constants';
 
 // Search strategies
@@ -85,8 +88,8 @@ export class MorningstarResolverService implements IMorningstarResolver {
    * @returns Resolution result with confidence score
    */
   async resolve(input: string): Promise<ResolutionResult> {
-    const normalizedInput = normalizeInput(input);
-    const inputType = classifyInput(normalizedInput);
+    const normalizedInput = IdentifierClassifier.normalizeInput(input);
+    const inputType = IdentifierClassifier.classify(normalizedInput);
 
     this.logger.log(`Resolving: ${input} (type: ${inputType})`);
 
@@ -110,7 +113,10 @@ export class MorningstarResolverService implements IMorningstarResolver {
     let verification: VerificationResult | undefined = undefined;
 
     // Handle different input types
-    if (inputType === 'MORNINGSTAR_ID' && bestMatch?.morningstarId) {
+    if (
+      inputType === IdentifierType.MORNINGSTAR_ID &&
+      bestMatch?.morningstarId
+    ) {
       const result = await this.handleMorningstarIdInput(
         normalizedInput,
         bestMatch,
@@ -121,7 +127,7 @@ export class MorningstarResolverService implements IMorningstarResolver {
       confidence = result.confidence;
       verification = result.verification;
       scoredResults = result.scoredResults;
-    } else if (inputType === 'MORNINGSTAR_ID' && !bestMatch) {
+    } else if (inputType === IdentifierType.MORNINGSTAR_ID && !bestMatch) {
       const result =
         await this.handleDirectMorningstarIdResolution(normalizedInput);
       if (result) {
@@ -131,7 +137,7 @@ export class MorningstarResolverService implements IMorningstarResolver {
         verification = result.verification;
         scoredResults = [result.bestMatch];
       }
-    } else if (bestMatch?.morningstarId && inputType === 'ISIN') {
+    } else if (bestMatch?.morningstarId && inputType === IdentifierType.ISIN) {
       const result = await this.handleIsinInput(
         normalizedInput,
         bestMatch,
@@ -143,7 +149,8 @@ export class MorningstarResolverService implements IMorningstarResolver {
     } else if (
       bestMatch?.morningstarId &&
       !bestMatch.isin &&
-      (inputType === 'FREE_TEXT' || inputType === 'TICKER')
+      (inputType === IdentifierType.FREE_TEXT ||
+        inputType === IdentifierType.TICKER)
     ) {
       const result = await this.handleFreeTextOrTickerInput(bestMatch);
       bestMatch = result.bestMatch;
@@ -454,7 +461,8 @@ export class MorningstarResolverService implements IMorningstarResolver {
         (r) =>
           r !== bestMatch &&
           r.title &&
-          normalizeInput(r.title) === normalizeInput(bestMatch.title || ''),
+          IdentifierClassifier.normalizeInput(r.title) ===
+            IdentifierClassifier.normalizeInput(bestMatch.title || ''),
       );
 
     if (verified) {
