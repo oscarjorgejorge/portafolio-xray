@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, ReactNode, useCallback } from 'react';
+import { cn } from '@/lib/utils';
 
 interface ModalProps {
   /** Whether the modal is open */
@@ -31,7 +32,7 @@ const maxWidthClasses = {
 
 /**
  * Modal component with focus trap, escape key handling, and overlay click.
- * Renders as a portal to prevent z-index issues.
+ * Will be updated to use createPortal in a future improvement.
  */
 export function Modal({
   isOpen,
@@ -41,7 +42,7 @@ export function Modal({
   maxWidth = 'md',
   showCloseButton = false,
   closeOnOverlayClick = true,
-  className = '',
+  className,
 }: ModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
@@ -100,7 +101,11 @@ export function Modal({
       <div
         ref={modalRef}
         tabIndex={-1}
-        className={`bg-white rounded-lg shadow-xl ${maxWidthClasses[maxWidth]} w-full p-6 max-h-[90vh] overflow-y-auto focus:outline-none ${className}`}
+        className={cn(
+          'bg-white rounded-lg shadow-xl w-full p-6 max-h-[90vh] overflow-y-auto focus:outline-none',
+          maxWidthClasses[maxWidth],
+          className
+        )}
       >
         {(title || showCloseButton) && (
           <div className="flex items-center justify-between mb-4">
@@ -123,6 +128,7 @@ export function Modal({
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
+                  aria-hidden="true"
                 >
                   <path
                     strokeLinecap="round"

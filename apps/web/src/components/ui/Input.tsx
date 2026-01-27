@@ -1,6 +1,7 @@
 'use client';
 
 import React, { forwardRef, useId } from 'react';
+import { cn } from '@/lib/utils';
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -8,7 +9,7 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, error, className = '', id, ...props }, ref) => {
+  ({ label, error, className, id, ...props }, ref) => {
     const generatedId = useId();
     const inputId = id || generatedId;
 
@@ -27,13 +28,13 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           id={inputId}
           aria-invalid={Boolean(error)}
           aria-describedby={error ? `${inputId}-error` : undefined}
-          className={`
-            w-full px-3 py-2 border rounded-lg
-            text-slate-900 bg-white
-            focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-            ${error ? 'border-red-500' : 'border-slate-300'}
-            ${className}
-          `}
+          className={cn(
+            'w-full px-3 py-2 border rounded-lg',
+            'text-slate-900 bg-white',
+            'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+            error ? 'border-red-500' : 'border-slate-300',
+            className
+          )}
           {...props}
         />
         {error && (
