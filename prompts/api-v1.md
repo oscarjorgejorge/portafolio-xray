@@ -761,3 +761,220 @@ lets address this problem: N+1 Query in XRayService.buildMorningstarUrl
 **Verification:**
 - ✅ Lint passed
 - ✅ Type-check passed
+
+### Prompt 70
+como senior backend developper analiza la api, y dime que mejoras y optmizaciones son necesarias teniendo en cuenta las buenas practicas (la parte de los test los implementaremos mas adelante)
+
+**Analysis Summary:**
+Comprehensive code review identifying 10 areas for improvement organized by priority:
+
+**High Priority:**
+1. Custom Exceptions - usar excepciones de dominio específicas
+2. Input Validation (UUID) - validar parámetros de ruta
+3. Cache Layer - añadir caché in-memory para búsquedas frecuentes
+
+**Medium Priority:**
+4. API Versioning - añadir prefijo `/api/v1`
+5. Connection Pooling Config - configurar pool de conexiones DB
+6. Structured Logging - logging con correlación
+
+**Low Priority:**
+7. Code Cleanup - eliminar código muerto
+8. Additional DB Indexes - índices para ticker y name
+
+### Prompt 71
+vamos a arreglar este problema: Añadir capa de Interfaces/Abstractions para los servicios luego haz el commit
+
+**Implementation - Interface Abstractions Layer:**
+
+1. **Created interface files for each module:**
+   - `src/common/interfaces/http-client.interface.ts` - IHttpClient
+   - `src/assets/interfaces/assets-repository.interface.ts` - IAssetsRepository with data types
+   - `src/assets/interfaces/assets-service.interface.ts` - IAssetsService with ResolveAssetResponse
+   - `src/assets/interfaces/morningstar-resolver.interface.ts` - IMorningstarResolver
+   - `src/assets/interfaces/isin-enrichment.interface.ts` - IIsinEnrichmentService
+   - `src/xray/interfaces/xray-service.interface.ts` - IXRayService with GenerateXRayResponse
+   - `src/health/interfaces/health-service.interface.ts` - IHealthService with LivenessResponse
+
+2. **Updated services to implement interfaces:**
+   - `HttpClientService implements IHttpClient`
+   - `AssetsRepository implements IAssetsRepository`
+   - `AssetsService implements IAssetsService`
+   - `MorningstarResolverService implements IMorningstarResolver`
+   - `IsinEnrichmentService implements IIsinEnrichmentService`
+   - `XRayService implements IXRayService`
+   - `HealthService implements IHealthService`
+
+3. **Added injection tokens for each interface:**
+   - `HTTP_CLIENT`, `ASSETS_REPOSITORY`, `ASSETS_SERVICE`
+   - `MORNINGSTAR_RESOLVER`, `ISIN_ENRICHMENT_SERVICE`
+   - `XRAY_SERVICE`, `HEALTH_SERVICE`
+
+4. **Updated exports:**
+   - Added `interfaces/index.ts` barrel exports in each module
+   - Updated module `index.ts` files to export interfaces
+
+5. **Benefits:**
+   - Easier mocking in unit tests
+   - Clear service contracts
+   - Better dependency injection patterns
+   - Improved code documentation
+   - Decoupled implementations from contracts
+
+**Verification:**
+- ✅ Lint passed
+- ✅ Type-check passed
+- ✅ Tests passed (1/1)
+
+**Commit:** `refactor(api): add interface abstractions for services`
+
+### Prompt 72
+ahora vamos a mejorar esto: Separar Response Types en archivos dedicados
+
+**Implementation - Separate Response Types into Dedicated Files:**
+
+1. **Created dedicated type files for each module:**
+
+   **Assets Module (`src/assets/types/`):**
+   - `resolve-asset-response.type.ts`:
+     - `AssetAlternative` - Alternative asset suggestion interface
+     - `ResolveAssetSource` - Union type for resolution sources
+     - `ResolveAssetResponse` - Full response with JSDoc documentation
+
+   **XRay Module (`src/xray/types/`):**
+   - `generate-xray-response.type.ts`:
+     - `GenerateXRayResponse` - X-Ray URL generation response
+
+   **Health Module (`src/health/types/`):**
+   - `liveness-response.type.ts`:
+     - `LivenessResponse` - Liveness health check response
+
+2. **Updated interface files:**
+   - Removed inline type definitions
+   - Import types from dedicated type files
+   - Interfaces now only define service contracts
+
+3. **Updated services and controllers:**
+   - Services import types from `./types` instead of `./interfaces`
+   - Controllers import response types from `./types`
+
+4. **Updated module exports:**
+   - Added `types/index.ts` barrel exports
+   - Main `index.ts` exports types alongside interfaces
+
+5. **Benefits:**
+   - Clear separation between contracts (interfaces) and data structures (types)
+   - Better code organization and discoverability
+   - Types can be reused without importing the entire interface module
+   - Improved documentation with JSDoc on type properties
+
+**Verification:**
+- ✅ Lint passed
+- ✅ Type-check passed
+- ✅ Tests passed (1/1)
+
+**Commit:** `refactor(api): separate response types into dedicated files`
+
+### Prompt 73
+como senior backend developper analiza la api, y dime que mejoras y optmizaciones son necesarias teniendo en cuenta las buenas practicas (la parte de los test los implementaremos mas adelante)
+
+**Analysis Summary:**
+Comprehensive code review identifying improvements organized by priority:
+
+**High Priority (Critical):**
+1. Falta de Transacciones en Operaciones de Base de Datos - `upsertByIsin` hace find + update sin transacción
+2. Race Conditions en IsinEnrichmentService - fire-and-forget sin control de concurrencia
+3. Validación de UUIDs Faltante en Controllers - endpoints con :id no validan formato UUID
+4. Manejo de Errores Silencioso en HttpClientService - retorna null sin propagar errores
+
+**Medium Priority:**
+5. Falta de Caching para Resoluciones Externas
+6. Configuración Hardcodeada en el Código
+7. Falta de Logging Estructurado
+8. Método parseShareableUrl No Utilizado
+9. Inyección de Dependencias Sin Interfaces (tokens)
+
+**Low Priority:**
+10. DTOs Duplicados (AssetType)
+11. Health Check Incompleto (solo DB)
+12. Helmet CSP Demasiado Permisivo
+13. Falta Compresión de Respuestas
+14. Timeout Inconsistente en Estrategias
+15. PrismaService Lee process.env Directamente
+
+### Prompt 74
+vamos a mejorar este problema: Falta de Transacciones en Operaciones de Base de Datos
+
+**Implementation - Database Transactions:**
+
+1. **Modified `upsertByIsin` in AssetsRepository:**
+   - Wrapped entire operation in `prisma.$transaction()`
+   - All operations (findFirst + update/upsert) now execute atomically
+   - Prevents race conditions when concurrent requests try to upsert the same ISIN
+
+2. **Added `updateIsinWithVerification` method:**
+   - New transactional method that verifies asset exists before updating
+   - Combines existence check + update in single transaction
+   - Throws Error if asset not found (repository layer)
+
+3. **Updated IAssetsRepository interface:**
+   - Added `updateIsinWithVerification` method signature
+   - Full JSDoc documentation
+
+4. **Updated AssetsService:**
+   - `updateIsin` now uses `updateIsinWithVerification`
+   - Converts repository Error to NestJS NotFoundException
+
+**Benefits:**
+- Atomicity: Operations complete fully or not at all
+- Consistency: No partial updates possible
+- Isolation: Concurrent requests don't interfere
+- No race conditions between find and update
+
+### Prompt 75
+vamos ahora con esta mejora: Race Conditions en IsinEnrichmentService
+
+**Implementation - Prevent Race Conditions in ISIN Enrichment:**
+
+1. **Added enrichment tracking Map:**
+   ```typescript
+   private readonly enrichmentQueue = new Map<string, Promise<void>>();
+   ```
+
+2. **Modified `enrichIsinInBackground`:**
+   - Checks if enrichment is already in progress for the asset
+   - If duplicate request, logs debug message and returns immediately
+   - Tracks active enrichment in Map with Promise
+   - Uses `.finally()` to clean up Map entry when done (success or failure)
+
+3. **Added monitoring methods:**
+   - `isEnrichmentInProgress(assetId)` - Check if enrichment is running
+   - `getActiveEnrichmentCount()` - Get number of active enrichments
+
+4. **Updated IIsinEnrichmentService interface:**
+   - Added new monitoring method signatures
+
+**Benefits:**
+- Prevents duplicate enrichments for same asset
+- No memory leaks (Map cleaned up via finally)
+- Observable: Can monitor active enrichments
+- Graceful: Concurrent requests handled without errors
+
+### Prompt 76
+y luego con esta: Validación de UUIDs Faltante en Controllers, update the prompts, commit all the changes and push
+
+**Implementation - UUID Validation in Controllers:**
+
+1. **Added ParseUUIDPipe to assets.controller.ts:**
+   - Import `ParseUUIDPipe` from `@nestjs/common`
+   - Applied to `GET /assets/:id` endpoint
+   - Applied to `PATCH /assets/:id/isin` endpoint
+
+2. **Updated Swagger documentation:**
+   - Added 400 response for "Invalid UUID format" on both endpoints
+
+**Benefits:**
+- Early validation: Invalid UUIDs rejected before hitting service/database
+- Consistent error messages: NestJS provides standard 400 response
+- Security: Prevents injection attempts via malformed IDs
+- Performance: Avoids unnecessary database queries

@@ -207,18 +207,27 @@ export class AssetsService implements IAssetsService {
 
   /**
    * Update ISIN for an existing asset (manual entry by user)
+   * Uses transactional method to ensure atomicity between existence check and update
    * @param id - Asset UUID
    * @param isin - New ISIN value
    */
   async updateIsin(id: string, isin: string): Promise<Asset> {
-    // First verify the asset exists
-    const asset = await this.assetsRepository.findById(id);
-    if (!asset) {
-      throw new NotFoundException(`Asset with id "${id}" not found`);
-    }
-
     this.logger.log(`Manually updating ISIN for asset ${id}: ${isin}`);
-    return this.assetsRepository.updateIsin(id, isin, true); // Mark as manually entered
+
+    try {
+      // Use transactional method to ensure atomicity
+      return await this.assetsRepository.updateIsinWithVerification(
+        id,
+        isin,
+        true,
+      ); // Mark as manually entered
+    } catch (error) {
+      // Convert repository error to NestJS NotFoundException
+      if (error instanceof Error && error.message.includes('not found')) {
+        throw new NotFoundException(`Asset with id "${id}" not found`);
+      }
+      throw error;
+    }
   }
 
   /**

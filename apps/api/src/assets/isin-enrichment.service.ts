@@ -10,10 +10,20 @@ import { IIsinEnrichmentService } from './interfaces';
  * IsinEnrichmentService
  * Asynchronously enriches assets with their real ISIN by searching the web
  * Uses fire-and-forget pattern to not block the main response
+ *
+ * Features:
+ * - Deduplication: Prevents multiple enrichments for the same asset running concurrently
+ * - Graceful cleanup: Ensures tracking map is cleaned up even on errors
  */
 @Injectable()
 export class IsinEnrichmentService implements IIsinEnrichmentService {
   private readonly logger = new Logger(IsinEnrichmentService.name);
+
+  /**
+   * Track enrichments currently in progress to prevent duplicate concurrent operations
+   * Key: assetId, Value: Promise of the enrichment operation
+   */
+  private readonly enrichmentQueue = new Map<string, Promise<void>>();
 
   constructor(
     private readonly assetsRepository: AssetsRepository,
@@ -23,13 +33,49 @@ export class IsinEnrichmentService implements IIsinEnrichmentService {
   /**
    * Enrich ISIN in background (fire-and-forget)
    * Does not block - returns immediately
+   * Prevents duplicate enrichments for the same asset
    */
   enrichIsinInBackground(assetId: string, fundName: string): void {
-    // Use setImmediate to not block the event loop
-    // Wrap async function to satisfy ESLint void return requirement
-    setImmediate(() => {
-      void this.performEnrichment(assetId, fundName);
-    });
+    // Check if enrichment is already in progress for this asset
+    if (this.enrichmentQueue.has(assetId)) {
+      this.logger.debug(
+        `[ENRICH] Enrichment already in progress for asset ${assetId}, skipping duplicate request`,
+      );
+      return;
+    }
+
+    // Create the enrichment promise and track it
+    const enrichmentPromise = this.performEnrichment(assetId, fundName).finally(
+      () => {
+        // Always clean up the queue entry when done (success or failure)
+        this.enrichmentQueue.delete(assetId);
+        this.logger.debug(
+          `[ENRICH] Removed asset ${assetId} from enrichment queue (${this.enrichmentQueue.size} remaining)`,
+        );
+      },
+    );
+
+    // Add to tracking map
+    this.enrichmentQueue.set(assetId, enrichmentPromise);
+    this.logger.debug(
+      `[ENRICH] Added asset ${assetId} to enrichment queue (${this.enrichmentQueue.size} total)`,
+    );
+  }
+
+  /**
+   * Check if an enrichment is currently in progress for a given asset
+   * Useful for debugging and testing
+   */
+  isEnrichmentInProgress(assetId: string): boolean {
+    return this.enrichmentQueue.has(assetId);
+  }
+
+  /**
+   * Get the number of enrichments currently in progress
+   * Useful for monitoring and debugging
+   */
+  getActiveEnrichmentCount(): number {
+    return this.enrichmentQueue.size;
   }
 
   /**

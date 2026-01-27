@@ -65,6 +65,21 @@ export interface IAssetsRepository {
   updateIsin(assetId: string, isin: string, isManual?: boolean): Promise<Asset>;
 
   /**
+   * Verify asset exists and update ISIN atomically using a transaction
+   * This method ensures no race conditions between checking existence and updating
+   * @param assetId - Asset UUID
+   * @param isin - New ISIN value
+   * @param isManual - Whether the ISIN was manually entered by user
+   * @returns Updated asset
+   * @throws Error if asset not found
+   */
+  updateIsinWithVerification(
+    assetId: string,
+    isin: string,
+    isManual?: boolean,
+  ): Promise<Asset>;
+
+  /**
    * Mark ISIN enrichment as complete (even if ISIN was not found)
    * @param assetId - Asset UUID
    */

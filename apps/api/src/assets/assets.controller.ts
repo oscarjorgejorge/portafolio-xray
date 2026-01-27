@@ -7,6 +7,7 @@ import {
   Param,
   HttpCode,
   HttpStatus,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { AssetsService } from './assets.service';
@@ -73,10 +74,14 @@ export class AssetsController {
     description: 'Asset found',
   })
   @ApiResponse({
+    status: 400,
+    description: 'Invalid UUID format',
+  })
+  @ApiResponse({
     status: 404,
     description: 'Asset not found',
   })
-  async getById(@Param('id') id: string): Promise<Asset> {
+  async getById(@Param('id', ParseUUIDPipe) id: string): Promise<Asset> {
     return this.assetsService.getById(id);
   }
 
@@ -117,14 +122,14 @@ export class AssetsController {
   })
   @ApiResponse({
     status: 400,
-    description: 'Invalid ISIN format',
+    description: 'Invalid UUID format or invalid ISIN format',
   })
   @ApiResponse({
     status: 404,
     description: 'Asset not found',
   })
   async updateIsin(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateIsinDto,
   ): Promise<Asset> {
     return this.assetsService.updateIsin(id, dto.isin);
