@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, memo } from 'react';
 import { PortfolioAsset, AllocationMode } from '@/types';
 import { Spinner } from '@/components/ui/Spinner';
 import { InputNumber } from '@/components/ui/InputNumber';
@@ -11,7 +11,7 @@ import { useIsinPolling } from '@/lib/hooks/useIsinPolling';
 import type { Asset } from '@/types';
 
 // ============================================
-// Sub-components to reduce code duplication
+// Memoized sub-components for performance
 // ============================================
 
 interface WeightInputProps {
@@ -22,13 +22,13 @@ interface WeightInputProps {
   variant: 'mobile' | 'desktop';
 }
 
-const WeightInput: React.FC<WeightInputProps> = ({
+const WeightInput = memo<WeightInputProps>(function WeightInput({
   value,
   onChange,
   allocationMode,
   hasError,
   variant,
-}) => {
+}) {
   const label = allocationMode === 'percentage' ? 'Weight (%)' : 'Amount';
   const isMobile = variant === 'mobile';
   const maxValue = allocationMode === 'percentage' ? 100 : undefined;
@@ -48,7 +48,7 @@ const WeightInput: React.FC<WeightInputProps> = ({
       className={cn(isMobile && 'flex-1')}
     />
   );
-};
+});
 
 interface RemoveButtonProps {
   onClick: () => void;
@@ -58,42 +58,49 @@ interface RemoveButtonProps {
   className?: string;
 }
 
-const RemoveButton: React.FC<RemoveButtonProps> = ({
+const RemoveButton = memo<RemoveButtonProps>(function RemoveButton({
   onClick,
   showTooltip,
   onMouseEnter,
   onMouseLeave,
   className,
-}) => (
-  <div className={cn('relative', className)}>
-    <button
-      onClick={onClick}
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
-      className="p-1.5 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
-      aria-label="Remove asset"
-    >
-      <TrashIcon />
-    </button>
-    {showTooltip && (
-      <div className="absolute right-0 top-full mt-1 px-2 py-1 bg-slate-900 text-white text-xs rounded shadow-lg z-10 whitespace-nowrap">
-        Remove
-        <div className="absolute -top-1 right-2 h-2 w-2 bg-slate-900 rotate-45"></div>
-      </div>
-    )}
-  </div>
-);
+}) {
+  return (
+    <div className={cn('relative', className)}>
+      <button
+        onClick={onClick}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
+        className="p-1.5 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
+        aria-label="Remove asset"
+      >
+        <TrashIcon />
+      </button>
+      {showTooltip && (
+        <div className="absolute right-0 top-full mt-1 px-2 py-1 bg-slate-900 text-white text-xs rounded shadow-lg z-10 whitespace-nowrap">
+          Remove
+          <div className="absolute -top-1 right-2 h-2 w-2 bg-slate-900 rotate-45"></div>
+        </div>
+      )}
+    </div>
+  );
+});
 
 interface ErrorMessageProps {
   error: string;
   className?: string;
 }
 
-const ErrorMessage: React.FC<ErrorMessageProps> = ({ error, className }) => (
-  <p className={cn('text-xs text-red-600', className)} role="alert">
-    {error}
-  </p>
-);
+const ErrorMessage = memo<ErrorMessageProps>(function ErrorMessage({
+  error,
+  className,
+}) {
+  return (
+    <p className={cn('text-xs text-red-600', className)} role="alert">
+      {error}
+    </p>
+  );
+});
 
 // ============================================
 // Main component
@@ -109,7 +116,7 @@ interface AssetRowProps {
   error?: string;
 }
 
-export const AssetRow: React.FC<AssetRowProps> = ({
+export const AssetRow = memo<AssetRowProps>(function AssetRow({
   asset,
   allocationMode,
   onWeightChange,
@@ -117,7 +124,7 @@ export const AssetRow: React.FC<AssetRowProps> = ({
   onOpenManualInput,
   onAssetUpdated,
   error,
-}) => {
+}) {
   const [showTooltip, setShowTooltip] = useState(false);
 
   const handleWeightChange = useCallback(
@@ -126,6 +133,10 @@ export const AssetRow: React.FC<AssetRowProps> = ({
     },
     [asset.id, onWeightChange]
   );
+
+  const handleRemove = useCallback(() => {
+    onRemove(asset.id);
+  }, [asset.id, onRemove]);
 
   const handleIsinResolved = useCallback(
     (updatedAsset: Asset) => {
@@ -136,6 +147,9 @@ export const AssetRow: React.FC<AssetRowProps> = ({
     [asset.id, onAssetUpdated]
   );
 
+  const handleMouseEnter = useCallback(() => setShowTooltip(true), []);
+  const handleMouseLeave = useCallback(() => setShowTooltip(false), []);
+
   const isinPending = asset.isinPending || asset.asset?.isinPending || false;
   useIsinPolling({
     assetId: asset.asset?.id,
@@ -144,11 +158,6 @@ export const AssetRow: React.FC<AssetRowProps> = ({
   });
 
   const hasWeightError = Boolean(error && error !== asset.error);
-  const handleRemove = () => onRemove(asset.id);
-  const tooltipHandlers = {
-    onMouseEnter: () => setShowTooltip(true),
-    onMouseLeave: () => setShowTooltip(false),
-  };
 
   return (
     <div className="border border-slate-200 rounded-lg p-4 bg-white">
@@ -224,7 +233,8 @@ export const AssetRow: React.FC<AssetRowProps> = ({
               <RemoveButton
                 onClick={handleRemove}
                 showTooltip={showTooltip}
-                {...tooltipHandlers}
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
                 className="flex items-start"
               />
             </div>
@@ -233,7 +243,8 @@ export const AssetRow: React.FC<AssetRowProps> = ({
               <RemoveButton
                 onClick={handleRemove}
                 showTooltip={showTooltip}
-                {...tooltipHandlers}
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
                 className="mt-0.5"
               />
             </div>
@@ -266,7 +277,8 @@ export const AssetRow: React.FC<AssetRowProps> = ({
               <RemoveButton
                 onClick={handleRemove}
                 showTooltip={showTooltip}
-                {...tooltipHandlers}
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
                 className="flex items-start pt-6"
               />
             </div>
@@ -275,7 +287,8 @@ export const AssetRow: React.FC<AssetRowProps> = ({
               <RemoveButton
                 onClick={handleRemove}
                 showTooltip={showTooltip}
-                {...tooltipHandlers}
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
                 className="mt-0.5"
               />
             </div>
@@ -314,4 +327,4 @@ export const AssetRow: React.FC<AssetRowProps> = ({
       )}
     </div>
   );
-};
+});
