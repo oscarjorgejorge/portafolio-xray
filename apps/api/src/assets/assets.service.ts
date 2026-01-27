@@ -326,25 +326,19 @@ export class AssetsService implements IAssetsService {
       }
     }
 
-    // Individual queries for ISINs (findFirst doesn't support batch)
-    // This is still more efficient than the N+1 pattern because we skip external resolution
+    // Batch query for ISINs (single query instead of N queries)
     if (isins.length > 0) {
-      const isinPromises = isins.map(async (isin) => {
-        const asset = await this.assetsRepository.findByIsin(isin);
-        if (asset && (asset.isin || asset.isinPending)) {
-          return { isin, asset };
-        }
-        return null;
-      });
+      const isinAssets = await this.assetsRepository.findManyByIsins(isins);
+      for (const asset of isinAssets) {
+        // Skip if needs re-resolution (no ISIN and enrichment complete)
+        if (!asset.isin && !asset.isinPending) continue;
 
-      const isinResults = await Promise.all(isinPromises);
-      for (const result of isinResults) {
-        if (result) {
-          results.set(result.isin, {
+        if (asset.isin) {
+          results.set(asset.isin.toUpperCase(), {
             success: true,
             source: 'cache',
-            asset: result.asset,
-            isinPending: result.asset.isinPending,
+            asset,
+            isinPending: asset.isinPending,
           });
         }
       }

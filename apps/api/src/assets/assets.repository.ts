@@ -41,6 +41,24 @@ export class AssetsRepository implements IAssetsRepository {
     });
   }
 
+  /**
+   * Find multiple assets by their ISINs in a single query
+   * Optimizes batch lookups to avoid N+1 queries
+   * @param isins - Array of ISINs to look up
+   * @returns Array of found assets (may be fewer than input if some don't exist)
+   */
+  async findManyByIsins(isins: string[]): Promise<Asset[]> {
+    if (isins.length === 0) {
+      return [];
+    }
+
+    return this.prisma.asset.findMany({
+      where: {
+        isin: { in: isins.map((i) => i.toUpperCase()) },
+      },
+    });
+  }
+
   async findById(id: string): Promise<Asset | null> {
     return this.prisma.asset.findUnique({
       where: { id },

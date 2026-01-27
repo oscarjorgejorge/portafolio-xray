@@ -25,6 +25,14 @@ export interface IAssetsRepository {
   findManyByMorningstarIds(morningstarIds: string[]): Promise<Asset[]>;
 
   /**
+   * Find multiple assets by their ISINs in a single query
+   * Optimizes batch lookups to avoid N+1 queries
+   * @param isins - Array of ISINs to look up
+   * @returns Array of found assets (may be fewer than input if some don't exist)
+   */
+  findManyByIsins(isins: string[]): Promise<Asset[]>;
+
+  /**
    * Find an asset by its internal UUID
    * @param id - Internal asset UUID
    */
