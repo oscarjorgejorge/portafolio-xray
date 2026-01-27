@@ -1518,3 +1518,54 @@ vamos con estas mejoras y ve haciendo commits con cada mejora
     - Add isLoading prop to show skeleton loader
     - Improve resolving state with spinner and message
     - Better visual feedback during asset resolution
+
+### Prompt 93
+como senior frontend developper analiza la web, y dime que mejoras y optmizaciones que son necesarias teniendo en cuenta las buenas practicas (la parte de los test los implementaremos mas adelante), pero tampoco quiero algo overkill / complejo sin necesidad
+
+**Implementations (9 commits):**
+
+1. **Improve cn() utility with clsx for better class composition** (`6e2f92b`):
+   - Add clsx library for flexible class composition
+   - Support object syntax: `cn({ 'active': isActive })`
+   - Support array syntax: `cn(['flex', 'items-center'])`
+   - Better handling of conditional classes
+
+2. **Add PortfolioBuilderSkeleton for better loading UX** (`a562cca`):
+   - Create dedicated skeleton for PortfolioBuilder component
+   - Replace basic "Loading portfolio..." text with visual skeleton
+   - Better user feedback when loading from shareable URL
+
+3. **Add consistent disabled styles to Input components** (`72e2f2c`):
+   - Add disabled:bg-slate-100, disabled:text-slate-500, disabled:cursor-not-allowed
+   - Apply to both Input and InputNumber components
+   - Consistent visual feedback for disabled state
+
+4. **Use Portal for Toast components to fix z-index issues** (`2115a8a`):
+   - Render Toast and ToastContainer at document body level
+   - Use createPortal (same pattern as Modal)
+   - Prevents z-index stacking issues with overflow:hidden parents
+
+5. **Simplify unnecessary useCallback wrappers** (`da37f72`):
+   - Remove redundant wrappers that only delegate to other hooks
+   - Expose functions directly from composed hooks
+   - Reduce code complexity without affecting performance
+
+6. **Add centralized query keys and cache invalidation** (`4bd55af`):
+   - Create queryKeys utility for consistent React Query cache management
+   - Invalidate asset cache when ISIN is manually updated
+   - Prepare for future cache management needs
+
+7. **Add complete focus trap to Modal component** (`6b4cdcc`):
+   - Implement keyboard navigation trap with Tab/Shift+Tab
+   - Restore focus to previously focused element on close
+   - Improves accessibility for keyboard-only users
+
+8. **Add centralized error reporting service** (`fd899f8`):
+   - Create extensible error reporting service
+   - Prepare for future Sentry/LogRocket integration
+   - Update ErrorBoundary to use centralized service
+
+9. **Replace axios with native fetch for smaller bundle** (`d699e8f`):
+   - Create lightweight fetch-based API client
+   - Remove axios dependency (~13KB gzipped savings)
+   - Maintain same interface with proper timeout/error handling
