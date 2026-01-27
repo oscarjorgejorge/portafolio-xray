@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { PortfolioAsset, Asset, AssetType } from '@/types';
 
 interface UseAssetManagementOptions {
@@ -33,6 +33,13 @@ export function useAssetManagement({
   onAssetsChange,
 }: UseAssetManagementOptions = {}): UseAssetManagementReturn {
   const [assets, setAssets] = useState<PortfolioAsset[]>(initialAssets);
+
+  // Sync state when initialAssets changes (e.g., from URL parsing)
+  useEffect(() => {
+    if (initialAssets.length > 0) {
+      setAssets(initialAssets);
+    }
+  }, [initialAssets]);
 
   const addAsset = useCallback(
     (asset: PortfolioAsset) => {
