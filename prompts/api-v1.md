@@ -1360,3 +1360,75 @@ name!: string;
 - Single source of truth for transform logic
 - Easier to maintain and test
 - Type-safe with TransformFnParams
+
+### Prompt 89
+como senior frontend developper analiza la web, y dime que mejoras y optmizaciones que son necesarias teniendo en cuenta las buenas practicas (la parte de los test los implementaremos mas adelante), pero tampoco quiero algo overkill / complejo sin necesitad
+
+**Analysis Summary:**
+Comprehensive frontend code review with recommendations organized by priority:
+
+**Good practices already in place:**
+- Next.js 16 with Turbopack configured
+- React Query for server state management
+- TypeScript strict mode enabled
+- Tailwind CSS for styling
+- Good folder structure
+- Custom hooks (useIsinPolling)
+- Basic accessibility with aria-labels
+
+**Recommended Improvements:**
+1. Extract PortfolioBuilder logic into custom hook
+2. Remove duplicated shareable URL code
+3. Unify Asset types with re-exports from @/types
+4. Create .env.example files
+5. Fix dependency array in xray/page.tsx
+6. Add forwardRef to Button and Input components
+7. Add barrel exports for components and hooks
+8. Improve Toast accessibility with aria-live and dismiss button
+
+### Prompt 90
+Vamos con estas mejoras, haz un comit despues de cada una: Extraer lógica del PortfolioBuilder a un custom hook, Eliminar código duplicado - Shareable URL, Mejorar tipo de Asset - Unificar definición, Crear archivo .env.example, Dependency array en xray/page.tsx, Mejorar componentes UI con forwardRef, Añadir barrel exports para componentes, Mejorar accesibilidad del Toast
+
+**Implementations:**
+
+1. **Extract PortfolioBuilder logic into usePortfolioBuilder hook** (`d95f92e`):
+   - Created `usePortfolioBuilder.ts` hook with all state management
+   - Hook handles: assets, allocationMode, modals, URLs, toast, validation
+   - All handlers wrapped in useCallback for performance
+   - PortfolioBuilder component now purely presentational
+
+2. **Extract shareable URL logic into useShareableUrl hook** (`a4b7c2c`):
+   - Created `useShareableUrl.ts` hook for URL state management
+   - Centralizes: shareableUrl, fullShareableUrl, morningstarUrl, copied state
+   - Provides: copyToClipboard, openMorningstarPdf, clearUrls methods
+   - Updated xray/page.tsx and usePortfolioBuilder to use hook
+
+3. **Unify Asset types by re-exporting from @/types** (`3237270`):
+   - Added `export type { Asset, AssetType, AlternativeAsset }` to types/index.ts
+   - Updated 8 files to import types from `@/types` instead of `@/lib/api/assets`
+   - Single source of truth for type imports
+
+4. **Add .env.example files for web and api apps** (`c5bba93`):
+   - Created `apps/web/.env.example` with NEXT_PUBLIC_API_URL
+   - Updated `apps/api/.env.example` with all environment variables documented
+
+5. **Fix dependency array in xray/page.tsx** (`cf1a33b`):
+   - Extracted `mutate` from `generateMutation` object
+   - Added `mutate` to useEffect dependency array
+   - Removed eslint-disable comment
+
+6. **Add forwardRef to Button and Input components** (`23df139`):
+   - Updated Button component with `forwardRef<HTMLButtonElement, ButtonProps>`
+   - Updated Input component with `forwardRef<HTMLInputElement, InputProps>`
+   - Added displayName for DevTools debugging
+
+7. **Add barrel exports for ui, portfolio components and hooks** (`585ab21`):
+   - Created `components/ui/index.ts` - exports all UI components and icons
+   - Created `components/portfolio/index.ts` - exports all portfolio components
+   - Created `lib/hooks/index.ts` - exports all hooks
+
+8. **Improve Toast accessibility with aria-live and dismiss button** (`e42d5e3`):
+   - Added `role="status"` and `aria-live` (polite/assertive based on variant)
+   - Added `aria-atomic="true"` for screen reader announcements
+   - Added visible dismiss button with close icon
+   - Added `showCloseButton` prop (default: true)
