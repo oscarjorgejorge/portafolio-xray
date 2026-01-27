@@ -1,6 +1,13 @@
 'use client';
 
-import React, { useEffect, useRef, ReactNode, useCallback } from 'react';
+import React, {
+  useEffect,
+  useRef,
+  ReactNode,
+  useCallback,
+  useState,
+} from 'react';
+import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
 
 interface ModalProps {
@@ -32,7 +39,7 @@ const maxWidthClasses = {
 
 /**
  * Modal component with focus trap, escape key handling, and overlay click.
- * Will be updated to use createPortal in a future improvement.
+ * Uses createPortal to render at document body level, preventing z-index issues.
  */
 export function Modal({
   isOpen,
@@ -46,6 +53,13 @@ export function Modal({
 }: ModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
+
+  // Only render portal after component mounts (client-side only)
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
 
   // Handle escape key press
   const handleKeyDown = useCallback(
@@ -87,9 +101,10 @@ export function Modal({
     };
   }, [isOpen, handleKeyDown]);
 
-  if (!isOpen) return null;
+  // Don't render anything if not open or not mounted (SSR safety)
+  if (!isOpen || !mounted) return null;
 
-  return (
+  const modalContent = (
     <div
       ref={overlayRef}
       onClick={handleOverlayClick}
@@ -145,4 +160,7 @@ export function Modal({
       </div>
     </div>
   );
+
+  // Render modal at document body level using portal
+  return createPortal(modalContent, document.body);
 }
