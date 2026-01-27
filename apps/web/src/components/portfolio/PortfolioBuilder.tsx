@@ -5,9 +5,9 @@ import dynamic from 'next/dynamic';
 import { AssetInput } from './AssetInput';
 import { AssetRow } from './AssetRow';
 import { AllocationModeToggle } from './AllocationModeToggle';
-import { Button } from '@/components/ui/Button';
+import { PortfolioSummary } from './PortfolioSummary';
+import { ShareableUrlSection } from './ShareableUrlSection';
 import { Card } from '@/components/ui/Card';
-import { Alert } from '@/components/ui/Alert';
 import { Toast } from '@/components/ui/Toast';
 import type { PortfolioAsset } from '@/types';
 import { usePortfolioBuilder } from '@/lib/hooks/usePortfolioBuilder';
@@ -106,82 +106,24 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
               ))}
             </div>
 
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-4 border-t border-slate-200">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-                <div className="text-sm text-slate-700">
-                  <span className="font-medium">Total:</span>{' '}
-                  {allocationMode === 'percentage' ? (
-                    <span
-                      className={
-                        Math.abs(totalWeight - 100) < 0.01
-                          ? 'text-green-600'
-                          : 'text-red-600'
-                      }
-                    >
-                      {totalWeight.toFixed(2)}%
-                    </span>
-                  ) : (
-                    <span className="text-slate-900">{totalWeight.toFixed(2)}</span>
-                  )}
-                </div>
-                {allocationMode === 'percentage' &&
-                  Math.abs(totalWeight - 100) >= 0.01 && (
-                    <Alert variant="warning" className="py-2 px-3 text-sm">
-                      Total must equal 100%. Remaining:{' '}
-                      {(100 - totalWeight).toFixed(2)}%
-                    </Alert>
-                  )}
-              </div>
-              <div className="flex gap-2">
-                <Button variant="secondary" onClick={handleClearAll}>
-                  Clear All
-                </Button>
-                <Button
-                  onClick={handleGenerate}
-                  disabled={!isValid}
-                  isLoading={isGenerating}
-                >
-                  Generate X-Ray
-                </Button>
-              </div>
-            </div>
+            <PortfolioSummary
+              totalWeight={totalWeight}
+              allocationMode={allocationMode}
+              isValid={isValid}
+              isGenerating={isGenerating}
+              onClearAll={handleClearAll}
+              onGenerate={handleGenerate}
+            />
 
             {/* Shareable URL Section - Show after successful generation */}
             {shareableUrl && fullShareableUrl && (
-              <div className="pt-4 border-t border-slate-200">
-                <div className="space-y-3">
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-slate-700">
-                      Shareable Link
-                    </label>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        readOnly
-                        value={fullShareableUrl}
-                        className="flex-1 px-3 py-2 border border-slate-300 rounded-lg bg-white text-slate-900 text-sm"
-                      />
-                      <Button
-                        onClick={handleCopyUrl}
-                        variant="secondary"
-                        size="sm"
-                      >
-                        {copied ? 'Copied!' : 'Copy'}
-                      </Button>
-                    </div>
-                    <p className="text-xs text-slate-500">
-                      Share this link to recreate the portfolio
-                    </p>
-                  </div>
-                  <Button
-                    onClick={handleOpenPDF}
-                    className="w-full"
-                    disabled={!morningstarUrl}
-                  >
-                    View X-Ray Report
-                  </Button>
-                </div>
-              </div>
+              <ShareableUrlSection
+                fullShareableUrl={fullShareableUrl}
+                morningstarUrl={morningstarUrl}
+                copied={copied}
+                onCopyUrl={handleCopyUrl}
+                onOpenPDF={handleOpenPDF}
+              />
             )}
           </>
         )}
