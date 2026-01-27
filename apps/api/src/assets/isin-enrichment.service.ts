@@ -8,12 +8,22 @@ import { VALID_ISIN_PREFIXES } from './resolver/utils/constants';
 import { IIsinEnrichmentService } from './interfaces';
 
 /**
+ * Enrichment task waiting in the pending queue
+ */
+interface PendingEnrichment {
+  assetId: string;
+  fundName: string;
+}
+
+/**
  * IsinEnrichmentService
  * Asynchronously enriches assets with their real ISIN by searching the web
  * Uses fire-and-forget pattern to not block the main response
  *
  * Features:
  * - Deduplication: Prevents multiple enrichments for the same asset running concurrently
+ * - Concurrency limit: Prevents overwhelming external APIs with too many parallel requests
+ * - Queue management: Pending tasks are queued and processed when slots become available
  * - Graceful cleanup: Ensures tracking map is cleaned up even on errors
  */
 @Injectable()
@@ -21,10 +31,26 @@ export class IsinEnrichmentService implements IIsinEnrichmentService {
   private readonly logger = createContextLogger(IsinEnrichmentService.name);
 
   /**
+   * Maximum number of concurrent enrichment operations
+   * Prevents overwhelming DuckDuckGo/external APIs
+   */
+  private readonly MAX_CONCURRENT_ENRICHMENTS = 5;
+
+  /**
    * Track enrichments currently in progress to prevent duplicate concurrent operations
    * Key: assetId, Value: Promise of the enrichment operation
    */
-  private readonly enrichmentQueue = new Map<string, Promise<void>>();
+  private readonly activeEnrichments = new Map<string, Promise<void>>();
+
+  /**
+   * Queue of pending enrichment tasks waiting for a free slot
+   */
+  private readonly pendingQueue: PendingEnrichment[] = [];
+
+  /**
+   * Set of asset IDs that are either active or pending (for fast deduplication)
+   */
+  private readonly trackedAssets = new Set<string>();
 
   constructor(
     private readonly assetsRepository: AssetsRepository,
@@ -34,49 +60,119 @@ export class IsinEnrichmentService implements IIsinEnrichmentService {
   /**
    * Enrich ISIN in background (fire-and-forget)
    * Does not block - returns immediately
+   * Respects concurrency limit and queues excess requests
    * Prevents duplicate enrichments for the same asset
    */
   enrichIsinInBackground(assetId: string, fundName: string): void {
-    // Check if enrichment is already in progress for this asset
-    if (this.enrichmentQueue.has(assetId)) {
+    // Check if enrichment is already tracked (active or pending)
+    if (this.trackedAssets.has(assetId)) {
       this.logger.debug(
-        `[ENRICH] Enrichment already in progress for asset ${assetId}, skipping duplicate request`,
+        `[ENRICH] Enrichment already tracked for asset ${assetId}, skipping duplicate request`,
       );
       return;
     }
 
-    // Create the enrichment promise and track it
+    // Track this asset
+    this.trackedAssets.add(assetId);
+
+    // Check if we can start immediately or need to queue
+    if (this.activeEnrichments.size < this.MAX_CONCURRENT_ENRICHMENTS) {
+      this.startEnrichment(assetId, fundName);
+    } else {
+      // Add to pending queue
+      this.pendingQueue.push({ assetId, fundName });
+      this.logger.debug(
+        `[ENRICH] Queue full (${this.activeEnrichments.size}/${this.MAX_CONCURRENT_ENRICHMENTS}), ` +
+          `asset ${assetId} added to pending queue (${this.pendingQueue.length} pending)`,
+      );
+    }
+  }
+
+  /**
+   * Start an enrichment operation (internal method)
+   */
+  private startEnrichment(assetId: string, fundName: string): void {
     const enrichmentPromise = this.performEnrichment(assetId, fundName).finally(
       () => {
-        // Always clean up the queue entry when done (success or failure)
-        this.enrichmentQueue.delete(assetId);
+        // Clean up active enrichment
+        this.activeEnrichments.delete(assetId);
+        this.trackedAssets.delete(assetId);
+
         this.logger.debug(
-          `[ENRICH] Removed asset ${assetId} from enrichment queue (${this.enrichmentQueue.size} remaining)`,
+          `[ENRICH] Completed asset ${assetId} (${this.activeEnrichments.size} active, ${this.pendingQueue.length} pending)`,
         );
+
+        // Process next item from queue if available
+        this.processNextFromQueue();
       },
     );
 
-    // Add to tracking map
-    this.enrichmentQueue.set(assetId, enrichmentPromise);
+    this.activeEnrichments.set(assetId, enrichmentPromise);
     this.logger.debug(
-      `[ENRICH] Added asset ${assetId} to enrichment queue (${this.enrichmentQueue.size} total)`,
+      `[ENRICH] Started enrichment for ${assetId} (${this.activeEnrichments.size}/${this.MAX_CONCURRENT_ENRICHMENTS} active)`,
     );
   }
 
   /**
-   * Check if an enrichment is currently in progress for a given asset
-   * Useful for debugging and testing
+   * Process the next item from the pending queue
    */
-  isEnrichmentInProgress(assetId: string): boolean {
-    return this.enrichmentQueue.has(assetId);
+  private processNextFromQueue(): void {
+    if (
+      this.pendingQueue.length > 0 &&
+      this.activeEnrichments.size < this.MAX_CONCURRENT_ENRICHMENTS
+    ) {
+      const next = this.pendingQueue.shift();
+      if (next) {
+        this.logger.debug(
+          `[ENRICH] Processing queued enrichment for ${next.assetId} (${this.pendingQueue.length} remaining in queue)`,
+        );
+        this.startEnrichment(next.assetId, next.fundName);
+      }
+    }
   }
 
   /**
-   * Get the number of enrichments currently in progress
+   * Check if an enrichment is currently active or pending for a given asset
+   * Useful for debugging and testing
+   */
+  isEnrichmentInProgress(assetId: string): boolean {
+    return this.trackedAssets.has(assetId);
+  }
+
+  /**
+   * Check if an enrichment is currently active (not just pending)
+   */
+  isEnrichmentActive(assetId: string): boolean {
+    return this.activeEnrichments.has(assetId);
+  }
+
+  /**
+   * Get the number of enrichments currently active
    * Useful for monitoring and debugging
    */
   getActiveEnrichmentCount(): number {
-    return this.enrichmentQueue.size;
+    return this.activeEnrichments.size;
+  }
+
+  /**
+   * Get the number of enrichments waiting in the queue
+   */
+  getPendingEnrichmentCount(): number {
+    return this.pendingQueue.length;
+  }
+
+  /**
+   * Get total tracked enrichments (active + pending)
+   */
+  getTotalTrackedCount(): number {
+    return this.trackedAssets.size;
+  }
+
+  /**
+   * Get the maximum concurrent enrichments limit
+   */
+  getMaxConcurrentLimit(): number {
+    return this.MAX_CONCURRENT_ENRICHMENTS;
   }
 
   /**
