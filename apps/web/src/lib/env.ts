@@ -22,6 +22,11 @@ const envSchema = z.object({
 });
 
 /**
+ * Type for environment variables
+ */
+export type Env = z.infer<typeof envSchema>;
+
+/**
  * Parsed and validated environment variables
  *
  * Access environment variables through this object for type safety.
@@ -30,7 +35,7 @@ const envSchema = z.object({
  * import { env } from '@/lib/env';
  * console.log(env.NEXT_PUBLIC_API_URL);
  */
-function getEnv() {
+function getEnv(): Env {
   // Only run on the server or during build
   // Client-side: NEXT_PUBLIC_* vars are inlined by Next.js at build time
   const parsed = envSchema.safeParse({
@@ -48,14 +53,11 @@ function getEnv() {
     if (process.env.NODE_ENV === 'development') {
       throw new Error('Invalid environment variables');
     }
+    // Return defaults in production to prevent crashes
+    return envSchema.parse({});
   }
 
-  return parsed.data ?? envSchema.parse({});
+  return parsed.data;
 }
 
 export const env = getEnv();
-
-/**
- * Type for environment variables
- */
-export type Env = z.infer<typeof envSchema>;
