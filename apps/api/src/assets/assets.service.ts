@@ -387,10 +387,13 @@ export class AssetsService implements IAssetsService {
       .filter((i) => i.type === IdentifierType.MORNINGSTAR_ID)
       .map((i) => i.normalized);
 
-    // Batch query for Morningstar IDs
+    // Batch query for Morningstar IDs with parallel cache writes
     if (morningstarIds.length > 0) {
       const msAssets =
         await this.assetsRepository.findManyByMorningstarIds(morningstarIds);
+
+      const cachePromises: Promise<unknown>[] = [];
+
       for (const asset of msAssets) {
         // Skip if needs re-resolution (no ISIN and enrichment complete)
         if (!asset.isin && !asset.isinPending) continue;
@@ -403,15 +406,21 @@ export class AssetsService implements IAssetsService {
         };
         results.set(asset.morningstarId.toUpperCase(), response);
 
-        // Also store in memory cache for future requests
+        // Queue cache write for parallel execution
         const cacheKey = `${CACHE_KEY_PREFIX}${asset.morningstarId.toUpperCase()}`;
-        await this.cacheManager.set(cacheKey, response);
+        cachePromises.push(this.cacheManager.set(cacheKey, response));
       }
+
+      // Execute all cache writes in parallel
+      await Promise.all(cachePromises);
     }
 
-    // Batch query for ISINs (single query instead of N queries)
+    // Batch query for ISINs with parallel cache writes
     if (isins.length > 0) {
       const isinAssets = await this.assetsRepository.findManyByIsins(isins);
+
+      const cachePromises: Promise<unknown>[] = [];
+
       for (const asset of isinAssets) {
         // Skip if needs re-resolution (no ISIN and enrichment complete)
         if (!asset.isin && !asset.isinPending) continue;
@@ -425,11 +434,14 @@ export class AssetsService implements IAssetsService {
           };
           results.set(asset.isin.toUpperCase(), response);
 
-          // Also store in memory cache for future requests
+          // Queue cache write for parallel execution
           const cacheKey = `${CACHE_KEY_PREFIX}${asset.isin.toUpperCase()}`;
-          await this.cacheManager.set(cacheKey, response);
+          cachePromises.push(this.cacheManager.set(cacheKey, response));
         }
       }
+
+      // Execute all cache writes in parallel
+      await Promise.all(cachePromises);
     }
 
     return results;
