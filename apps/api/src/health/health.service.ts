@@ -1,4 +1,4 @@
-import { Injectable, Logger, Optional } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { IsinEnrichmentService } from '../assets/isin-enrichment.service';
 import {
@@ -9,13 +9,14 @@ import {
 } from './dto/health-response.dto';
 import { IHealthService } from './interfaces';
 import { LivenessResponse } from './types';
+import { createContextLogger } from '../common/logger';
 
 // Get version from package.json at build time
 const APP_VERSION = process.env.npm_package_version || '1.0.0';
 
 @Injectable()
 export class HealthService implements IHealthService {
-  private readonly logger = new Logger(HealthService.name);
+  private readonly logger = createContextLogger(HealthService.name);
 
   constructor(
     private readonly prisma: PrismaService,

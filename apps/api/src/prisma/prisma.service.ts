@@ -1,15 +1,11 @@
 import 'dotenv/config';
-import {
-  Injectable,
-  OnModuleInit,
-  OnModuleDestroy,
-  Logger,
-} from '@nestjs/common';
+import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 import type { AppConfig } from '../config';
+import { createContextLogger } from '../common/logger';
 
 /**
  * Connection retry configuration
@@ -45,7 +41,7 @@ export class PrismaService
   extends PrismaClient
   implements OnModuleInit, OnModuleDestroy
 {
-  private readonly logger = new Logger(PrismaService.name);
+  private readonly logger = createContextLogger(PrismaService.name);
   private readonly pool: Pool;
   private readonly isProduction: boolean;
 

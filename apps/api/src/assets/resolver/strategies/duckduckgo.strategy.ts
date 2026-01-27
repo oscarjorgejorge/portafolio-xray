@@ -1,10 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import * as cheerio from 'cheerio';
 import { SearchResult } from '../resolver.types';
 import { SearchStrategy } from './search-strategy.interface';
 import { buildDuckDuckGoUrl } from '../utils/url-builder';
 import { extractMorningstarId, extractDomain } from '../utils/id-extractor';
 import { HttpClientService } from '../../../common/http';
+import { createContextLogger } from '../../../common/logger';
 
 /** Maximum concurrent requests to avoid rate limiting */
 const MAX_CONCURRENCY = 3;
@@ -22,7 +23,7 @@ const BATCH_DELAY = 100;
  */
 @Injectable()
 export class DuckDuckGoStrategy implements SearchStrategy {
-  private readonly logger = new Logger(DuckDuckGoStrategy.name);
+  private readonly logger = createContextLogger(DuckDuckGoStrategy.name);
   readonly name = 'DDG';
 
   constructor(private readonly httpClient: HttpClientService) {}
