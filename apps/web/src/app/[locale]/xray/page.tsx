@@ -31,6 +31,9 @@ function XRayPageContent() {
     },
   });
 
+  // Extract mutate function - it's stable and won't cause re-renders
+  const { mutate } = generateMutation;
+
   useEffect(() => {
     // Prevent re-execution if already generated
     if (hasGeneratedRef.current) {
@@ -56,15 +59,13 @@ function XRayPageContent() {
 
         if (assets.length > 0) {
           hasGeneratedRef.current = true;
-          generateMutation.mutate(assets);
+          mutate(assets);
         }
       } catch (error) {
         console.error('Error parsing assets:', error);
       }
     }
-    // Note: generateMutation.mutate is stable and doesn't need to be in deps
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  }, [searchParams, mutate]);
 
   if (generateMutation.isPending) {
     return <PageLoading message="Generating X-Ray URL..." />;
