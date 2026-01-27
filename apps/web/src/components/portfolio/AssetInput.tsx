@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { useMutation } from '@tanstack/react-query';
 import { resolveAsset } from '@/lib/api/assets';
+import { useDuplicateCheck } from '@/lib/hooks/useDuplicateCheck';
 import type { PortfolioAsset, AssetType } from '@/types';
 import { generateSimpleId } from '@/lib/utils/id';
 
@@ -21,38 +22,7 @@ export const AssetInput: React.FC<AssetInputProps> = ({
 }) => {
   const [input, setInput] = useState('');
   const [error, setError] = useState<string | null>(null);
-
-  const checkDuplicate = (
-    identifier: string,
-    resolvedAsset?: { isin?: string | null; morningstarId?: string }
-  ): boolean => {
-    return existingAssets.some((existingAsset) => {
-      // Check by identifier (ISIN, ticker, etc.)
-      if (
-        existingAsset.identifier.toUpperCase() === identifier.toUpperCase()
-      ) {
-        return true;
-      }
-      // Check by ISIN if both have resolved assets
-      if (
-        existingAsset.asset?.isin &&
-        resolvedAsset?.isin &&
-        existingAsset.asset.isin.toUpperCase() ===
-          resolvedAsset.isin.toUpperCase()
-      ) {
-        return true;
-      }
-      // Check by Morningstar ID if both have resolved assets
-      if (
-        existingAsset.asset?.morningstarId &&
-        resolvedAsset?.morningstarId &&
-        existingAsset.asset.morningstarId === resolvedAsset.morningstarId
-      ) {
-        return true;
-      }
-      return false;
-    });
-  };
+  const { checkDuplicate } = useDuplicateCheck(existingAssets);
 
   const resolveMutation = useMutation({
     mutationFn: (identifier: string) =>
