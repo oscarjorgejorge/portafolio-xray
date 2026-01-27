@@ -24,14 +24,16 @@ interface UseXRayGenerationReturn {
   morningstarUrl: string | null;
   /** Whether the URL was recently copied */
   copied: boolean;
+  /** Whether a copy error occurred */
+  copyError: boolean;
   /** Whether generation is in progress */
   isGenerating: boolean;
   /** Error from generation, if any */
   generateError: Error | null;
   /** Generate X-Ray report */
   generate: () => void;
-  /** Copy shareable URL to clipboard */
-  copyUrl: () => Promise<void>;
+  /** Copy shareable URL to clipboard - returns true if successful */
+  copyUrl: () => Promise<boolean>;
   /** Open Morningstar PDF in new tab */
   openPdf: () => void;
   /** Clear all URLs */
@@ -53,6 +55,7 @@ export function useXRayGeneration({
     morningstarUrl,
     fullShareableUrl,
     copied,
+    copyError,
     setUrls,
     copyToClipboard,
     openMorningstarPdf,
@@ -115,6 +118,7 @@ export function useXRayGeneration({
     fullShareableUrl,
     morningstarUrl,
     copied,
+    copyError,
     isGenerating: generateMutation.isPending,
     generateError: generateMutation.error,
     generate,
