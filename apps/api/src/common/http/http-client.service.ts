@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import {
   HttpRequestOptions,
   HttpResponse,
@@ -12,21 +13,11 @@ import {
 } from './http-client.types';
 import { IHttpClient } from '../interfaces';
 import { createContextLogger } from '../logger';
+import type { AppConfig } from '../../config';
 
-const DEFAULT_CONFIG: HttpClientConfig = {
-  defaultTimeout: 10000,
-  defaultHeaders: {
-    'User-Agent':
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-    'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
-  },
-  enableLogging: true,
-};
-
-const DEFAULT_CIRCUIT_BREAKER_CONFIG: CircuitBreakerConfig = {
-  failureThreshold: 5,
-  resetTimeoutMs: 30000, // 30 seconds
-  successThreshold: 2,
+const DEFAULT_HEADERS: Record<string, string> = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+  'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
 };
 
 /**
@@ -47,9 +38,33 @@ const DEFAULT_CIRCUIT_BREAKER_CONFIG: CircuitBreakerConfig = {
 @Injectable()
 export class HttpClientService implements IHttpClient {
   private readonly logger = createContextLogger(HttpClientService.name);
-  private readonly config: HttpClientConfig = DEFAULT_CONFIG;
-  private readonly circuitConfig: CircuitBreakerConfig =
-    DEFAULT_CIRCUIT_BREAKER_CONFIG;
+  private readonly config: HttpClientConfig;
+  private readonly circuitConfig: CircuitBreakerConfig;
+
+  constructor(configService: ConfigService<AppConfig, true>) {
+    const httpConfig = configService.get('http', { infer: true });
+    const circuitBreakerConfig = configService.get('circuitBreaker', {
+      infer: true,
+    });
+
+    this.config = {
+      defaultTimeout: httpConfig.defaultTimeoutMs,
+      defaultHeaders: DEFAULT_HEADERS,
+      enableLogging: true,
+    };
+
+    this.circuitConfig = {
+      failureThreshold: circuitBreakerConfig.failureThreshold,
+      resetTimeoutMs: circuitBreakerConfig.resetTimeoutMs,
+      successThreshold: circuitBreakerConfig.successThreshold,
+    };
+
+    this.logger.log(
+      `HTTP client configured: timeout=${this.config.defaultTimeout}ms, ` +
+        `circuit breaker (failures=${this.circuitConfig.failureThreshold}, ` +
+        `reset=${this.circuitConfig.resetTimeoutMs}ms)`,
+    );
+  }
 
   /**
    * Circuit breaker state per domain

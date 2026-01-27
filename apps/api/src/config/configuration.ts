@@ -38,6 +38,26 @@ export const configuration = (): AppConfig => ({
       10,
     ),
   },
+  http: {
+    defaultTimeoutMs: parseInt(
+      process.env.HTTP_DEFAULT_TIMEOUT_MS || '10000',
+      10,
+    ),
+  },
+  circuitBreaker: {
+    failureThreshold: parseInt(
+      process.env.CIRCUIT_FAILURE_THRESHOLD || '5',
+      10,
+    ),
+    resetTimeoutMs: parseInt(
+      process.env.CIRCUIT_RESET_TIMEOUT_MS || '30000',
+      10,
+    ),
+    successThreshold: parseInt(
+      process.env.CIRCUIT_SUCCESS_THRESHOLD || '2',
+      10,
+    ),
+  },
   morningstarBaseUrl:
     process.env.MORNINGSTAR_BASE_URL || 'https://lt.morningstar.com',
   corsOrigins: (process.env.CORS_ORIGINS || 'http://localhost:3000')
@@ -77,6 +97,27 @@ export interface ResolutionConfig {
 }
 
 /**
+ * HTTP client configuration
+ */
+export interface HttpConfig {
+  /** Default timeout for HTTP requests (ms) */
+  defaultTimeoutMs: number;
+}
+
+/**
+ * Circuit breaker configuration for HTTP client
+ * Protects against cascading failures by temporarily blocking requests to failing services
+ */
+export interface CircuitBreakerConfig {
+  /** Number of failures before opening the circuit */
+  failureThreshold: number;
+  /** Time in ms to wait before attempting to close the circuit */
+  resetTimeoutMs: number;
+  /** Number of successes in half-open state before closing the circuit */
+  successThreshold: number;
+}
+
+/**
  * Type-safe application configuration interface
  * Flat structure for easier ConfigService access
  */
@@ -90,6 +131,8 @@ export interface AppConfig {
   dbPool: DbPoolConfig;
   cache: CacheConfig;
   resolution: ResolutionConfig;
+  http: HttpConfig;
+  circuitBreaker: CircuitBreakerConfig;
   morningstarBaseUrl: string;
   corsOrigins: string[];
 }
