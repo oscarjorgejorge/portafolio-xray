@@ -17,7 +17,6 @@ import {
   UpdateIsinDto,
   BatchResolveAssetDto,
 } from './dto';
-import type { Asset } from '@prisma/client';
 import {
   ResolveAssetResponse,
   BatchResolveAssetResponse,
@@ -95,7 +94,9 @@ export class AssetsController {
     status: 404,
     description: 'Asset not found',
   })
-  async getById(@Param('id', ParseUUIDPipe) id: string): Promise<Asset> {
+  async getById(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<ResolvedAssetDto> {
     return this.assetsService.getById(id);
   }
 
@@ -115,7 +116,7 @@ export class AssetsController {
     status: 400,
     description: 'Invalid input data',
   })
-  async confirm(@Body() dto: ConfirmAssetDto): Promise<Asset> {
+  async confirm(@Body() dto: ConfirmAssetDto): Promise<ResolvedAssetDto> {
     return this.assetsService.confirm(dto);
   }
 
@@ -147,7 +148,7 @@ export class AssetsController {
   async updateIsin(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateIsinDto,
-  ): Promise<Asset> {
+  ): Promise<ResolvedAssetDto> {
     return this.assetsService.updateIsin(id, dto.isin);
   }
 }

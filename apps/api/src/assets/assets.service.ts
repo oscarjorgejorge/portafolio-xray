@@ -23,7 +23,9 @@ import {
   ResolutionSource,
   BatchResolveAssetResponse,
   BatchResolveResultItem,
+  ResolvedAssetDto,
 } from './types';
+import { toResolvedAssetDto } from './mappers';
 import type { AppConfig } from '../config';
 
 /** Cache key prefix for asset resolution results */
@@ -81,7 +83,7 @@ export class AssetsService implements IAssetsService {
         const response: ResolveAssetResponse = {
           success: true,
           source: ResolutionSource.CACHE,
-          asset: cachedAsset,
+          asset: toResolvedAssetDto(cachedAsset),
           isinPending: cachedAsset.isinPending,
         };
         // Store in memory cache for faster subsequent access
@@ -181,7 +183,7 @@ export class AssetsService implements IAssetsService {
         const response: ResolveAssetResponse = {
           success: true,
           source: ResolutionSource.RESOLVED,
-          asset: savedAsset,
+          asset: toResolvedAssetDto(savedAsset),
           isinPending: needsIsinEnrichment,
         };
 
@@ -396,7 +398,7 @@ export class AssetsService implements IAssetsService {
         const response: ResolveAssetResponse = {
           success: true,
           source: ResolutionSource.CACHE,
-          asset,
+          asset: toResolvedAssetDto(asset),
           isinPending: asset.isinPending,
         };
         results.set(asset.morningstarId.toUpperCase(), response);
@@ -418,7 +420,7 @@ export class AssetsService implements IAssetsService {
           const response: ResolveAssetResponse = {
             success: true,
             source: ResolutionSource.CACHE,
-            asset,
+            asset: toResolvedAssetDto(asset),
             isinPending: asset.isinPending,
           };
           results.set(asset.isin.toUpperCase(), response);
@@ -433,15 +435,15 @@ export class AssetsService implements IAssetsService {
     return results;
   }
 
-  async getById(id: string): Promise<Asset> {
+  async getById(id: string): Promise<ResolvedAssetDto> {
     const asset = await this.assetsRepository.findById(id);
     if (!asset) {
       throw new NotFoundException(`Asset with id "${id}" not found`);
     }
-    return asset;
+    return toResolvedAssetDto(asset);
   }
 
-  async confirm(dto: ConfirmAssetDto): Promise<Asset> {
+  async confirm(dto: ConfirmAssetDto): Promise<ResolvedAssetDto> {
     // Create or update asset with manual source
     const asset = await this.assetsRepository.upsertByIsin({
       isin: dto.isin,
@@ -456,7 +458,7 @@ export class AssetsService implements IAssetsService {
     // Invalidate cache for both ISIN and Morningstar ID
     await this.invalidateAssetCache(dto.isin, dto.morningstarId);
 
-    return asset;
+    return toResolvedAssetDto(asset);
   }
 
   /**
@@ -465,7 +467,7 @@ export class AssetsService implements IAssetsService {
    * @param id - Asset UUID
    * @param isin - New ISIN value
    */
-  async updateIsin(id: string, isin: string): Promise<Asset> {
+  async updateIsin(id: string, isin: string): Promise<ResolvedAssetDto> {
     this.logger.log(`Manually updating ISIN for asset ${id}: ${isin}`);
 
     try {
@@ -479,7 +481,7 @@ export class AssetsService implements IAssetsService {
       // Invalidate cache for ISIN and Morningstar ID
       await this.invalidateAssetCache(isin, asset.morningstarId);
 
-      return asset;
+      return toResolvedAssetDto(asset);
     } catch (error) {
       // Convert repository error to NestJS NotFoundException
       if (error instanceof Error && error.message.includes('not found')) {

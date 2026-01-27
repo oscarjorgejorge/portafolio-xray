@@ -1,5 +1,4 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Asset } from '@prisma/client';
 
 /**
  * Source/status of the resolved asset
@@ -131,7 +130,7 @@ export class ResolveAssetResponse {
     description: 'The resolved asset (when successful)',
     type: ResolvedAssetDto,
   })
-  asset?: Asset;
+  asset?: ResolvedAssetDto;
 
   @ApiPropertyOptional({
     description: 'Whether ISIN enrichment is pending in the background',

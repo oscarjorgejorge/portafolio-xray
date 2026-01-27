@@ -6,4 +6,5 @@ export * from './isin-enrichment.service';
 export * from './dto';
 export * from './interfaces';
 export * from './types';
+export * from './mappers';
 export * from './resolver';
