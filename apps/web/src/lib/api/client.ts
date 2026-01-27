@@ -1,6 +1,5 @@
 import { API } from '@/lib/constants';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+import { env } from '@/lib/env';
 
 /**
  * Error thrown by API client
@@ -199,7 +198,7 @@ class FetchApiClient {
  * Configured API client instance
  */
 export const apiClient = new FetchApiClient({
-  baseURL: API_URL,
+  baseURL: env.NEXT_PUBLIC_API_URL,
   timeout: API.TIMEOUT_MS,
   headers: {
     'Content-Type': 'application/json',
