@@ -12,31 +12,32 @@ import {
 import { Type, Transform } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 import { trimUppercase } from '../../common/transforms';
-import { HasUniqueProperty } from '../../common/validators';
+import { HasUniqueProperty, HasTotalWeight100 } from '../../common/validators';
+import { WEIGHT_VALIDATION, INPUT_VALIDATION } from '../../common/constants';
 
 export class XRayAssetDto {
   @ApiProperty({
     description: 'Morningstar unique identifier',
     example: '0P0000YXJO',
-    maxLength: 20,
+    maxLength: INPUT_VALIDATION.MAX_MORNINGSTAR_ID_LENGTH,
   })
   @Transform(trimUppercase)
   @IsString()
   @IsNotEmpty()
-  @MaxLength(20, {
-    message: 'Morningstar ID must not exceed 20 characters',
+  @MaxLength(INPUT_VALIDATION.MAX_MORNINGSTAR_ID_LENGTH, {
+    message: `Morningstar ID must not exceed ${INPUT_VALIDATION.MAX_MORNINGSTAR_ID_LENGTH} characters`,
   })
   morningstarId!: string;
 
   @ApiProperty({
-    description: 'Portfolio weight as percentage (0-100)',
+    description: `Portfolio weight as percentage (${WEIGHT_VALIDATION.MIN_WEIGHT}-${WEIGHT_VALIDATION.MAX_WEIGHT})`,
     example: 25,
-    minimum: 0,
-    maximum: 100,
+    minimum: WEIGHT_VALIDATION.MIN_WEIGHT,
+    maximum: WEIGHT_VALIDATION.MAX_WEIGHT,
   })
   @IsNumber()
-  @Min(0)
-  @Max(100)
+  @Min(WEIGHT_VALIDATION.MIN_WEIGHT)
+  @Max(WEIGHT_VALIDATION.MAX_WEIGHT)
   weight!: number;
 }
 
@@ -52,10 +53,13 @@ export class GenerateXRayDto {
     ],
   })
   @IsArray()
-  @ArrayMinSize(1)
+  @ArrayMinSize(INPUT_VALIDATION.MIN_BATCH_SIZE)
   @HasUniqueProperty('morningstarId', {
     message:
       'Duplicate morningstarId found. Each asset must have a unique morningstarId.',
+  })
+  @HasTotalWeight100({
+    message: `Total weight must equal ${WEIGHT_VALIDATION.TARGET_TOTAL}%`,
   })
   @ValidateNested({ each: true })
   @Type(() => XRayAssetDto)

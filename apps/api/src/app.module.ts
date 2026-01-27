@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { CacheModule } from '@nestjs/cache-manager';
@@ -17,6 +17,7 @@ import {
   RequestIdInterceptor,
   TransformResponseInterceptor,
 } from './common/interceptors';
+import { RequestLoggerMiddleware } from './common/middleware';
 
 @Module({
   imports: [
@@ -83,4 +84,12 @@ import {
     },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  /**
+   * Configure middleware for the application
+   * RequestLoggerMiddleware logs all HTTP requests with timing and status
+   */
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(RequestLoggerMiddleware).forRoutes('*');
+  }
+}
