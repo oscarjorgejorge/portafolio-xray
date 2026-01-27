@@ -1,4 +1,4 @@
-﻿name: CI
+name: CI
 
 on:
   push:
@@ -110,6 +110,29 @@ jobs:
           npm ci
           npm run build
 
+      - name: Verify API build artifacts
+        working-directory: apps/api
+        run: |
+          echo "Checking build output..."
+          if [ ! -f "dist/src/main.js" ]; then
+            echo "❌ ERROR: dist/src/main.js not found!"
+            echo "Build output:"
+            ls -la dist/ || echo "dist/ directory not found"
+            exit 1
+          fi
+          echo "✅ dist/src/main.js exists"
+          
+          # Verify the file is not empty
+          if [ ! -s "dist/src/main.js" ]; then
+            echo "❌ ERROR: dist/src/main.js is empty!"
+            exit 1
+          fi
+          echo "✅ dist/src/main.js has content ($(wc -c < dist/src/main.js) bytes)"
+          
+          # List build output for debugging
+          echo "Build artifacts:"
+          find dist -name "*.js" | head -20
+
       - name: Build Web
         working-directory: apps/web
         env:
@@ -117,3 +140,26 @@ jobs:
         run: |
           npm ci
           npm run build
+
+  # Docker build verification (runs only on main/develop to save CI minutes)
+  docker-build:
+    name: Docker Build Verification
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        working-directory: apps/api
+        run: |
+          docker build -t portfolio-xray-api:test .
+          
+      - name: Verify Docker image
+        run: |
+          # Check if the image was created
+          docker images portfolio-xray-api:test
+          
+          # Verify the entrypoint file exists in the container
+          docker run --rm portfolio-xray-api:test sh -c "test -f /app/dist/src/main.js && echo '✅ main.js exists in container' || (echo '❌ main.js NOT found in container' && exit 1)"
