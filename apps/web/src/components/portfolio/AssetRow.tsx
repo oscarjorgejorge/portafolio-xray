@@ -7,6 +7,116 @@ import { EditableIsin } from './EditableIsin';
 import { useIsinPolling } from '@/lib/hooks/useIsinPolling';
 import type { Asset } from '@/lib/api/assets';
 
+// ============================================
+// Sub-components to reduce code duplication
+// ============================================
+
+interface WeightInputProps {
+  value: number;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  allocationMode: AllocationMode;
+  hasError: boolean;
+  variant: 'mobile' | 'desktop';
+}
+
+const WeightInput: React.FC<WeightInputProps> = ({
+  value,
+  onChange,
+  allocationMode,
+  hasError,
+  variant,
+}) => {
+  const label = allocationMode === 'percentage' ? 'Weight (%)' : 'Amount';
+  const isMobile = variant === 'mobile';
+
+  return (
+    <div className={isMobile ? 'flex-1' : 'w-24'}>
+      <label
+        className={`${isMobile ? 'text-xs' : 'block text-xs'} font-medium text-slate-700 ${isMobile ? 'whitespace-nowrap' : 'mb-1'}`}
+      >
+        {!isMobile && label}
+      </label>
+      <input
+        type="number"
+        value={value || ''}
+        onChange={onChange}
+        min="0"
+        step="0.01"
+        placeholder="0"
+        aria-label={label}
+        className={`
+          ${isMobile ? 'flex-1 px-3 py-2' : 'w-full px-2 py-1.5'} border rounded-lg text-sm
+          text-slate-900 bg-white
+          focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+          ${hasError ? 'border-red-500' : 'border-slate-300'}
+        `}
+      />
+    </div>
+  );
+};
+
+interface RemoveButtonProps {
+  onClick: () => void;
+  showTooltip: boolean;
+  onMouseEnter: () => void;
+  onMouseLeave: () => void;
+  className?: string;
+}
+
+const RemoveButton: React.FC<RemoveButtonProps> = ({
+  onClick,
+  showTooltip,
+  onMouseEnter,
+  onMouseLeave,
+  className = '',
+}) => (
+  <div className={`relative ${className}`}>
+    <button
+      onClick={onClick}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      className="p-1.5 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
+      aria-label="Remove asset"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        className="h-5 w-5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={2}
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
+        />
+      </svg>
+    </button>
+    {showTooltip && (
+      <div className="absolute right-0 top-full mt-1 px-2 py-1 bg-slate-900 text-white text-xs rounded shadow-lg z-10 whitespace-nowrap">
+        Remove
+        <div className="absolute -top-1 right-2 h-2 w-2 bg-slate-900 rotate-45"></div>
+      </div>
+    )}
+  </div>
+);
+
+interface ErrorMessageProps {
+  error: string;
+  className?: string;
+}
+
+const ErrorMessage: React.FC<ErrorMessageProps> = ({ error, className = '' }) => (
+  <p className={`text-xs text-red-600 ${className}`} role="alert">
+    {error}
+  </p>
+);
+
+// ============================================
+// Main component
+// ============================================
+
 interface AssetRowProps {
   asset: PortfolioAsset;
   allocationMode: AllocationMode;
@@ -33,7 +143,6 @@ export const AssetRow: React.FC<AssetRowProps> = ({
     onWeightChange(asset.id, value);
   };
 
-  // Handle ISIN polling callback
   const handleIsinResolved = useCallback(
     (updatedAsset: Asset) => {
       if (onAssetUpdated) {
@@ -43,13 +152,19 @@ export const AssetRow: React.FC<AssetRowProps> = ({
     [asset.id, onAssetUpdated]
   );
 
-  // Use ISIN polling hook
   const isinPending = asset.isinPending || asset.asset?.isinPending || false;
   useIsinPolling({
     assetId: asset.asset?.id,
     isinPending,
     onIsinResolved: handleIsinResolved,
   });
+
+  const hasWeightError = Boolean(error && error !== asset.error);
+  const handleRemove = () => onRemove(asset.id);
+  const tooltipHandlers = {
+    onMouseEnter: () => setShowTooltip(true),
+    onMouseLeave: () => setShowTooltip(false),
+  };
 
   return (
     <div className="border border-slate-200 rounded-lg p-4 bg-white">
@@ -88,13 +203,11 @@ export const AssetRow: React.FC<AssetRowProps> = ({
               </h4>
               <div className="flex items-center gap-2 sm:gap-4 text-sm text-slate-600 mt-1 flex-wrap">
                 <span className="font-medium uppercase">{asset.asset.type}</span>
-                {/* Show ticker if available */}
                 {asset.asset.ticker && (
                   <span>
                     <span className="font-medium">Ticker:</span> {asset.asset.ticker}
                   </span>
                 )}
-                {/* Show ISIN section: pending spinner, editable ISIN, or nothing */}
                 {isinPending ? (
                   <span className="flex items-center gap-1 text-slate-500">
                     <Spinner size="sm" className="text-blue-500" />
@@ -119,119 +232,49 @@ export const AssetRow: React.FC<AssetRowProps> = ({
                 <label className="text-xs font-medium text-slate-700 whitespace-nowrap">
                   {allocationMode === 'percentage' ? 'Weight (%)' : 'Amount'}
                 </label>
-                <input
-                  type="number"
-                  value={asset.weight || ''}
+                <WeightInput
+                  value={asset.weight}
                   onChange={handleWeightChange}
-                  min="0"
-                  step={allocationMode === 'percentage' ? '0.01' : '0.01'}
-                  placeholder="0"
-                  className={`
-                    flex-1 px-3 py-2 border rounded-lg text-sm
-                    text-slate-900 bg-white
-                    focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                    ${error && error !== asset.error ? 'border-red-500' : 'border-slate-300'}
-                  `}
+                  allocationMode={allocationMode}
+                  hasError={hasWeightError}
+                  variant="mobile"
                 />
               </div>
             </div>
-            {/* Desktop: Weight and X button on the right */}
+            {/* Desktop: Weight and X button */}
             <div className="hidden md:flex items-start gap-2 flex-shrink-0 ml-auto">
-              <div className="w-24">
-                <label className="block text-xs font-medium text-slate-700 mb-1">
-                  {allocationMode === 'percentage' ? 'Weight (%)' : 'Amount'}
-                </label>
-                <input
-                  type="number"
-                  value={asset.weight || ''}
-                  onChange={handleWeightChange}
-                  min="0"
-                  step={allocationMode === 'percentage' ? '0.01' : '0.01'}
-                  placeholder="0"
-                  className={`
-                    w-full px-2 py-1.5 border rounded-lg text-sm
-                    text-slate-900 bg-white
-                    focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                    ${error && error !== asset.error ? 'border-red-500' : 'border-slate-300'}
-                  `}
-                />
-              </div>
-              <div className="relative flex items-start">
-                <button
-                  onClick={() => onRemove(asset.id)}
-                  onMouseEnter={() => setShowTooltip(true)}
-                  onMouseLeave={() => setShowTooltip(false)}
-                  className="px-1.5 pb-1.5 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
-                  aria-label="Remove asset"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-5 w-5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
-                    />
-                  </svg>
-                </button>
-                {showTooltip && (
-                  <div className="absolute right-0 top-full mt-1 px-2 py-1 bg-slate-900 text-white text-xs rounded shadow-lg z-10 whitespace-nowrap">
-                    Remove
-                    <div className="absolute -top-1 right-2 h-2 w-2 bg-slate-900 rotate-45"></div>
-                  </div>
-                )}
-              </div>
+              <WeightInput
+                value={asset.weight}
+                onChange={handleWeightChange}
+                allocationMode={allocationMode}
+                hasError={hasWeightError}
+                variant="desktop"
+              />
+              <RemoveButton
+                onClick={handleRemove}
+                showTooltip={showTooltip}
+                {...tooltipHandlers}
+                className="flex items-start"
+              />
             </div>
-            {/* Mobile: Trash button on the right */}
-            <div className="md:hidden relative flex-shrink-0">
-              <button
-                onClick={() => onRemove(asset.id)}
-                onMouseEnter={() => setShowTooltip(true)}
-                onMouseLeave={() => setShowTooltip(false)}
-                className="px-1.5 pb-1.5 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1 mt-0.5"
-                aria-label="Remove asset"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
-                  />
-                </svg>
-              </button>
-              {showTooltip && (
-                <div className="absolute right-0 top-full mt-1 px-2 py-1 bg-slate-900 text-white text-xs rounded shadow-lg z-10 whitespace-nowrap">
-                  Remove
-                  <div className="absolute -top-1 right-2 h-2 w-2 bg-slate-900 rotate-45"></div>
-                </div>
-              )}
+            {/* Mobile: Remove button */}
+            <div className="md:hidden flex-shrink-0">
+              <RemoveButton
+                onClick={handleRemove}
+                showTooltip={showTooltip}
+                {...tooltipHandlers}
+                className="mt-0.5"
+              />
             </div>
           </div>
-          {/* Mobile: Error message */}
-          {error && error !== asset.error && (
-            <div className="md:hidden mt-2">
-              <p className="text-xs text-red-600" role="alert">
-                {error}
-              </p>
-            </div>
-          )}
-          {/* Desktop: Error message */}
-          {error && error !== asset.error && (
-            <p className="hidden md:block mb-2 text-xs text-red-600" role="alert">
-              {error}
-            </p>
+          {/* Error message */}
+          {hasWeightError && (
+            <>
+              <div className="md:hidden mt-2">
+                <ErrorMessage error={error!} />
+              </div>
+              <ErrorMessage error={error!} className="hidden md:block mb-2" />
+            </>
           )}
         </>
       ) : (
@@ -240,114 +283,45 @@ export const AssetRow: React.FC<AssetRowProps> = ({
             <h4 className="font-semibold text-slate-900 flex-1 min-w-0 break-words">
               {asset.identifier}
             </h4>
-            {/* Desktop: Weight and X button on the right */}
+            {/* Desktop: Weight and X button */}
             <div className="hidden md:flex items-start gap-2 flex-shrink-0">
-              <div className="w-24">
-                <label className="block text-xs font-medium text-slate-700 mb-1">
-                  {allocationMode === 'percentage' ? 'Weight (%)' : 'Amount'}
-                </label>
-                <input
-                  type="number"
-                  value={asset.weight || ''}
-                  onChange={handleWeightChange}
-                  min="0"
-                  step={allocationMode === 'percentage' ? '0.01' : '0.01'}
-                  placeholder="0"
-                  className={`
-                    w-full px-2 py-1.5 border rounded-lg text-sm
-                    text-slate-900 bg-white
-                    focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                    ${error && error !== asset.error ? 'border-red-500' : 'border-slate-300'}
-                  `}
-                />
-              </div>
-              <div className="relative flex items-start pt-6">
-                <button
-                  onClick={() => onRemove(asset.id)}
-                  onMouseEnter={() => setShowTooltip(true)}
-                  onMouseLeave={() => setShowTooltip(false)}
-                  className="p-1.5 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
-                  aria-label="Remove asset"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-5 w-5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
-                    />
-                  </svg>
-                </button>
-                {showTooltip && (
-                  <div className="absolute right-0 top-full mt-1 px-2 py-1 bg-slate-900 text-white text-xs rounded shadow-lg z-10 whitespace-nowrap">
-                    Remove
-                    <div className="absolute -top-1 right-2 h-2 w-2 bg-slate-900 rotate-45"></div>
-                  </div>
-                )}
-              </div>
+              <WeightInput
+                value={asset.weight}
+                onChange={handleWeightChange}
+                allocationMode={allocationMode}
+                hasError={hasWeightError}
+                variant="desktop"
+              />
+              <RemoveButton
+                onClick={handleRemove}
+                showTooltip={showTooltip}
+                {...tooltipHandlers}
+                className="flex items-start pt-6"
+              />
             </div>
-            {/* Mobile: X button on the right */}
-            <div className="md:hidden relative flex-shrink-0">
-              <button
-                onClick={() => onRemove(asset.id)}
-                onMouseEnter={() => setShowTooltip(true)}
-                onMouseLeave={() => setShowTooltip(false)}
-                className="p-1.5 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1 mt-0.5"
-                aria-label="Remove asset"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-              {showTooltip && (
-                <div className="absolute right-0 top-full mt-1 px-2 py-1 bg-slate-900 text-white text-xs rounded shadow-lg z-10 whitespace-nowrap">
-                  Remove
-                  <div className="absolute -top-1 right-2 h-2 w-2 bg-slate-900 rotate-45"></div>
-                </div>
-              )}
+            {/* Mobile: Remove button */}
+            <div className="md:hidden flex-shrink-0">
+              <RemoveButton
+                onClick={handleRemove}
+                showTooltip={showTooltip}
+                {...tooltipHandlers}
+                className="mt-0.5"
+              />
             </div>
           </div>
-          {/* Mobile: Weight input below the text */}
+          {/* Mobile: Weight input */}
           <div className="md:hidden mb-2">
             <label className="block text-xs font-medium text-slate-700 mb-1">
               {allocationMode === 'percentage' ? 'Weight (%)' : 'Amount'}
             </label>
-            <input
-              type="number"
-              value={asset.weight || ''}
+            <WeightInput
+              value={asset.weight}
               onChange={handleWeightChange}
-              min="0"
-              step={allocationMode === 'percentage' ? '0.01' : '0.01'}
-              placeholder="0"
-              className={`
-                w-full px-3 py-2 border rounded-lg text-sm
-                text-slate-900 bg-white
-                focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                ${error && error !== asset.error ? 'border-red-500' : 'border-slate-300'}
-              `}
+              allocationMode={allocationMode}
+              hasError={hasWeightError}
+              variant="mobile"
             />
-            {error && error !== asset.error && (
-              <p className="mt-1 text-xs text-red-600" role="alert">
-                {error}
-              </p>
-            )}
+            {hasWeightError && <ErrorMessage error={error!} className="mt-1" />}
           </div>
           {asset.status === 'resolving' && (
             <p className="text-sm text-slate-500">Resolving...</p>
@@ -370,4 +344,3 @@ export const AssetRow: React.FC<AssetRowProps> = ({
     </div>
   );
 };
-
