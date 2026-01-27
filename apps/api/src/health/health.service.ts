@@ -1,9 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { IsinEnrichmentService } from '../assets/isin-enrichment.service';
 import {
   HealthResponseDto,
   HealthStatus,
   ComponentStatus,
+  EnrichmentStatusDto,
 } from './dto/health-response.dto';
 import { IHealthService } from './interfaces';
 import { LivenessResponse } from './types';
@@ -15,7 +17,10 @@ const APP_VERSION = process.env.npm_package_version || '1.0.0';
 export class HealthService implements IHealthService {
   private readonly logger = new Logger(HealthService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly isinEnrichment?: IsinEnrichmentService,
+  ) {}
 
   /**
    * Perform comprehensive health check
@@ -45,13 +50,32 @@ export class HealthService implements IHealthService {
     // Determine overall status
     const status = this.determineOverallStatus(databaseStatus);
 
+    // Get enrichment queue status if available
+    const enrichment = this.getEnrichmentStatus();
+
     return {
       status,
       timestamp: new Date().toISOString(),
       version: APP_VERSION,
       database: databaseStatus,
       databaseResponseTimeMs,
+      ...(enrichment && { enrichment }),
       ...(error && { error }),
+    };
+  }
+
+  /**
+   * Get ISIN enrichment queue status
+   */
+  private getEnrichmentStatus(): EnrichmentStatusDto | undefined {
+    if (!this.isinEnrichment) {
+      return undefined;
+    }
+
+    return {
+      active: this.isinEnrichment.getActiveEnrichmentCount(),
+      pending: this.isinEnrichment.getPendingEnrichmentCount(),
+      maxConcurrent: this.isinEnrichment.getMaxConcurrentLimit(),
     };
   }
 

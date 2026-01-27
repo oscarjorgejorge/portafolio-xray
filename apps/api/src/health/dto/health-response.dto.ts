@@ -11,6 +11,29 @@ export enum ComponentStatus {
   DISCONNECTED = 'disconnected',
 }
 
+/**
+ * Background enrichment queue status
+ */
+export class EnrichmentStatusDto {
+  @ApiProperty({
+    description: 'Number of enrichment tasks currently running',
+    example: 2,
+  })
+  active: number;
+
+  @ApiProperty({
+    description: 'Number of enrichment tasks waiting in queue',
+    example: 5,
+  })
+  pending: number;
+
+  @ApiProperty({
+    description: 'Maximum concurrent enrichment limit',
+    example: 5,
+  })
+  maxConcurrent: number;
+}
+
 export class HealthResponseDto {
   @ApiProperty({
     description: 'Overall health status',
@@ -43,6 +66,12 @@ export class HealthResponseDto {
     example: 5,
   })
   databaseResponseTimeMs?: number;
+
+  @ApiPropertyOptional({
+    description: 'ISIN enrichment background queue status',
+    type: EnrichmentStatusDto,
+  })
+  enrichment?: EnrichmentStatusDto;
 
   @ApiPropertyOptional({
     description: 'Error message if any component is unhealthy',

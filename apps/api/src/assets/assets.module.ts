@@ -30,6 +30,6 @@ import {
     ResultScorerService,
     PageVerifierService,
   ],
-  exports: [AssetsService, AssetsRepository],
+  exports: [AssetsService, AssetsRepository, IsinEnrichmentService],
 })
 export class AssetsModule {}
