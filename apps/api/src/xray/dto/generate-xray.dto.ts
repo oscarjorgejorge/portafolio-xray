@@ -9,15 +9,14 @@ import {
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
+import { trimUppercase } from '../../common/transforms';
 
 export class XRayAssetDto {
   @ApiProperty({
     description: 'Morningstar unique identifier',
     example: '0P0000YXJO',
   })
-  @Transform(({ value }: { value: unknown }) =>
-    typeof value === 'string' ? value.trim().toUpperCase() : value,
-  )
+  @Transform(trimUppercase)
   @IsString()
   morningstarId!: string;
 

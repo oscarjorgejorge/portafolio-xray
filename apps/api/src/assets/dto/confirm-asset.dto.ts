@@ -1,6 +1,7 @@
 import { IsString, IsNotEmpty, IsEnum, IsOptional } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { trimUppercase, trimString } from '../../common/transforms';
 
 export enum AssetTypeDto {
   ETF = 'ETF',
@@ -14,9 +15,7 @@ export class ConfirmAssetDto {
     description: 'International Securities Identification Number',
     example: 'IE00B4L5Y983',
   })
-  @Transform(({ value }: { value: unknown }) =>
-    typeof value === 'string' ? value.trim().toUpperCase() : value,
-  )
+  @Transform(trimUppercase)
   @IsString()
   @IsNotEmpty()
   isin!: string;
@@ -25,9 +24,7 @@ export class ConfirmAssetDto {
     description: 'Morningstar unique identifier',
     example: '0P0000YXJO',
   })
-  @Transform(({ value }: { value: unknown }) =>
-    typeof value === 'string' ? value.trim().toUpperCase() : value,
-  )
+  @Transform(trimUppercase)
   @IsString()
   @IsNotEmpty()
   morningstarId!: string;
@@ -36,9 +33,7 @@ export class ConfirmAssetDto {
     description: 'Asset name',
     example: 'iShares Core MSCI World UCITS ETF',
   })
-  @Transform(({ value }: { value: unknown }) =>
-    typeof value === 'string' ? value.trim() : value,
-  )
+  @Transform(trimString)
   @IsString()
   @IsNotEmpty()
   name!: string;
@@ -56,9 +51,7 @@ export class ConfirmAssetDto {
     example:
       'https://global.morningstar.com/es/inversiones/fondos/0P0000YXJO/cotizacion',
   })
-  @Transform(({ value }: { value: unknown }) =>
-    typeof value === 'string' ? value.trim() : value,
-  )
+  @Transform(trimString)
   @IsString()
   @IsNotEmpty()
   url!: string;
@@ -67,9 +60,7 @@ export class ConfirmAssetDto {
     description: 'Asset ticker symbol',
     example: 'IWDA',
   })
-  @Transform(({ value }: { value: unknown }) =>
-    typeof value === 'string' ? value.trim().toUpperCase() : value,
-  )
+  @Transform(trimUppercase)
   @IsString()
   @IsOptional()
   ticker?: string;

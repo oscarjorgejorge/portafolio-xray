@@ -1,6 +1,7 @@
 import { IsString, IsNotEmpty, IsEnum, IsOptional } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { trimUppercase } from '../../common/transforms';
 import { AssetTypeDto } from './confirm-asset.dto';
 
 export class ResolveAssetDto {
@@ -8,9 +9,7 @@ export class ResolveAssetDto {
     description: 'Asset identifier - can be ISIN, Morningstar ID, or ticker',
     example: 'IE00B4L5Y983',
   })
-  @Transform(({ value }: { value: unknown }) =>
-    typeof value === 'string' ? value.trim().toUpperCase() : value,
-  )
+  @Transform(trimUppercase)
   @IsString()
   @IsNotEmpty()
   input!: string;
