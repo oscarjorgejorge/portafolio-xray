@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, Inject } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { ConfigService } from '@nestjs/config';
 import { Cache } from 'cache-manager';
 import { AssetsRepository } from './assets.repository';
 import { MorningstarResolverService } from './resolver';
@@ -22,6 +23,7 @@ import {
   BatchResolveAssetResponse,
   BatchResolveResultItem,
 } from './types';
+import type { AppConfig } from '../config';
 
 /** Cache key prefix for asset resolution results */
 const CACHE_KEY_PREFIX = 'asset:';
@@ -29,13 +31,22 @@ const CACHE_KEY_PREFIX = 'asset:';
 @Injectable()
 export class AssetsService implements IAssetsService {
   private readonly logger = createContextLogger(AssetsService.name);
+  private readonly batchConcurrencyLimit: number;
+  private readonly maxAlternatives: number;
 
   constructor(
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
     private readonly assetsRepository: AssetsRepository,
     private readonly morningstarResolver: MorningstarResolverService,
     private readonly isinEnrichmentService: IsinEnrichmentService,
-  ) {}
+    private readonly configService: ConfigService<AppConfig, true>,
+  ) {
+    const resolutionConfig = this.configService.get('resolution', {
+      infer: true,
+    });
+    this.batchConcurrencyLimit = resolutionConfig.batchConcurrencyLimit;
+    this.maxAlternatives = resolutionConfig.maxAlternatives;
+  }
 
   async resolve(dto: ResolveAssetDto): Promise<ResolveAssetResponse> {
     // Input is already normalized (trimmed & uppercased) by DTO Transform decorator
@@ -188,7 +199,7 @@ export class AssetsService implements IAssetsService {
         // Return alternatives for user to pick
         const alternatives = resolution.allResults
           .filter((r) => r.morningstarId)
-          .slice(0, 5)
+          .slice(0, this.maxAlternatives)
           .map((r) => ({
             morningstarId: r.morningstarId!,
             name: r.title,
@@ -260,11 +271,10 @@ export class AssetsService implements IAssetsService {
     );
 
     // Step 4: Resolve uncached items in parallel with concurrency control
-    const CONCURRENCY_LIMIT = 5; // Avoid overwhelming external APIs
     const resolvedResults = new Map<string, ResolveAssetResponse>();
 
-    for (let i = 0; i < uncachedItems.length; i += CONCURRENCY_LIMIT) {
-      const batch = uncachedItems.slice(i, i + CONCURRENCY_LIMIT);
+    for (let i = 0; i < uncachedItems.length; i += this.batchConcurrencyLimit) {
+      const batch = uncachedItems.slice(i, i + this.batchConcurrencyLimit);
       const batchPromises = batch.map(async (item) => {
         const result = await this.resolve({
           input: item.original.input,

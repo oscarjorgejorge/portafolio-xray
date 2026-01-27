@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { AssetsRepository } from './assets.repository';
 import * as cheerio from 'cheerio';
 import { HttpClientService } from '../common/http';
@@ -6,6 +7,7 @@ import { createContextLogger } from '../common/logger';
 import { getErrorMessage } from './resolver/utils/error-handler';
 import { VALID_ISIN_PREFIXES } from './resolver/utils/constants';
 import { IIsinEnrichmentService } from './interfaces';
+import type { AppConfig } from '../config';
 
 /**
  * Enrichment task waiting in the pending queue
@@ -29,12 +31,8 @@ interface PendingEnrichment {
 @Injectable()
 export class IsinEnrichmentService implements IIsinEnrichmentService {
   private readonly logger = createContextLogger(IsinEnrichmentService.name);
-
-  /**
-   * Maximum number of concurrent enrichment operations
-   * Prevents overwhelming DuckDuckGo/external APIs
-   */
-  private readonly MAX_CONCURRENT_ENRICHMENTS = 5;
+  private readonly maxConcurrentEnrichments: number;
+  private readonly enrichmentTimeoutMs: number;
 
   /**
    * Track enrichments currently in progress to prevent duplicate concurrent operations
@@ -55,7 +53,14 @@ export class IsinEnrichmentService implements IIsinEnrichmentService {
   constructor(
     private readonly assetsRepository: AssetsRepository,
     private readonly httpClient: HttpClientService,
-  ) {}
+    private readonly configService: ConfigService<AppConfig, true>,
+  ) {
+    const resolutionConfig = this.configService.get('resolution', {
+      infer: true,
+    });
+    this.maxConcurrentEnrichments = resolutionConfig.isinEnrichmentConcurrency;
+    this.enrichmentTimeoutMs = resolutionConfig.isinEnrichmentTimeoutMs;
+  }
 
   /**
    * Enrich ISIN in background (fire-and-forget)
@@ -76,13 +81,13 @@ export class IsinEnrichmentService implements IIsinEnrichmentService {
     this.trackedAssets.add(assetId);
 
     // Check if we can start immediately or need to queue
-    if (this.activeEnrichments.size < this.MAX_CONCURRENT_ENRICHMENTS) {
+    if (this.activeEnrichments.size < this.maxConcurrentEnrichments) {
       this.startEnrichment(assetId, fundName);
     } else {
       // Add to pending queue
       this.pendingQueue.push({ assetId, fundName });
       this.logger.debug(
-        `[ENRICH] Queue full (${this.activeEnrichments.size}/${this.MAX_CONCURRENT_ENRICHMENTS}), ` +
+        `[ENRICH] Queue full (${this.activeEnrichments.size}/${this.maxConcurrentEnrichments}), ` +
           `asset ${assetId} added to pending queue (${this.pendingQueue.length} pending)`,
       );
     }
@@ -109,7 +114,7 @@ export class IsinEnrichmentService implements IIsinEnrichmentService {
 
     this.activeEnrichments.set(assetId, enrichmentPromise);
     this.logger.debug(
-      `[ENRICH] Started enrichment for ${assetId} (${this.activeEnrichments.size}/${this.MAX_CONCURRENT_ENRICHMENTS} active)`,
+      `[ENRICH] Started enrichment for ${assetId} (${this.activeEnrichments.size}/${this.maxConcurrentEnrichments} active)`,
     );
   }
 
@@ -119,7 +124,7 @@ export class IsinEnrichmentService implements IIsinEnrichmentService {
   private processNextFromQueue(): void {
     if (
       this.pendingQueue.length > 0 &&
-      this.activeEnrichments.size < this.MAX_CONCURRENT_ENRICHMENTS
+      this.activeEnrichments.size < this.maxConcurrentEnrichments
     ) {
       const next = this.pendingQueue.shift();
       if (next) {
@@ -172,7 +177,7 @@ export class IsinEnrichmentService implements IIsinEnrichmentService {
    * Get the maximum concurrent enrichments limit
    */
   getMaxConcurrentLimit(): number {
-    return this.MAX_CONCURRENT_ENRICHMENTS;
+    return this.maxConcurrentEnrichments;
   }
 
   /**
@@ -240,7 +245,7 @@ export class IsinEnrichmentService implements IIsinEnrichmentService {
 
     const response = await this.httpClient.get<string>(searchUrl, {
       responseType: 'html',
-      timeout: 15000,
+      timeout: this.enrichmentTimeoutMs,
     });
 
     if (!response.ok || !response.data) {

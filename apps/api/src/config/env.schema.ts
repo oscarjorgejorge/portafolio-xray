@@ -31,6 +31,12 @@ export const envSchema = z.object({
   // In-Memory Cache
   CACHE_TTL_MS: z.coerce.number().min(0).default(300000), // 5 minutes default
   CACHE_MAX_ITEMS: z.coerce.number().min(1).default(1000),
+
+  // Resolution Settings
+  BATCH_CONCURRENCY_LIMIT: z.coerce.number().min(1).max(20).default(5),
+  MAX_ALTERNATIVES: z.coerce.number().min(1).max(20).default(5),
+  ISIN_ENRICHMENT_CONCURRENCY: z.coerce.number().min(1).max(20).default(5),
+  ISIN_ENRICHMENT_TIMEOUT_MS: z.coerce.number().min(1000).default(15000),
 });
 
 /**
