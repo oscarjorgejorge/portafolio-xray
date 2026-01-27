@@ -38,5 +38,5 @@ export async function generateMetadata({ params }: LocaleLayoutProps): Promise<M
 }
 
 export default function LocaleLayout({ children }: LocaleLayoutProps) {
-  return <>{children}</>;
+  return children;
 }

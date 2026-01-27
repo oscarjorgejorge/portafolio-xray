@@ -1,5 +1,4 @@
-import { PortfolioBuilderSkeleton } from '@/components/ui/Skeleton';
-import { Skeleton } from '@/components/ui/Skeleton';
+import { PortfolioBuilderSkeleton, Skeleton } from '@/components/ui/Skeleton';
 
 /**
  * Next.js loading component for [locale] route.
