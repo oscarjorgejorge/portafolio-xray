@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -15,6 +15,7 @@ function XRayPageContent() {
   const [shareableUrl, setShareableUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [fullShareableUrl, setFullShareableUrl] = useState<string>('');
+  const hasGeneratedRef = useRef(false);
 
   const generateMutation = useMutation({
     mutationFn: generateXRay,
@@ -36,36 +37,37 @@ function XRayPageContent() {
   }, [shareableUrl]);
 
   useEffect(() => {
+    // Prevent re-execution if already generated
+    if (hasGeneratedRef.current) {
+      return;
+    }
+
     // Parse assets from URL and generate X-Ray
     const assetsParam = searchParams.get('assets');
     if (assetsParam) {
-      const parseAssets = () => {
-        try {
-          const decoded = decodeURIComponent(assetsParam);
-          const pairs = decoded.split(',');
-          const assets = pairs
-            .map((pair) => {
-              const [morningstarId, weightStr] = pair.split(':');
-              const weight = parseFloat(weightStr);
-              if (morningstarId && !isNaN(weight)) {
-                return { morningstarId, weight };
-              }
-              return null;
-            })
-            .filter((asset): asset is { morningstarId: string; weight: number } => asset !== null);
+      try {
+        const decoded = decodeURIComponent(assetsParam);
+        const pairs = decoded.split(',');
+        const assets = pairs
+          .map((pair) => {
+            const [morningstarId, weightStr] = pair.split(':');
+            const weight = parseFloat(weightStr);
+            if (morningstarId && !isNaN(weight)) {
+              return { morningstarId, weight };
+            }
+            return null;
+          })
+          .filter((asset): asset is { morningstarId: string; weight: number } => asset !== null);
 
-          if (assets.length > 0) {
-            generateMutation.mutate(assets);
-          }
-        } catch (error) {
-          console.error('Error parsing assets:', error);
+        if (assets.length > 0) {
+          hasGeneratedRef.current = true;
+          generateMutation.mutate(assets);
         }
-      };
-
-      parseAssets();
+      } catch (error) {
+        console.error('Error parsing assets:', error);
+      }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  }, [searchParams, generateMutation]);
 
   const handleCopyUrl = (url: string, type: 'morningstar' | 'shareable') => {
     navigator.clipboard.writeText(url).then(() => {
