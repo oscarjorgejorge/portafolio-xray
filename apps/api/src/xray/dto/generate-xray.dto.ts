@@ -10,6 +10,7 @@ import {
 import { Type, Transform } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 import { trimUppercase } from '../../common/transforms';
+import { HasUniqueProperty } from '../../common/validators';
 
 export class XRayAssetDto {
   @ApiProperty({
@@ -35,7 +36,7 @@ export class XRayAssetDto {
 export class GenerateXRayDto {
   @ApiProperty({
     description:
-      'Array of portfolio assets with their weights. Total weight must equal 100%.',
+      'Array of portfolio assets with their weights. Total weight must equal 100%. Each morningstarId must be unique.',
     type: [XRayAssetDto],
     example: [
       { morningstarId: '0P0000YXJO', weight: 40 },
@@ -45,6 +46,10 @@ export class GenerateXRayDto {
   })
   @IsArray()
   @ArrayMinSize(1)
+  @HasUniqueProperty('morningstarId', {
+    message:
+      'Duplicate morningstarId found. Each asset must have a unique morningstarId.',
+  })
   @ValidateNested({ each: true })
   @Type(() => XRayAssetDto)
   assets!: XRayAssetDto[];
