@@ -12,13 +12,13 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
       <div
         ref={ref}
         className={cn(
-          'bg-white rounded-lg shadow-lg border border-slate-200 p-6',
+          'bg-card text-card-foreground rounded-lg shadow-lg border border-border p-6',
           className
         )}
         {...props}
       >
         {title && (
-          <h3 className="text-lg font-semibold text-slate-900 mb-4">{title}</h3>
+          <h3 className="text-lg font-semibold mb-4">{title}</h3>
         )}
         {children}
       </div>

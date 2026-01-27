@@ -97,7 +97,7 @@ export const InputNumber = forwardRef<HTMLInputElement, InputNumberProps>(
         {label && (
           <label
             htmlFor={inputId}
-            className="block text-xs font-medium text-slate-700 mb-1"
+            className="block text-xs font-medium text-muted-foreground mb-1"
           >
             {label}
           </label>
@@ -117,10 +117,10 @@ export const InputNumber = forwardRef<HTMLInputElement, InputNumberProps>(
             aria-invalid={Boolean(error)}
             aria-describedby={error ? `${inputId}-error` : undefined}
             className={cn(
-              'w-full border rounded-lg text-slate-900 bg-white',
-              'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
-              'disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed disabled:opacity-75',
-              error ? 'border-red-500' : 'border-slate-300',
+              'w-full border rounded-lg text-foreground bg-card',
+              'focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent',
+              'disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-75',
+              error ? 'border-red-500' : 'border-border',
               sizeClasses[size],
               suffix && 'pr-8',
               className
@@ -128,7 +128,7 @@ export const InputNumber = forwardRef<HTMLInputElement, InputNumberProps>(
             {...props}
           />
           {suffix && (
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm pointer-events-none">
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm pointer-events-none">
               {suffix}
             </span>
           )}

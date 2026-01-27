@@ -12,10 +12,10 @@ const baseStyles =
   'font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
 
 const variantStyles = {
-  primary: 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500',
-  secondary: 'bg-slate-200 text-slate-900 hover:bg-slate-300 focus:ring-slate-500',
+  primary: 'bg-primary text-primary-foreground hover:bg-blue-700 focus:ring-blue-500',
+  secondary: 'bg-muted text-foreground hover:bg-slate-300 focus:ring-slate-500',
   danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
-  ghost: 'bg-transparent text-slate-700 hover:bg-slate-100 focus:ring-slate-500',
+  ghost: 'bg-transparent text-muted-foreground hover:bg-slate-100 focus:ring-slate-500',
 };
 
 const sizeStyles = {
