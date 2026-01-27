@@ -1178,3 +1178,71 @@ apply this change, and the database changes
 ```bash
 npx prisma migrate deploy
 ```
+
+### Prompt 83
+como senior backend developper analiza la api, y dime que mejoras y optmizaciones son necesarias teniendo en cuenta las buenas practicas (la parte de los test los implementaremos mas adelante)
+
+**Analysis Summary:**
+11 improvement areas identified covering code duplication, missing indexes, batch processing, magic strings, connection pool configuration, and graceful shutdown.
+
+### Prompt 84
+vamos a solucionar estas cosas una por una, ve haciendo un commit despues de cada solucion: Código Duplicado y Refactoring, Falta índice para búsquedas por ticker, Batch lookup de ISINs es secuencial, Magic strings dispersos, Connection pool no configurado, Graceful Shutdown
+
+**Implementations:**
+
+1. **Código Duplicado y Refactoring** (`6035ac2`):
+   - Centralized `IdentifierClassifier` to support all input types (ISIN, MORNINGSTAR_ID, TICKER, FREE_TEXT)
+   - Added `normalizeInput` static method to `IdentifierClassifier`
+   - Deprecated `input-normalizer.ts` functions, re-exported from centralized classifier
+
+2. **Falta índice para búsquedas por ticker** (`3e7bfb4`):
+   - Added `@@index([ticker])` to Asset model in Prisma schema
+   - Created migration `20260127100000_add_ticker_index`
+
+3. **Batch lookup de ISINs es secuencial** (`b63e871`):
+   - Added `findManyByIsins` method to AssetsRepository
+   - Uses `WHERE isin IN (...)` for single batch query
+   - Updated `batchCacheLookup` to use batch query instead of N individual queries
+
+4. **Magic strings dispersos** (`4cd712e`):
+   - Created `MS_ASSET_TYPES` constant object with FUND, ETF, STOCK, UNKNOWN
+   - Updated all files to use constants instead of string literals ('Fondo', 'ETF', 'Accion', 'Desconocido')
+   - Files updated: api-search.strategy, global-search.strategy, url-builder, page-verifier.service, morningstar-resolver.service, result-scorer.service
+
+5. **Connection pool no configurado** (`cb820ce`):
+   - Added environment variables: `DB_POOL_MAX`, `DB_POOL_IDLE_TIMEOUT_MS`, `DB_POOL_CONNECTION_TIMEOUT_MS`
+   - Added `DbPoolConfig` interface to configuration
+   - Updated PrismaService to configure pool with validated settings
+   - Pool configuration logged at startup
+
+6. **Graceful Shutdown** (`e37a3d9`):
+   - Added `app.enableShutdownHooks()` in main.ts
+   - Added SIGTERM/SIGINT handlers for logging
+   - NestJS lifecycle hooks handle actual cleanup (OnModuleDestroy in PrismaService)
+
+### Prompt 85
+y luego Cache en memoria para assets frecuentes, HttpClient error handling silencioso (haz un commit despues de cada mejora)
+
+**Implementations:**
+
+1. **Cache en memoria para assets frecuentes** (`c109e4d`):
+   - Installed `@nestjs/cache-manager` and `cache-manager`
+   - Added `CacheModule.registerAsync()` to AppModule with config from environment
+   - Added cache configuration: `CACHE_TTL_MS` (default 5 minutes), `CACHE_MAX_ITEMS` (default 1000)
+   - Updated AssetsService:
+     - Injected `CACHE_MANAGER` for in-memory cache
+     - Added memory cache check before DB lookup (fastest path)
+     - Cache successful resolutions after DB hits
+     - Cache invalidation on asset confirm/update
+   - Cache key format: `asset:{INPUT}`
+
+2. **HttpClient error handling silencioso** (`2fccd19`):
+   - Added `HttpErrorType` enum: NETWORK, TIMEOUT, ABORT, PARSE, HTTP_ERROR, UNKNOWN
+   - Added `HttpError` interface with type, message, and optional cause
+   - Updated `HttpResponse` to include `error?: HttpError` field
+   - Updated HttpClientService:
+     - Non-2xx responses now include error details
+     - Parse errors captured with detailed messages
+     - `categorizeError()` method classifies errors appropriately
+     - Network, timeout, and abort errors properly categorized
+     - All retries exhausted returns last error details
