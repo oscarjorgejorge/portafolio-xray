@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { PortfolioBuilder } from '@/components/portfolio/PortfolioBuilder';
 import { PageLoading } from '@/components/ui/PageLoading';
 import { PortfolioBuilderSkeleton } from '@/components/ui/Skeleton';
+import { Alert } from '@/components/ui/Alert';
 import { captureException } from '@/lib/services/errorReporting';
 import type { PortfolioAsset } from '@/types';
 import { resolveAsset } from '@/lib/api/assets';
@@ -14,6 +15,7 @@ function HomePageContent() {
   const searchParams = useSearchParams();
   const [initialAssets, setInitialAssets] = useState<PortfolioAsset[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [urlParseError, setUrlParseError] = useState<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -31,6 +33,7 @@ function HomePageContent() {
     abortControllerRef.current = abortController;
 
     setIsLoading(true);
+    setUrlParseError(null);
 
     const parseAndResolveAssets = async () => {
       try {
@@ -96,6 +99,7 @@ function HomePageContent() {
         captureException(error instanceof Error ? error : new Error('Failed to parse shareable URL'), {
           tags: { action: 'url-parse' },
         });
+        setUrlParseError('Could not load portfolio from URL. Please add assets manually.');
       } finally {
         if (!abortController.signal.aborted) {
           setIsLoading(false);
@@ -123,6 +127,12 @@ function HomePageContent() {
             or Morningstar IDs and get instant analysis.
           </p>
         </div>
+
+        {urlParseError && (
+          <Alert variant="warning" className="mb-6">
+            {urlParseError}
+          </Alert>
+        )}
 
         {isLoading ? (
           <PortfolioBuilderSkeleton assetCount={3} />
