@@ -22,9 +22,11 @@ import {
   BatchResolveAssetResponse,
   ResolvedAssetDto,
 } from './types';
+import { ApiCommonResponses } from '../common/decorators';
 
 @ApiTags('assets')
 @Controller('assets')
+@ApiCommonResponses()
 export class AssetsController {
   constructor(private readonly assetsService: AssetsService) {}
 
