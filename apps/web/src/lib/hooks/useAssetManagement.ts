@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import type { PortfolioAsset, Asset, AssetType } from '@/types';
 
 interface UseAssetManagementOptions {
@@ -113,9 +113,15 @@ export function useAssetManagement({
     onAssetsChange?.();
   }, [onAssetsChange]);
 
-  const getAssetById = useCallback(
-    (id: string) => assets.find((a) => a.id === id),
+  // Create indexed Map for O(1) lookups instead of O(n) find()
+  const assetsMap = useMemo(
+    () => new Map(assets.map((a) => [a.id, a])),
     [assets]
+  );
+
+  const getAssetById = useCallback(
+    (id: string) => assetsMap.get(id),
+    [assetsMap]
   );
 
   return {
