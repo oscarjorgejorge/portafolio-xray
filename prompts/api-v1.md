@@ -1432,3 +1432,89 @@ Vamos con estas mejoras, haz un comit despues de cada una: Extraer lógica del P
    - Added `aria-atomic="true"` for screen reader announcements
    - Added visible dismiss button with close icon
    - Added `showCloseButton` prop (default: true)
+
+### Prompt 91
+como senior frontend developper analiza la web, y dime que mejoras y optmizaciones que son necesarias teniendo en cuenta las buenas practicas (la parte de los test los implementaremos mas adelante), pero tampoco quiero algo overkill / complejo sin necesidad
+
+**Analysis Summary:**
+12 improvements identified based on code review:
+
+1. **tailwind-merge for CSS class merging** - Prevent class conflicts when passing className props
+2. **API Client timeout not configured** - TIMEOUT_MS constant exists but not used
+3. **WeightInput allows invalid values** - No max validation, negative values possible
+4. **React.memo missing in list components** - AssetRow re-renders unnecessarily
+5. **Modal without createPortal** - Z-index issues in nested components
+6. **usePortfolioBuilder too large** - 318 lines, multiple responsibilities
+7. **Missing clipboard error feedback** - Silent console.error on failures
+8. **Basic ESLint config** - Only extends next/core-web-vitals
+9. **No skeleton loaders** - Only spinner for loading states
+10. **forwardRef missing in Card/Alert** - Better component composition
+11. **Dedicated InputNumber component** - Reusable with built-in validation
+12. **Loading state for individual AssetRow** - More granular feedback
+
+### Prompt 92
+vamos con estas mejoras y ve haciendo commits con cada mejora
+
+**Implementations:**
+
+1. **Add tailwind-merge for safe CSS class merging** (`544e182`):
+   - Installed `tailwind-merge` package
+   - Created `cn()` utility function in `lib/utils/cn.ts`
+   - Updated UI components (Button, Input, Card, Alert, Spinner, Modal) to use cn()
+   - Prevents class conflicts when passing custom className props
+
+2. **Configure API client timeout** (`1c9fa56`):
+   - Added `timeout: API.TIMEOUT_MS` to axios config
+   - Added specific error handling for timeout errors
+   - Improved error messages for better user feedback
+
+3. **Add InputNumber component with validation** (`4c76b4a`):
+   - Created dedicated InputNumber component
+   - Built-in min/max validation
+   - Prevents negative values and enforces bounds automatically
+   - Updated AssetRow to use InputNumber for weight inputs
+   - Support percentage mode with max=100 limit
+
+4. **Add React.memo to list components** (`3827641`):
+   - Wrapped AssetRow, WeightInput, RemoveButton, ErrorMessage with React.memo
+   - Memoized event handlers with useCallback
+   - Improves performance with large portfolios
+
+5. **Use createPortal for Modal** (`1d94af2`):
+   - Render Modal at document.body level using React createPortal
+   - Add mounted state to ensure client-side only rendering (SSR safe)
+   - Prevents z-index stacking context issues in nested components
+
+6. **Split usePortfolioBuilder into smaller hooks** (`8e98688`):
+   - Created `useAssetManagement` for CRUD operations on assets
+   - Created `usePortfolioValidation` for weight and validity calculations
+   - Created `useXRayGeneration` for report generation and URL management
+   - Compose hooks in usePortfolioBuilder for better maintainability
+
+7. **Add error feedback for clipboard operations** (`0e63182`):
+   - Added `copyError` state to useShareableUrl hook
+   - Added fallback mechanism using deprecated execCommand for wider compatibility
+   - Added `onCopyError` callback option for custom error handling
+   - Return boolean from copyToClipboard to indicate success
+
+8. **Improve ESLint configuration** (`726b196`):
+   - Add react-hooks/rules-of-hooks and exhaustive-deps rules
+   - Add no-console warning (allow error/warn)
+   - Add prefer-const and react self-closing rules
+   - Auto-fix self-closing components
+
+9. **Add Skeleton components for loading states** (`1e2ed84`):
+   - Create base Skeleton component with height/rounded presets
+   - Create AssetRowSkeleton for asset list loading
+   - Create CardSkeleton and PageSkeleton for larger loading states
+   - Better UX than simple spinner for content loading
+
+10. **Add forwardRef to Card and Alert components** (`adf2fc0`):
+    - Enables ref forwarding for better component composition
+    - Extend HTMLDivElement attributes for native props support
+    - Add displayName for better debugging
+
+11. **Add loading state support to AssetRow** (`dc13590`):
+    - Add isLoading prop to show skeleton loader
+    - Improve resolving state with spinner and message
+    - Better visual feedback during asset resolution
