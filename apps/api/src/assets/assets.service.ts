@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Inject } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { ConfigService } from '@nestjs/config';
 import { Cache } from 'cache-manager';
@@ -17,6 +17,7 @@ import {
   IdentifierType,
 } from '../common/utils/identifier-classifier';
 import { createContextLogger } from '../common/logger';
+import { EntityNotFoundException } from '../common/exceptions';
 import { IAssetsService } from './interfaces';
 import {
   ResolveAssetResponse,
@@ -462,7 +463,7 @@ export class AssetsService implements IAssetsService {
   async getById(id: string): Promise<ResolvedAssetDto> {
     const asset = await this.assetsRepository.findById(id);
     if (!asset) {
-      throw new NotFoundException(`Asset with id "${id}" not found`);
+      throw new EntityNotFoundException('Asset', id);
     }
     return toResolvedAssetDto(asset);
   }
@@ -490,29 +491,23 @@ export class AssetsService implements IAssetsService {
    * Uses transactional method to ensure atomicity between existence check and update
    * @param id - Asset UUID
    * @param isin - New ISIN value
+   * @throws EntityNotFoundException if asset not found (returns 404 automatically)
    */
   async updateIsin(id: string, isin: string): Promise<ResolvedAssetDto> {
     this.logger.log(`Manually updating ISIN for asset ${id}: ${isin}`);
 
-    try {
-      // Use transactional method to ensure atomicity
-      const asset = await this.assetsRepository.updateIsinWithVerification(
-        id,
-        isin,
-        true,
-      ); // Mark as manually entered
+    // Repository throws EntityNotFoundException (extends NotFoundException)
+    // which is automatically handled by NestJS and returns 404
+    const asset = await this.assetsRepository.updateIsinWithVerification(
+      id,
+      isin,
+      true, // Mark as manually entered
+    );
 
-      // Invalidate cache for ISIN and Morningstar ID
-      await this.invalidateAssetCache(isin, asset.morningstarId);
+    // Invalidate cache for ISIN and Morningstar ID
+    await this.invalidateAssetCache(isin, asset.morningstarId);
 
-      return toResolvedAssetDto(asset);
-    } catch (error) {
-      // Convert repository error to NestJS NotFoundException
-      if (error instanceof Error && error.message.includes('not found')) {
-        throw new NotFoundException(`Asset with id "${id}" not found`);
-      }
-      throw error;
-    }
+    return toResolvedAssetDto(asset);
   }
 
   /**
