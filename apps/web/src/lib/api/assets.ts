@@ -1,37 +1,15 @@
 import { apiClient } from './client';
+import {
+  AssetSchema,
+  ResolveAssetResponseSchema,
+  type Asset,
+  type AssetType,
+  type AlternativeAsset,
+  type ResolveAssetResponse,
+} from './schemas';
 
-export type AssetType = 'ETF' | 'FUND' | 'STOCK' | 'ETC';
-
-export interface Asset {
-  id: string;
-  isin: string | null;
-  morningstarId: string;
-  ticker?: string | null;
-  name: string;
-  type: AssetType;
-  url: string;
-  source: 'manual' | 'web_search' | 'imported';
-  isinPending?: boolean;
-  isinManual?: boolean; // True when ISIN was manually entered by user
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface AlternativeAsset {
-  morningstarId: string;
-  name: string;
-  url: string;
-  score: number;
-}
-
-export interface ResolveAssetResponse {
-  success: boolean;
-  source: 'cache' | 'resolved' | 'manual_required';
-  asset?: Asset;
-  isinPending?: boolean;
-  alternatives?: AlternativeAsset[];
-  error?: string;
-}
+// Re-export types from schemas for backward compatibility
+export type { Asset, AssetType, AlternativeAsset, ResolveAssetResponse };
 
 export interface ConfirmAssetRequest {
   isin: string;
@@ -44,41 +22,45 @@ export interface ConfirmAssetRequest {
 
 /**
  * Resolve an asset identifier (ISIN, Morningstar ID, or ticker) to asset details
+ * Validates response against Zod schema
  */
 export async function resolveAsset(
   input: string,
   assetType?: AssetType
 ): Promise<ResolveAssetResponse> {
-  const response = await apiClient.post<ResolveAssetResponse>('/assets/resolve', {
+  const response = await apiClient.post('/assets/resolve', {
     input,
     assetType,
   });
-  return response.data;
+  return ResolveAssetResponseSchema.parse(response.data);
 }
 
 /**
  * Manually confirm and save an asset to the cache
+ * Validates response against Zod schema
  */
 export async function confirmAsset(
   data: ConfirmAssetRequest
 ): Promise<Asset> {
-  const response = await apiClient.post<Asset>('/assets/confirm', data);
-  return response.data;
+  const response = await apiClient.post('/assets/confirm', data);
+  return AssetSchema.parse(response.data);
 }
 
 /**
  * Get cached asset by ID
+ * Validates response against Zod schema
  */
 export async function getAssetById(id: string): Promise<Asset> {
-  const response = await apiClient.get<Asset>(`/assets/${id}`);
-  return response.data;
+  const response = await apiClient.get(`/assets/${id}`);
+  return AssetSchema.parse(response.data);
 }
 
 /**
  * Update ISIN for an existing asset
+ * Validates response against Zod schema
  */
 export async function updateAssetIsin(id: string, isin: string): Promise<Asset> {
-  const response = await apiClient.patch<Asset>(`/assets/${id}/isin`, { isin });
-  return response.data;
+  const response = await apiClient.patch(`/assets/${id}/isin`, { isin });
+  return AssetSchema.parse(response.data);
 }
 
