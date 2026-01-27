@@ -17,11 +17,20 @@ export const envSchema = z.object({
     .string()
     .url({ message: 'DATABASE_URL must be a valid PostgreSQL connection URL' }),
 
+  // Database Connection Pool
+  DB_POOL_MAX: z.coerce.number().min(1).max(100).default(20),
+  DB_POOL_IDLE_TIMEOUT_MS: z.coerce.number().min(0).default(30000),
+  DB_POOL_CONNECTION_TIMEOUT_MS: z.coerce.number().min(0).default(5000),
+
   // External Services
   MORNINGSTAR_BASE_URL: z.string().url().default('https://lt.morningstar.com'),
 
   // CORS
   CORS_ORIGINS: z.string().default('http://localhost:3000'),
+
+  // In-Memory Cache
+  CACHE_TTL_MS: z.coerce.number().min(0).default(300000), // 5 minutes default
+  CACHE_MAX_ITEMS: z.coerce.number().min(1).default(1000),
 });
 
 /**

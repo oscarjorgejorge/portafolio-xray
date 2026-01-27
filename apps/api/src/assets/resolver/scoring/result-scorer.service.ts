@@ -1,16 +1,15 @@
 import { Injectable } from '@nestjs/common';
+import { SearchResult, ScoredResult, ResolverConfig } from '../resolver.types';
 import {
-  SearchResult,
-  ScoredResult,
-  InputType,
-  ResolverConfig,
-} from '../resolver.types';
-import { normalizeInput } from '../utils/input-normalizer';
+  IdentifierClassifier,
+  IdentifierType,
+} from '../../../common/utils/identifier-classifier';
 import {
   DEFAULT_RESOLVER_CONFIG,
   SCORE_WEIGHTS,
   MAX_SCORES,
   MIN_WORD_LENGTH_FOR_MATCHING,
+  MS_ASSET_TYPES,
 } from '../utils/constants';
 
 /**
@@ -27,7 +26,7 @@ export class ResultScorerService {
   scoreResult(
     result: SearchResult,
     originalInput: string,
-    inputType: InputType,
+    inputType: IdentifierType,
   ): ScoredResult {
     const breakdown = {
       isinMatch: 0,
@@ -40,11 +39,11 @@ export class ResultScorerService {
 
     const textToSearch =
       `${result.title} ${result.snippet} ${result.url}`.toUpperCase();
-    const normalizedInput = normalizeInput(originalInput);
+    const normalizedInput = IdentifierClassifier.normalizeInput(originalInput);
 
     // Exact Morningstar ID match (highest priority)
     if (
-      inputType === 'MORNINGSTAR_ID' &&
+      inputType === IdentifierType.MORNINGSTAR_ID &&
       result.morningstarId &&
       result.morningstarId.toUpperCase() === normalizedInput
     ) {
@@ -52,12 +51,15 @@ export class ResultScorerService {
     }
 
     // ISIN appears in result
-    if (inputType === 'ISIN' && textToSearch.includes(normalizedInput)) {
+    if (
+      inputType === IdentifierType.ISIN &&
+      textToSearch.includes(normalizedInput)
+    ) {
       breakdown.isinMatch = SCORE_WEIGHTS.ISIN_MATCH;
     }
 
     // Ticker matches exactly
-    if (inputType === 'TICKER') {
+    if (inputType === IdentifierType.TICKER) {
       const tickerPattern = new RegExp(`\\b${normalizedInput}\\b`, 'i');
       const tickerValue =
         typeof result.ticker === 'string' ? result.ticker.toUpperCase() : '';
@@ -67,7 +69,7 @@ export class ResultScorerService {
     }
 
     // Partial name match (FREE_TEXT) - scaled by match percentage
-    if (inputType === 'FREE_TEXT') {
+    if (inputType === IdentifierType.FREE_TEXT) {
       const words = normalizedInput
         .split(' ')
         .filter((w) => w.length > MIN_WORD_LENGTH_FOR_MATCHING);
@@ -95,7 +97,7 @@ export class ResultScorerService {
     // Fund IDs starting with "F" bonus (preferred format for funds)
     if (
       result.morningstarId &&
-      result.assetType === 'Fondo' &&
+      result.assetType === MS_ASSET_TYPES.FUND &&
       result.morningstarId.toUpperCase().startsWith('F')
     ) {
       breakdown.typeMatch += SCORE_WEIGHTS.FUND_F_ID_BONUS;
@@ -116,7 +118,7 @@ export class ResultScorerService {
   scoreAndSortResults(
     results: SearchResult[],
     originalInput: string,
-    inputType: InputType,
+    inputType: IdentifierType,
   ): ScoredResult[] {
     return results
       .map((r) => this.scoreResult(r, originalInput, inputType))
@@ -131,14 +133,19 @@ export class ResultScorerService {
 
     const firstResult = scoredResults[0];
     const isFund =
-      firstResult?.assetType === 'Fondo' || firstResult?.assetType === 'ETF';
+      firstResult?.assetType === MS_ASSET_TYPES.FUND ||
+      firstResult?.assetType === MS_ASSET_TYPES.ETF;
 
     if (!isFund || !firstResult?.title) return scoredResults;
 
     // Find all results with the same name (normalized)
-    const normalizedTitle = normalizeInput(firstResult.title);
+    const normalizedTitle = IdentifierClassifier.normalizeInput(
+      firstResult.title,
+    );
     const sameNameResults = scoredResults.filter(
-      (r) => r.title && normalizeInput(r.title) === normalizedTitle,
+      (r) =>
+        r.title &&
+        IdentifierClassifier.normalizeInput(r.title) === normalizedTitle,
     );
 
     // If multiple results have the same name, prefer the one with "F" ID
@@ -162,7 +169,7 @@ export class ResultScorerService {
    */
   calculateConfidence(
     bestMatch: ScoredResult,
-    inputType: InputType,
+    inputType: IdentifierType,
     verified: boolean,
   ): number {
     const maxScore = this.getMaxScoreForInputType(inputType, verified);
@@ -174,7 +181,7 @@ export class ResultScorerService {
    * Used for confidence normalization
    */
   private getMaxScoreForInputType(
-    inputType: InputType,
+    inputType: IdentifierType,
     verified: boolean,
   ): number {
     if (verified) {
@@ -182,9 +189,9 @@ export class ResultScorerService {
     }
 
     switch (inputType) {
-      case 'MORNINGSTAR_ID':
+      case IdentifierType.MORNINGSTAR_ID:
         return MAX_SCORES.MORNINGSTAR_ID;
-      case 'TICKER':
+      case IdentifierType.TICKER:
         return MAX_SCORES.TICKER;
       default:
         return MAX_SCORES.DEFAULT;

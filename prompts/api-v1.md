@@ -761,3 +761,488 @@ lets address this problem: N+1 Query in XRayService.buildMorningstarUrl
 **Verification:**
 - ✅ Lint passed
 - ✅ Type-check passed
+
+### Prompt 70
+como senior backend developper analiza la api, y dime que mejoras y optmizaciones son necesarias teniendo en cuenta las buenas practicas (la parte de los test los implementaremos mas adelante)
+
+**Analysis Summary:**
+Comprehensive code review identifying 10 areas for improvement organized by priority:
+
+**High Priority:**
+1. Custom Exceptions - usar excepciones de dominio específicas
+2. Input Validation (UUID) - validar parámetros de ruta
+3. Cache Layer - añadir caché in-memory para búsquedas frecuentes
+
+**Medium Priority:**
+4. API Versioning - añadir prefijo `/api/v1`
+5. Connection Pooling Config - configurar pool de conexiones DB
+6. Structured Logging - logging con correlación
+
+**Low Priority:**
+7. Code Cleanup - eliminar código muerto
+8. Additional DB Indexes - índices para ticker y name
+
+### Prompt 71
+vamos a arreglar este problema: Añadir capa de Interfaces/Abstractions para los servicios luego haz el commit
+
+**Implementation - Interface Abstractions Layer:**
+
+1. **Created interface files for each module:**
+   - `src/common/interfaces/http-client.interface.ts` - IHttpClient
+   - `src/assets/interfaces/assets-repository.interface.ts` - IAssetsRepository with data types
+   - `src/assets/interfaces/assets-service.interface.ts` - IAssetsService with ResolveAssetResponse
+   - `src/assets/interfaces/morningstar-resolver.interface.ts` - IMorningstarResolver
+   - `src/assets/interfaces/isin-enrichment.interface.ts` - IIsinEnrichmentService
+   - `src/xray/interfaces/xray-service.interface.ts` - IXRayService with GenerateXRayResponse
+   - `src/health/interfaces/health-service.interface.ts` - IHealthService with LivenessResponse
+
+2. **Updated services to implement interfaces:**
+   - `HttpClientService implements IHttpClient`
+   - `AssetsRepository implements IAssetsRepository`
+   - `AssetsService implements IAssetsService`
+   - `MorningstarResolverService implements IMorningstarResolver`
+   - `IsinEnrichmentService implements IIsinEnrichmentService`
+   - `XRayService implements IXRayService`
+   - `HealthService implements IHealthService`
+
+3. **Added injection tokens for each interface:**
+   - `HTTP_CLIENT`, `ASSETS_REPOSITORY`, `ASSETS_SERVICE`
+   - `MORNINGSTAR_RESOLVER`, `ISIN_ENRICHMENT_SERVICE`
+   - `XRAY_SERVICE`, `HEALTH_SERVICE`
+
+4. **Updated exports:**
+   - Added `interfaces/index.ts` barrel exports in each module
+   - Updated module `index.ts` files to export interfaces
+
+5. **Benefits:**
+   - Easier mocking in unit tests
+   - Clear service contracts
+   - Better dependency injection patterns
+   - Improved code documentation
+   - Decoupled implementations from contracts
+
+**Verification:**
+- ✅ Lint passed
+- ✅ Type-check passed
+- ✅ Tests passed (1/1)
+
+**Commit:** `refactor(api): add interface abstractions for services`
+
+### Prompt 72
+ahora vamos a mejorar esto: Separar Response Types en archivos dedicados
+
+**Implementation - Separate Response Types into Dedicated Files:**
+
+1. **Created dedicated type files for each module:**
+
+   **Assets Module (`src/assets/types/`):**
+   - `resolve-asset-response.type.ts`:
+     - `AssetAlternative` - Alternative asset suggestion interface
+     - `ResolveAssetSource` - Union type for resolution sources
+     - `ResolveAssetResponse` - Full response with JSDoc documentation
+
+   **XRay Module (`src/xray/types/`):**
+   - `generate-xray-response.type.ts`:
+     - `GenerateXRayResponse` - X-Ray URL generation response
+
+   **Health Module (`src/health/types/`):**
+   - `liveness-response.type.ts`:
+     - `LivenessResponse` - Liveness health check response
+
+2. **Updated interface files:**
+   - Removed inline type definitions
+   - Import types from dedicated type files
+   - Interfaces now only define service contracts
+
+3. **Updated services and controllers:**
+   - Services import types from `./types` instead of `./interfaces`
+   - Controllers import response types from `./types`
+
+4. **Updated module exports:**
+   - Added `types/index.ts` barrel exports
+   - Main `index.ts` exports types alongside interfaces
+
+5. **Benefits:**
+   - Clear separation between contracts (interfaces) and data structures (types)
+   - Better code organization and discoverability
+   - Types can be reused without importing the entire interface module
+   - Improved documentation with JSDoc on type properties
+
+**Verification:**
+- ✅ Lint passed
+- ✅ Type-check passed
+- ✅ Tests passed (1/1)
+
+**Commit:** `refactor(api): separate response types into dedicated files`
+
+### Prompt 73
+como senior backend developper analiza la api, y dime que mejoras y optmizaciones son necesarias teniendo en cuenta las buenas practicas (la parte de los test los implementaremos mas adelante)
+
+**Analysis Summary:**
+Comprehensive code review identifying improvements organized by priority:
+
+**High Priority (Critical):**
+1. Falta de Transacciones en Operaciones de Base de Datos - `upsertByIsin` hace find + update sin transacción
+2. Race Conditions en IsinEnrichmentService - fire-and-forget sin control de concurrencia
+3. Validación de UUIDs Faltante en Controllers - endpoints con :id no validan formato UUID
+4. Manejo de Errores Silencioso en HttpClientService - retorna null sin propagar errores
+
+**Medium Priority:**
+5. Falta de Caching para Resoluciones Externas
+6. Configuración Hardcodeada en el Código
+7. Falta de Logging Estructurado
+8. Método parseShareableUrl No Utilizado
+9. Inyección de Dependencias Sin Interfaces (tokens)
+
+**Low Priority:**
+10. DTOs Duplicados (AssetType)
+11. Health Check Incompleto (solo DB)
+12. Helmet CSP Demasiado Permisivo
+13. Falta Compresión de Respuestas
+14. Timeout Inconsistente en Estrategias
+15. PrismaService Lee process.env Directamente
+
+### Prompt 74
+vamos a mejorar este problema: Falta de Transacciones en Operaciones de Base de Datos
+
+**Implementation - Database Transactions:**
+
+1. **Modified `upsertByIsin` in AssetsRepository:**
+   - Wrapped entire operation in `prisma.$transaction()`
+   - All operations (findFirst + update/upsert) now execute atomically
+   - Prevents race conditions when concurrent requests try to upsert the same ISIN
+
+2. **Added `updateIsinWithVerification` method:**
+   - New transactional method that verifies asset exists before updating
+   - Combines existence check + update in single transaction
+   - Throws Error if asset not found (repository layer)
+
+3. **Updated IAssetsRepository interface:**
+   - Added `updateIsinWithVerification` method signature
+   - Full JSDoc documentation
+
+4. **Updated AssetsService:**
+   - `updateIsin` now uses `updateIsinWithVerification`
+   - Converts repository Error to NestJS NotFoundException
+
+**Benefits:**
+- Atomicity: Operations complete fully or not at all
+- Consistency: No partial updates possible
+- Isolation: Concurrent requests don't interfere
+- No race conditions between find and update
+
+### Prompt 75
+vamos ahora con esta mejora: Race Conditions en IsinEnrichmentService
+
+**Implementation - Prevent Race Conditions in ISIN Enrichment:**
+
+1. **Added enrichment tracking Map:**
+   ```typescript
+   private readonly enrichmentQueue = new Map<string, Promise<void>>();
+   ```
+
+2. **Modified `enrichIsinInBackground`:**
+   - Checks if enrichment is already in progress for the asset
+   - If duplicate request, logs debug message and returns immediately
+   - Tracks active enrichment in Map with Promise
+   - Uses `.finally()` to clean up Map entry when done (success or failure)
+
+3. **Added monitoring methods:**
+   - `isEnrichmentInProgress(assetId)` - Check if enrichment is running
+   - `getActiveEnrichmentCount()` - Get number of active enrichments
+
+4. **Updated IIsinEnrichmentService interface:**
+   - Added new monitoring method signatures
+
+**Benefits:**
+- Prevents duplicate enrichments for same asset
+- No memory leaks (Map cleaned up via finally)
+- Observable: Can monitor active enrichments
+- Graceful: Concurrent requests handled without errors
+
+### Prompt 76
+y luego con esta: Validación de UUIDs Faltante en Controllers, update the prompts, commit all the changes and push
+
+**Implementation - UUID Validation in Controllers:**
+
+1. **Added ParseUUIDPipe to assets.controller.ts:**
+   - Import `ParseUUIDPipe` from `@nestjs/common`
+   - Applied to `GET /assets/:id` endpoint
+   - Applied to `PATCH /assets/:id/isin` endpoint
+
+2. **Updated Swagger documentation:**
+   - Added 400 response for "Invalid UUID format" on both endpoints
+
+**Benefits:**
+- Early validation: Invalid UUIDs rejected before hitting service/database
+- Consistent error messages: NestJS provides standard 400 response
+- Security: Prevents injection attempts via malformed IDs
+- Performance: Avoids unnecessary database queries
+
+### Prompt 77
+como senior backend developper analiza la api, y dime que mejoras y optmizaciones son necesarias teniendo en cuenta las buenas practicas (la parte de los test los implementaremos mas adelante)
+
+**Analysis Summary:**
+Comprehensive code review identifying improvements organized by priority:
+
+**High Priority:**
+1. Inyección de Dependencias Incompleta - interfaces defined but not used for injection
+2. Request ID en logs - no correlation between logs in same request
+3. Manejo de Errores del PrismaService - no retry/circuit breaker
+4. Falta de Validación de ISIN en ConfirmAssetDto
+5. Fire-and-Forget Sin Control - ISIN enrichment without job queue
+
+**Medium Priority:**
+6. Falta API Versioning
+7. Response DTOs Inconsistentes
+8. Timeouts Hardcodeados
+9. Falta Caching Layer
+10. Health Check Incompleto
+11. Falta Graceful Shutdown
+12. Método mapMorningstarType debería ser utility
+
+**Low Priority:**
+13. Consultas N+1 Potenciales
+14. Índices de Base de Datos
+15. Compresión de Respuestas
+16. Métricas y Observabilidad
+17. DTOs con Class-transformer/validator Mixtos
+
+### Prompt 78
+lets go with this improvement: Request ID en logs
+
+**Implementation - Request ID Correlation in Logs:**
+
+1. **Created `src/common/context/` module:**
+   - `request-context.ts` - AsyncLocalStorage for request context
+   - Exports: `RequestContext`, `getRequestId()`, `getRequestContext()`, `REQUEST_ID_HEADER`
+   - Request context includes: `requestId`, `startTime`, `method`, `path`
+
+2. **Created `src/common/interceptors/` module:**
+   - `request-id.interceptor.ts` - NestJS interceptor for request ID management
+   - Generates UUID if not provided in `x-request-id` header
+   - Propagates existing request ID from client
+   - Adds request ID to response headers
+   - Logs request start/end with duration
+   - Stores context in AsyncLocalStorage for entire request lifecycle
+
+3. **Created `src/common/logger/` module:**
+   - `context-logger.service.ts` - Transient logger service with request ID
+   - `logger.module.ts` - Global module for ContextLoggerService
+   - Log format: `timestamp [LEVEL] [requestId] [Context] message`
+   - Automatically includes request ID from AsyncLocalStorage
+
+4. **Updated `src/common/filters/all-exceptions.filter.ts`:**
+   - Added `requestId` to error response
+   - Logs errors with request ID for correlation
+   - Response includes `requestId` field for client debugging
+
+5. **Updated `src/app.module.ts`:**
+   - Added `LoggerModule` to imports
+   - Registered `RequestIdInterceptor` globally via `APP_INTERCEPTOR`
+
+**Log Output Example:**
+```
+[abc-123-def] --> GET /assets/resolve
+2026-01-27T10:30:00.000Z LOG     [abc-123-def] [AssetsService] Resolving asset: IE00B4L5Y983
+[abc-123-def] <-- GET /assets/resolve 200 150ms
+```
+
+**Benefits:**
+- All logs from a single request share the same ID
+- Clients receive `x-request-id` header to reference in support tickets
+- Distributed tracing ready - can pass request ID to downstream services
+- Error responses include request ID for debugging
+- Performance tracking with request duration
+
+### Prompt 79
+yes, and later Consultas N+1 Potenciales, lets go with this one
+
+**Implementation - Batch Resolve Endpoint (N+1 API Fix):**
+
+1. **Analysis:**
+   - Database queries were already optimized (XRayService uses batch lookup)
+   - PageVerifierService uses parallel batch processing
+   - **Real issue:** Frontend makes N individual `/assets/resolve` calls
+   - Solution: Add batch resolve endpoint to reduce HTTP round trips
+
+2. **Created `src/assets/dto/batch-resolve-asset.dto.ts`:**
+   - `BatchResolveAssetItemDto` - Single asset request in batch
+   - `BatchResolveAssetDto` - Array of up to 20 assets
+   - Validation with `@ArrayMinSize(1)`, `@ArrayMaxSize(20)`
+
+3. **Created `src/assets/types/batch-resolve-response.type.ts`:**
+   - `BatchResolveResultItem` - Individual result with original input
+   - `BatchResolveAssetResponse` - Total counts and results array
+
+4. **Added `resolveBatch` method to AssetsService:**
+   - **Step 1:** Classify all inputs (ISIN, Morningstar ID, UNKNOWN)
+   - **Step 2:** Batch cache lookup for ISINs and Morningstar IDs
+   - **Step 3:** Process uncached items in parallel with concurrency limit (5)
+   - **Step 4:** Combine results in original order
+   - **Step 5:** Return statistics (total, resolved, manualRequired)
+
+5. **Added `batchCacheLookup` private method:**
+   - Uses `findManyByMorningstarIds` for batch DB query
+   - Parallel ISIN lookups (findFirst doesn't support batch)
+   - Returns Map for O(1) result lookup
+
+6. **Added `POST /assets/resolve/batch` endpoint:**
+   - Accepts array of assets (max 20)
+   - Returns batch results with statistics
+   - Full Swagger documentation
+
+7. **Updated interfaces:**
+   - Added `resolveBatch` to `IAssetsService`
+
+**API Endpoint:**
+```
+POST /assets/resolve/batch
+Body: {
+  "assets": [
+    { "input": "IE00B4L5Y983", "assetType": "ETF" },
+    { "input": "LU0996182563" },
+    { "input": "0P0000YXJO" }
+  ]
+}
+
+Response: {
+  "total": 3,
+  "resolved": 2,
+  "manualRequired": 1,
+  "results": [
+    { "input": "IE00B4L5Y983", "result": { "success": true, "source": "cache", ... } },
+    ...
+  ]
+}
+```
+
+**Performance Impact:**
+| Scenario | Before | After |
+|----------|--------|-------|
+| 5 assets | 5 HTTP calls, 5+ DB queries | 1 HTTP call, 1 batch query + parallel processing |
+| 10 assets | 10 HTTP calls, 10+ DB queries | 1 HTTP call, 1 batch query + parallel processing |
+| 20 assets | 20 HTTP calls, 20+ DB queries | 1 HTTP call, 1 batch query + parallel processing |
+
+**Benefits:**
+- Reduces frontend HTTP calls from N to 1
+- Batch cache lookup minimizes DB queries
+- Parallel processing with concurrency control (5)
+- Maintains individual error handling per asset
+- Statistics for UI feedback
+
+### Prompt 80
+can you explain me more about this? (Screenshot showing recommendations: Database Indexes, Response Compression, Metrics/Observability)
+
+**Explanation provided for:**
+1. **Database Indexes** - Only `isin` index exists, recommended adding composite indexes
+2. **Response Compression** - No gzip/brotli compression enabled
+3. **Metrics and Observability** - No instrumentation for Prometheus/OpenTelemetry
+
+### Prompt 81
+regarding to Response Compression, there is some change required on the front?
+
+**Answer:** No changes required on frontend. Axios automatically:
+- Sends `Accept-Encoding: gzip, deflate, br` header
+- Decompresses responses when server returns `Content-Encoding: gzip`
+
+### Prompt 82
+apply this change, and the database changes
+
+**Implementation - Response Compression:**
+
+1. **Installed packages:**
+   - `compression` - Express middleware for gzip/brotli compression
+   - `@types/compression` - TypeScript definitions
+
+2. **Updated `src/main.ts`:**
+   - Added `import compression from 'compression'`
+   - Added `app.use(compression())` before Helmet middleware
+   - Added startup log: "Response compression enabled"
+
+**Implementation - Database Composite Indexes:**
+
+1. **Updated `prisma/schema.prisma`:**
+   - Added `@@index([isin, isinPending])` - For polling queries
+   - Added `@@index([morningstarId, type])` - For type filtering
+
+2. **Created migration:**
+   - `prisma/migrations/20260127000000_add_composite_indexes/migration.sql`
+   - SQL:
+     ```sql
+     CREATE INDEX "assets_isin_isin_pending_idx" ON "assets"("isin", "isin_pending");
+     CREATE INDEX "assets_morningstar_id_type_idx" ON "assets"("morningstar_id", "type");
+     ```
+
+**Note:** Migration was created manually since database was not running. Apply with:
+```bash
+npx prisma migrate deploy
+```
+
+### Prompt 83
+como senior backend developper analiza la api, y dime que mejoras y optmizaciones son necesarias teniendo en cuenta las buenas practicas (la parte de los test los implementaremos mas adelante)
+
+**Analysis Summary:**
+11 improvement areas identified covering code duplication, missing indexes, batch processing, magic strings, connection pool configuration, and graceful shutdown.
+
+### Prompt 84
+vamos a solucionar estas cosas una por una, ve haciendo un commit despues de cada solucion: Código Duplicado y Refactoring, Falta índice para búsquedas por ticker, Batch lookup de ISINs es secuencial, Magic strings dispersos, Connection pool no configurado, Graceful Shutdown
+
+**Implementations:**
+
+1. **Código Duplicado y Refactoring** (`6035ac2`):
+   - Centralized `IdentifierClassifier` to support all input types (ISIN, MORNINGSTAR_ID, TICKER, FREE_TEXT)
+   - Added `normalizeInput` static method to `IdentifierClassifier`
+   - Deprecated `input-normalizer.ts` functions, re-exported from centralized classifier
+
+2. **Falta índice para búsquedas por ticker** (`3e7bfb4`):
+   - Added `@@index([ticker])` to Asset model in Prisma schema
+   - Created migration `20260127100000_add_ticker_index`
+
+3. **Batch lookup de ISINs es secuencial** (`b63e871`):
+   - Added `findManyByIsins` method to AssetsRepository
+   - Uses `WHERE isin IN (...)` for single batch query
+   - Updated `batchCacheLookup` to use batch query instead of N individual queries
+
+4. **Magic strings dispersos** (`4cd712e`):
+   - Created `MS_ASSET_TYPES` constant object with FUND, ETF, STOCK, UNKNOWN
+   - Updated all files to use constants instead of string literals ('Fondo', 'ETF', 'Accion', 'Desconocido')
+   - Files updated: api-search.strategy, global-search.strategy, url-builder, page-verifier.service, morningstar-resolver.service, result-scorer.service
+
+5. **Connection pool no configurado** (`cb820ce`):
+   - Added environment variables: `DB_POOL_MAX`, `DB_POOL_IDLE_TIMEOUT_MS`, `DB_POOL_CONNECTION_TIMEOUT_MS`
+   - Added `DbPoolConfig` interface to configuration
+   - Updated PrismaService to configure pool with validated settings
+   - Pool configuration logged at startup
+
+6. **Graceful Shutdown** (`e37a3d9`):
+   - Added `app.enableShutdownHooks()` in main.ts
+   - Added SIGTERM/SIGINT handlers for logging
+   - NestJS lifecycle hooks handle actual cleanup (OnModuleDestroy in PrismaService)
+
+### Prompt 85
+y luego Cache en memoria para assets frecuentes, HttpClient error handling silencioso (haz un commit despues de cada mejora)
+
+**Implementations:**
+
+1. **Cache en memoria para assets frecuentes** (`c109e4d`):
+   - Installed `@nestjs/cache-manager` and `cache-manager`
+   - Added `CacheModule.registerAsync()` to AppModule with config from environment
+   - Added cache configuration: `CACHE_TTL_MS` (default 5 minutes), `CACHE_MAX_ITEMS` (default 1000)
+   - Updated AssetsService:
+     - Injected `CACHE_MANAGER` for in-memory cache
+     - Added memory cache check before DB lookup (fastest path)
+     - Cache successful resolutions after DB hits
+     - Cache invalidation on asset confirm/update
+   - Cache key format: `asset:{INPUT}`
+
+2. **HttpClient error handling silencioso** (`2fccd19`):
+   - Added `HttpErrorType` enum: NETWORK, TIMEOUT, ABORT, PARSE, HTTP_ERROR, UNKNOWN
+   - Added `HttpError` interface with type, message, and optional cause
+   - Updated `HttpResponse` to include `error?: HttpError` field
+   - Updated HttpClientService:
+     - Non-2xx responses now include error details
+     - Parse errors captured with detailed messages
+     - `categorizeError()` method classifies errors appropriately
+     - Network, timeout, and abort errors properly categorized
+     - All retries exhausted returns last error details

@@ -3,6 +3,7 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
+import compression from 'compression';
 import { AppModule } from './app.module';
 import {
   ThrottlerExceptionFilter,
@@ -31,6 +32,10 @@ async function bootstrap(): Promise<void> {
     logger.log(`Environment: ${nodeEnv}`);
     logger.log(`Port: ${port}`);
     logger.log(`Production mode: ${isProduction}`);
+
+    // Compression middleware for response optimization (gzip/brotli)
+    app.use(compression());
+    logger.log('Response compression enabled');
 
     // Security: Helmet middleware for HTTP headers
     app.use(
@@ -120,6 +125,11 @@ async function bootstrap(): Promise<void> {
       credentials: true,
     });
 
+    // Enable graceful shutdown hooks
+    // This ensures OnModuleDestroy lifecycle hooks are called on SIGTERM/SIGINT
+    app.enableShutdownHooks();
+    logger.log('Graceful shutdown hooks enabled');
+
     // Listen on 0.0.0.0 to accept connections from containers/cloud platforms
     await app.listen(port, '0.0.0.0');
 
@@ -169,6 +179,18 @@ process.on('unhandledRejection', (reason) => {
   }
 
   process.exit(1);
+});
+
+// Handle SIGTERM (sent by Kubernetes, Docker, Railway, etc.)
+process.on('SIGTERM', () => {
+  logger.log('SIGTERM received, initiating graceful shutdown...');
+  // NestJS shutdown hooks will handle the actual cleanup
+});
+
+// Handle SIGINT (Ctrl+C in terminal)
+process.on('SIGINT', () => {
+  logger.log('SIGINT received, initiating graceful shutdown...');
+  // NestJS shutdown hooks will handle the actual cleanup
 });
 
 void bootstrap();

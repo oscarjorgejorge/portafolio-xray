@@ -4,7 +4,10 @@ import {
   HttpResponse,
   HttpClientConfig,
   ResponseType,
+  HttpErrorType,
+  HttpError,
 } from './http-client.types';
+import { IHttpClient } from '../interfaces';
 
 const DEFAULT_CONFIG: HttpClientConfig = {
   defaultTimeout: 10000,
@@ -19,9 +22,15 @@ const DEFAULT_CONFIG: HttpClientConfig = {
 /**
  * Centralized HTTP client service with timeout, retry, and logging support.
  * Abstracts fetch calls for better testability and consistent error handling.
+ *
+ * Error handling:
+ * - All errors are captured and included in the response.error field
+ * - The response.ok field indicates success (true) or failure (false)
+ * - Callers should always check response.ok before using response.data
+ * - Error types help categorize failures for appropriate handling
  */
 @Injectable()
-export class HttpClientService {
+export class HttpClientService implements IHttpClient {
   private readonly logger = new Logger(HttpClientService.name);
   private readonly config: HttpClientConfig = DEFAULT_CONFIG;
 
@@ -67,6 +76,7 @@ export class HttpClientService {
 
     let attempts = 0;
     const maxAttempts = retries + 1;
+    let lastError: HttpError | undefined;
 
     while (attempts < maxAttempts) {
       attempts++;
@@ -85,65 +95,151 @@ export class HttpClientService {
           signal: AbortSignal.timeout(timeout),
         });
 
-        const data = await this.parseResponse<T>(response, responseType);
-
-        if (this.config.enableLogging && !response.ok) {
+        // Handle non-2xx responses with detailed error info
+        if (!response.ok) {
+          const errorMessage = `HTTP ${response.status}: ${response.statusText}`;
           this.logger.warn(
             `[HTTP] ${method} ${url} returned ${response.status}`,
           );
+
+          return {
+            data: null,
+            status: response.status,
+            ok: false,
+            headers: response.headers,
+            error: {
+              type: HttpErrorType.HTTP_ERROR,
+              message: errorMessage,
+            },
+          };
+        }
+
+        // Parse successful response
+        const { data, parseError } = await this.parseResponse<T>(
+          response,
+          responseType,
+        );
+
+        if (parseError) {
+          this.logger.warn(
+            `[HTTP] ${method} ${url} parse error: ${parseError.message}`,
+          );
+          return {
+            data: null,
+            status: response.status,
+            ok: false,
+            headers: response.headers,
+            error: parseError,
+          };
         }
 
         return {
           data,
           status: response.status,
-          ok: response.ok,
+          ok: true,
           headers: response.headers,
         };
       } catch (error) {
+        lastError = this.categorizeError(error);
+
         if (this.isRetryableError(error) && attempts < maxAttempts) {
           this.logger.warn(
-            `[HTTP] ${method} ${url} failed (attempt ${attempts}), retrying in ${retryDelay}ms...`,
+            `[HTTP] ${method} ${url} failed (attempt ${attempts}): ${lastError.message}, retrying in ${retryDelay}ms...`,
           );
           await this.delay(retryDelay);
         } else {
           this.logger.error(
-            `[HTTP] ${method} ${url} failed: ${this.getErrorMessage(error)}`,
+            `[HTTP] ${method} ${url} failed after ${attempts} attempt(s): ${lastError.message}`,
           );
         }
       }
     }
 
+    // All retries exhausted - return error response
     return {
       data: null,
       status: 0,
       ok: false,
+      error: lastError ?? {
+        type: HttpErrorType.UNKNOWN,
+        message: 'Request failed for unknown reason',
+      },
     };
   }
 
   /**
    * Parse response based on expected type
+   * Returns both data and potential parse error for proper error handling
    */
   private async parseResponse<T>(
     response: Response,
     responseType: ResponseType,
-  ): Promise<T | null> {
-    if (!response.ok) {
-      return null;
-    }
-
+  ): Promise<{ data: T | null; parseError?: HttpError }> {
     try {
       switch (responseType) {
         case 'json':
-          return (await response.json()) as T;
+          return { data: (await response.json()) as T };
         case 'text':
         case 'html':
-          return (await response.text()) as unknown as T;
+          return { data: (await response.text()) as unknown as T };
         default:
-          return (await response.text()) as unknown as T;
+          return { data: (await response.text()) as unknown as T };
       }
-    } catch {
-      return null;
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? `Failed to parse response as ${responseType}: ${error.message}`
+          : `Failed to parse response as ${responseType}`;
+
+      return {
+        data: null,
+        parseError: {
+          type: HttpErrorType.PARSE,
+          message,
+          cause: error instanceof Error ? error : undefined,
+        },
+      };
     }
+  }
+
+  /**
+   * Categorize error into appropriate HttpErrorType
+   */
+  private categorizeError(error: unknown): HttpError {
+    if (error instanceof TypeError) {
+      // Network errors (DNS, connection refused, etc.)
+      return {
+        type: HttpErrorType.NETWORK,
+        message: `Network error: ${error.message}`,
+        cause: error,
+      };
+    }
+
+    if (error instanceof DOMException) {
+      if (error.name === 'TimeoutError') {
+        return {
+          type: HttpErrorType.TIMEOUT,
+          message: 'Request timed out',
+          cause: error,
+        };
+      }
+      if (error.name === 'AbortError') {
+        return {
+          type: HttpErrorType.ABORT,
+          message: 'Request was aborted',
+          cause: error,
+        };
+      }
+    }
+
+    // Unknown error type
+    const message =
+      error instanceof Error ? error.message : 'Unknown error occurred';
+    return {
+      type: HttpErrorType.UNKNOWN,
+      message,
+      cause: error instanceof Error ? error : undefined,
+    };
   }
 
   /**
@@ -180,16 +276,6 @@ export class HttpClientService {
       return true;
     }
     return false;
-  }
-
-  /**
-   * Extract error message safely
-   */
-  private getErrorMessage(error: unknown): string {
-    if (error instanceof Error) {
-      return error.message;
-    }
-    return String(error);
   }
 
   /**

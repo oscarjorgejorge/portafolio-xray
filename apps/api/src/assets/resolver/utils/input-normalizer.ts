@@ -1,33 +1,28 @@
-import { InputType } from '../resolver.types';
+/**
+ * Re-export from centralized IdentifierClassifier
+ * This file is kept for backward compatibility with existing imports
+ *
+ * @deprecated Import directly from '@common/utils/identifier-classifier' instead
+ */
+import {
+  IdentifierClassifier,
+  IdentifierType,
+} from '../../../common/utils/identifier-classifier';
+
+// Note: InputType is exported from resolver.types.ts to avoid duplicate exports
 
 /**
  * Normalize input string for consistent processing
+ * @deprecated Use IdentifierClassifier.normalizeInput() instead
  */
 export function normalizeInput(input: string): string {
-  return input.trim().toUpperCase().replace(/\s+/g, ' ');
+  return IdentifierClassifier.normalizeInput(input);
 }
 
 /**
  * Classify the input type based on its format
+ * @deprecated Use IdentifierClassifier.classify() instead
  */
-export function classifyInput(input: string): InputType {
-  const normalized = normalizeInput(input);
-
-  // ISIN format: 2 letters + 10 alphanumeric characters
-  if (/^[A-Z]{2}[A-Z0-9]{10}$/.test(normalized)) {
-    return 'ISIN';
-  }
-
-  // Morningstar ID format: starts with 0P000, F000, or F00000
-  if (/^(0P000|F000|F00000)[A-Z0-9]+$/i.test(normalized)) {
-    return 'MORNINGSTAR_ID';
-  }
-
-  // Ticker format: 1-5 uppercase letters
-  if (/^[A-Z]{1,5}$/.test(normalized)) {
-    return 'TICKER';
-  }
-
-  // Default to free text
-  return 'FREE_TEXT';
+export function classifyInput(input: string): IdentifierType {
+  return IdentifierClassifier.classify(input);
 }

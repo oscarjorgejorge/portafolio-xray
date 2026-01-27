@@ -5,12 +5,14 @@ import {
   HealthStatus,
   ComponentStatus,
 } from './dto/health-response.dto';
+import { IHealthService } from './interfaces';
+import { LivenessResponse } from './types';
 
 // Get version from package.json at build time
 const APP_VERSION = process.env.npm_package_version || '1.0.0';
 
 @Injectable()
-export class HealthService {
+export class HealthService implements IHealthService {
   private readonly logger = new Logger(HealthService.name);
 
   constructor(private readonly prisma: PrismaService) {}
@@ -57,7 +59,7 @@ export class HealthService {
    * Lightweight liveness check - just confirms the service is running
    * Does not check external dependencies
    */
-  liveness(): { status: string; timestamp: string } {
+  liveness(): LivenessResponse {
     return {
       status: 'ok',
       timestamp: new Date().toISOString(),
