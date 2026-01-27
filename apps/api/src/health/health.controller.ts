@@ -3,7 +3,7 @@ import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 import { HealthService } from './health.service';
 import { HealthResponseDto } from './dto/health-response.dto';
-import { LivenessResponse } from './interfaces';
+import { LivenessResponse } from './types';
 
 @ApiTags('health')
 @Controller('health')

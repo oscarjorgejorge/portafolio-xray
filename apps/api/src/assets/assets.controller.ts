@@ -12,7 +12,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { AssetsService } from './assets.service';
 import { ResolveAssetDto, ConfirmAssetDto, UpdateIsinDto } from './dto';
 import type { Asset } from '@prisma/client';
-import type { ResolveAssetResponse } from './interfaces';
+import type { ResolveAssetResponse } from './types';
 
 @ApiTags('assets')
 @Controller('assets')

@@ -1,12 +1,5 @@
 import { HealthResponseDto } from '../dto/health-response.dto';
-
-/**
- * Liveness response structure
- */
-export interface LivenessResponse {
-  status: string;
-  timestamp: string;
-}
+import { LivenessResponse } from '../types';
 
 /**
  * Health Service Interface

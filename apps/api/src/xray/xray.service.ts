@@ -4,7 +4,8 @@ import { GenerateXRayDto, XRayAssetDto } from './dto';
 import { AssetsRepository } from '../assets/assets.repository';
 import type { AppConfig } from '../config';
 import type { Asset } from '@prisma/client';
-import { IXRayService, GenerateXRayResponse } from './interfaces';
+import { IXRayService } from './interfaces';
+import { GenerateXRayResponse } from './types';
 
 @Injectable()
 export class XRayService implements IXRayService {

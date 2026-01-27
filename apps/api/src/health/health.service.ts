@@ -5,7 +5,8 @@ import {
   HealthStatus,
   ComponentStatus,
 } from './dto/health-response.dto';
-import { IHealthService, LivenessResponse } from './interfaces';
+import { IHealthService } from './interfaces';
+import { LivenessResponse } from './types';
 
 // Get version from package.json at build time
 const APP_VERSION = process.env.npm_package_version || '1.0.0';

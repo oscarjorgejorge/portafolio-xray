@@ -3,3 +3,4 @@ export * from './health.service';
 export * from './health.controller';
 export * from './dto';
 export * from './interfaces';
+export * from './types';

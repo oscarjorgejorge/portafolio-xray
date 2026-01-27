@@ -1,22 +1,6 @@
 import { Asset } from '@prisma/client';
 import { ResolveAssetDto, ConfirmAssetDto } from '../dto';
-
-/**
- * Response structure for asset resolution
- */
-export interface ResolveAssetResponse {
-  success: boolean;
-  source: 'cache' | 'resolved' | 'manual_required';
-  asset?: Asset;
-  isinPending?: boolean;
-  alternatives?: Array<{
-    morningstarId: string;
-    name: string;
-    url: string;
-    score: number;
-  }>;
-  error?: string;
-}
+import { ResolveAssetResponse } from '../types';
 
 /**
  * Assets Service Interface

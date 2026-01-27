@@ -2,7 +2,7 @@ import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { XRayService } from './xray.service';
 import { GenerateXRayDto } from './dto';
-import type { GenerateXRayResponse } from './interfaces';
+import type { GenerateXRayResponse } from './types';
 
 @ApiTags('xray')
 @Controller('xray')

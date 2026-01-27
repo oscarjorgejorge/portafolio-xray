@@ -1,12 +1,5 @@
 import { GenerateXRayDto, XRayAssetDto } from '../dto';
-
-/**
- * Response structure for X-Ray URL generation
- */
-export interface GenerateXRayResponse {
-  morningstarUrl: string;
-  shareableUrl: string;
-}
+import { GenerateXRayResponse } from '../types';
 
 /**
  * X-Ray Service Interface

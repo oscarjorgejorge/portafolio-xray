@@ -8,7 +8,8 @@ import {
   IdentifierClassifier,
   IdentifierType,
 } from '../common/utils/identifier-classifier';
-import { IAssetsService, ResolveAssetResponse } from './interfaces';
+import { IAssetsService } from './interfaces';
+import { ResolveAssetResponse } from './types';
 
 @Injectable()
 export class AssetsService implements IAssetsService {

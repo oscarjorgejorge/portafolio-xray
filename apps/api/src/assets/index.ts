@@ -5,4 +5,5 @@ export * from './assets.repository';
 export * from './isin-enrichment.service';
 export * from './dto';
 export * from './interfaces';
+export * from './types';
 export * from './resolver';
