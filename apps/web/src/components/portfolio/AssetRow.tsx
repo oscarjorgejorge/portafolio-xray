@@ -3,7 +3,9 @@
 import React, { useState, useCallback } from 'react';
 import { PortfolioAsset, AllocationMode } from '@/types';
 import { Spinner } from '@/components/ui/Spinner';
+import { InputNumber } from '@/components/ui/InputNumber';
 import { TrashIcon, ExternalLinkIcon } from '@/components/ui/Icons';
+import { cn } from '@/lib/utils';
 import { EditableIsin } from './EditableIsin';
 import { useIsinPolling } from '@/lib/hooks/useIsinPolling';
 import type { Asset } from '@/types';
@@ -14,7 +16,7 @@ import type { Asset } from '@/types';
 
 interface WeightInputProps {
   value: number;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onChange: (value: number) => void;
   allocationMode: AllocationMode;
   hasError: boolean;
   variant: 'mobile' | 'desktop';
@@ -29,32 +31,22 @@ const WeightInput: React.FC<WeightInputProps> = ({
 }) => {
   const label = allocationMode === 'percentage' ? 'Weight (%)' : 'Amount';
   const isMobile = variant === 'mobile';
+  const maxValue = allocationMode === 'percentage' ? 100 : undefined;
 
   return (
-    <div className={isMobile ? 'flex-1' : 'w-24'}>
-      <label
-        className={`${isMobile ? 'text-xs' : 'block text-xs'} font-medium text-slate-700 ${isMobile ? 'whitespace-nowrap' : 'mb-1'}`}
-      >
-        {!isMobile && label}
-      </label>
-      <input
-        type="number"
-        inputMode="decimal"
-        value={value || ''}
-        onChange={onChange}
-        min="0"
-        step="0.01"
-        placeholder="0"
-        aria-label={label}
-        aria-invalid={hasError}
-        className={`
-          ${isMobile ? 'flex-1 px-3 py-2' : 'w-full px-2 py-1.5'} border rounded-lg text-sm
-          text-slate-900 bg-white
-          focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-          ${hasError ? 'border-red-500' : 'border-slate-300'}
-        `}
-      />
-    </div>
+    <InputNumber
+      value={value}
+      onChange={onChange}
+      min={0}
+      max={maxValue}
+      step={0.01}
+      label={isMobile ? undefined : label}
+      placeholder="0"
+      aria-label={label}
+      error={hasError ? ' ' : undefined}
+      size={isMobile ? 'md' : 'sm'}
+      className={cn(isMobile && 'flex-1')}
+    />
   );
 };
 
@@ -71,9 +63,9 @@ const RemoveButton: React.FC<RemoveButtonProps> = ({
   showTooltip,
   onMouseEnter,
   onMouseLeave,
-  className = '',
+  className,
 }) => (
-  <div className={`relative ${className}`}>
+  <div className={cn('relative', className)}>
     <button
       onClick={onClick}
       onMouseEnter={onMouseEnter}
@@ -97,8 +89,8 @@ interface ErrorMessageProps {
   className?: string;
 }
 
-const ErrorMessage: React.FC<ErrorMessageProps> = ({ error, className = '' }) => (
-  <p className={`text-xs text-red-600 ${className}`} role="alert">
+const ErrorMessage: React.FC<ErrorMessageProps> = ({ error, className }) => (
+  <p className={cn('text-xs text-red-600', className)} role="alert">
     {error}
   </p>
 );
@@ -128,10 +120,12 @@ export const AssetRow: React.FC<AssetRowProps> = ({
 }) => {
   const [showTooltip, setShowTooltip] = useState(false);
 
-  const handleWeightChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseFloat(e.target.value) || 0;
-    onWeightChange(asset.id, value);
-  };
+  const handleWeightChange = useCallback(
+    (value: number) => {
+      onWeightChange(asset.id, value);
+    },
+    [asset.id, onWeightChange]
+  );
 
   const handleIsinResolved = useCallback(
     (updatedAsset: Asset) => {
