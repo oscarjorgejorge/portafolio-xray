@@ -480,8 +480,12 @@ export class AssetsService implements IAssetsService {
       ticker: dto.ticker,
     });
 
-    // Invalidate cache for both ISIN and Morningstar ID
-    await this.invalidateAssetCache(dto.isin, dto.morningstarId);
+    // Invalidate cache for all identifiers (ISIN, Morningstar ID, and ticker)
+    await this.invalidateAssetCache({
+      isin: dto.isin,
+      morningstarId: dto.morningstarId,
+      ticker: dto.ticker,
+    });
 
     return toResolvedAssetDto(asset);
   }
@@ -504,30 +508,43 @@ export class AssetsService implements IAssetsService {
       true, // Mark as manually entered
     );
 
-    // Invalidate cache for ISIN and Morningstar ID
-    await this.invalidateAssetCache(isin, asset.morningstarId);
+    // Invalidate cache for all identifiers
+    await this.invalidateAssetCache({
+      isin,
+      morningstarId: asset.morningstarId,
+      ticker: asset.ticker,
+    });
 
     return toResolvedAssetDto(asset);
   }
 
   /**
    * Invalidate in-memory cache for an asset
-   * @param isin - Optional ISIN to invalidate
-   * @param morningstarId - Optional Morningstar ID to invalidate
+   * Supports all identifier types that can be used as cache keys
+   * @param options - Object containing optional identifiers to invalidate
    */
-  private async invalidateAssetCache(
-    isin?: string | null,
-    morningstarId?: string,
-  ): Promise<void> {
+  private async invalidateAssetCache(options: {
+    isin?: string | null;
+    morningstarId?: string;
+    ticker?: string | null;
+  }): Promise<void> {
+    const { isin, morningstarId, ticker } = options;
     const keys: string[] = [];
+
     if (isin) keys.push(`${CACHE_KEY_PREFIX}${isin.toUpperCase()}`);
     if (morningstarId)
       keys.push(`${CACHE_KEY_PREFIX}${morningstarId.toUpperCase()}`);
+    if (ticker) keys.push(`${CACHE_KEY_PREFIX}${ticker.toUpperCase()}`);
 
-    for (const key of keys) {
-      await this.cacheManager.del(key);
-      this.logger.debug(`[CACHE] Invalidated: ${key}`);
-    }
+    if (keys.length === 0) return;
+
+    // Invalidate all keys in parallel for better performance
+    await Promise.all(
+      keys.map(async (key) => {
+        await this.cacheManager.del(key);
+        this.logger.debug(`[CACHE] Invalidated: ${key}`);
+      }),
+    );
   }
 
   /**
