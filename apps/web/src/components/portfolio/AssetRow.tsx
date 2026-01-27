@@ -50,6 +50,7 @@ const WeightInput = memo<WeightInputProps>(function WeightInput({
     />
   );
 });
+WeightInput.displayName = 'WeightInput';
 
 interface RemoveButtonProps {
   onClick: () => void;
@@ -86,6 +87,7 @@ const RemoveButton = memo<RemoveButtonProps>(function RemoveButton({
     </div>
   );
 });
+RemoveButton.displayName = 'RemoveButton';
 
 interface ErrorMessageProps {
   error: string;
@@ -102,6 +104,7 @@ const ErrorMessage = memo<ErrorMessageProps>(function ErrorMessage({
     </p>
   );
 });
+ErrorMessage.displayName = 'ErrorMessage';
 
 // ============================================
 // Main component
@@ -340,3 +343,4 @@ export const AssetRow = memo<AssetRowProps>(function AssetRow({
     </div>
   );
 });
+AssetRow.displayName = 'AssetRow';
