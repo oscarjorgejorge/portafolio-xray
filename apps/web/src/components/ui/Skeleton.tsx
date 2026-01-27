@@ -128,3 +128,48 @@ export const PageSkeleton: React.FC = () => {
     </div>
   );
 };
+
+/**
+ * Pre-built skeleton for PortfolioBuilder loading state.
+ * Used when loading portfolio from shareable URL.
+ */
+export const PortfolioBuilderSkeleton: React.FC<{ assetCount?: number }> = ({
+  assetCount = 2,
+}) => {
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-lg shadow-lg border border-slate-200 p-6">
+        {/* Title skeleton */}
+        <Skeleton className="w-40 mb-6" height="lg" />
+
+        {/* Allocation mode toggle skeleton */}
+        <div className="flex gap-2 mb-6">
+          <Skeleton className="w-24 h-10" rounded="lg" />
+          <Skeleton className="w-24 h-10" rounded="lg" />
+        </div>
+
+        {/* Asset input skeleton */}
+        <div className="flex gap-2 mb-6">
+          <Skeleton className="flex-1 h-10" rounded="lg" />
+          <Skeleton className="w-28 h-10" rounded="lg" />
+        </div>
+
+        {/* Asset rows skeleton */}
+        <div className="space-y-4 mb-4">
+          {Array.from({ length: assetCount }).map((_, i) => (
+            <AssetRowSkeleton key={i} />
+          ))}
+        </div>
+
+        {/* Footer skeleton */}
+        <div className="flex items-center justify-between pt-4 border-t border-slate-200">
+          <Skeleton className="w-32" height="sm" />
+          <div className="flex gap-2">
+            <Skeleton className="w-24 h-10" rounded="lg" />
+            <Skeleton className="w-32 h-10" rounded="lg" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};

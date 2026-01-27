@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { PortfolioBuilder } from '@/components/portfolio/PortfolioBuilder';
 import { PageLoading } from '@/components/ui/PageLoading';
+import { PortfolioBuilderSkeleton } from '@/components/ui/Skeleton';
 import type { PortfolioAsset } from '@/types';
 import { resolveAsset } from '@/lib/api/assets';
 import { generateSimpleId } from '@/lib/utils/id';
@@ -87,9 +88,7 @@ function HomePageContent() {
         </div>
 
         {isLoading ? (
-          <div className="text-center py-12">
-            <p className="text-slate-700">Loading portfolio...</p>
-          </div>
+          <PortfolioBuilderSkeleton assetCount={3} />
         ) : (
           <PortfolioBuilder initialAssets={initialAssets} />
         )}

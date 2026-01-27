@@ -13,6 +13,7 @@ export {
   AssetRowSkeleton,
   CardSkeleton,
   PageSkeleton,
+  PortfolioBuilderSkeleton,
 } from './Skeleton';
 export { Spinner } from './Spinner';
 export { Toast, ToastContainer } from './Toast';
