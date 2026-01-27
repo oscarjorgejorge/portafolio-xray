@@ -1,12 +1,16 @@
 'use client';
 
-import React, { memo } from 'react';
+import React, { memo, useMemo } from 'react';
 import { Button } from '@/components/ui/Button';
+
+/** Copy button visual state */
+type CopyState = 'idle' | 'copied' | 'error';
 
 interface ShareableUrlSectionProps {
   fullShareableUrl: string;
   morningstarUrl: string | null;
   copied: boolean;
+  copyError?: boolean;
   onCopyUrl: () => void;
   onOpenPDF: () => void;
 }
@@ -18,14 +22,30 @@ export const ShareableUrlSection = memo<ShareableUrlSectionProps>(function Share
   fullShareableUrl,
   morningstarUrl,
   copied,
+  copyError = false,
   onCopyUrl,
   onOpenPDF,
 }) {
+  // Derive copy state from boolean flags
+  const copyState: CopyState = useMemo(() => {
+    if (copied) return 'copied';
+    if (copyError) return 'error';
+    return 'idle';
+  }, [copied, copyError]);
+
+  const copyButtonText = {
+    idle: 'Copy',
+    copied: 'Copied!',
+    error: 'Failed',
+  }[copyState];
+
+  const copyButtonVariant = copyState === 'error' ? 'danger' : 'secondary';
+
   return (
-    <div className="pt-4 border-t border-slate-200">
+    <div className="pt-4 border-t border-border">
       <div className="space-y-3">
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-slate-700">
+          <label className="block text-sm font-medium text-muted-foreground">
             Shareable Link
           </label>
           <div className="flex gap-2">
@@ -33,18 +53,19 @@ export const ShareableUrlSection = memo<ShareableUrlSectionProps>(function Share
               type="text"
               readOnly
               value={fullShareableUrl}
-              className="flex-1 px-3 py-2 border border-slate-300 rounded-lg bg-white text-slate-900 text-sm"
+              className="flex-1 px-3 py-2 border border-border rounded-lg bg-card text-foreground text-sm"
               aria-label="Shareable portfolio URL"
             />
             <Button
               onClick={onCopyUrl}
-              variant="secondary"
+              variant={copyButtonVariant}
               size="sm"
+              aria-live="polite"
             >
-              {copied ? 'Copied!' : 'Copy'}
+              {copyButtonText}
             </Button>
           </div>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted-foreground">
             Share this link to recreate the portfolio
           </p>
         </div>

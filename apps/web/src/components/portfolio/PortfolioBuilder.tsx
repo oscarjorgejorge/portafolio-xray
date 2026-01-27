@@ -45,6 +45,7 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
     fullShareableUrl,
     morningstarUrl,
     copied,
+    copyError,
     showSuccessToast,
     totalWeight,
     isValid,
@@ -121,6 +122,7 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
                 fullShareableUrl={fullShareableUrl}
                 morningstarUrl={morningstarUrl}
                 copied={copied}
+                copyError={copyError}
                 onCopyUrl={handleCopyUrl}
                 onOpenPDF={handleOpenPDF}
               />

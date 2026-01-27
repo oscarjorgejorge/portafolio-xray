@@ -21,6 +21,7 @@ interface UsePortfolioBuilderReturn {
   morningstarUrl: string | null;
   fullShareableUrl: string;
   copied: boolean;
+  copyError: boolean;
   showSuccessToast: boolean;
   totalWeight: number;
   isValid: boolean;
@@ -211,6 +212,7 @@ export function usePortfolioBuilder({
     morningstarUrl: xrayGeneration.morningstarUrl,
     fullShareableUrl: xrayGeneration.fullShareableUrl,
     copied: xrayGeneration.copied,
+    copyError: xrayGeneration.copyError,
     showSuccessToast,
     totalWeight,
     isValid,
