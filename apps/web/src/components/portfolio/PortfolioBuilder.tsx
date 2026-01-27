@@ -1,18 +1,32 @@
 'use client';
 
 import React from 'react';
+import dynamic from 'next/dynamic';
 import { AssetInput } from './AssetInput';
 import { AssetRow } from './AssetRow';
 import { AllocationModeToggle } from './AllocationModeToggle';
-import { AssetAlternatives } from './AssetAlternatives';
-import { ManualAssetInput } from './ManualAssetInput';
-import { ClearAllConfirmation } from './ClearAllConfirmation';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Alert } from '@/components/ui/Alert';
 import { Toast } from '@/components/ui/Toast';
 import type { PortfolioAsset } from '@/types';
 import { usePortfolioBuilder } from '@/lib/hooks/usePortfolioBuilder';
+
+// Lazy load modal components - they are only rendered when needed
+const AssetAlternatives = dynamic(
+  () => import('./AssetAlternatives').then((mod) => mod.AssetAlternatives),
+  { ssr: false }
+);
+
+const ManualAssetInput = dynamic(
+  () => import('./ManualAssetInput').then((mod) => mod.ManualAssetInput),
+  { ssr: false }
+);
+
+const ClearAllConfirmation = dynamic(
+  () => import('./ClearAllConfirmation').then((mod) => mod.ClearAllConfirmation),
+  { ssr: false }
+);
 
 interface PortfolioBuilderProps {
   initialAssets?: PortfolioAsset[];
