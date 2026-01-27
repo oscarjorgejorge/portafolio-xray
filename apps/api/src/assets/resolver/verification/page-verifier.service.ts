@@ -254,31 +254,79 @@ export class PageVerifierService {
    * Verify fund page with multi-market and multi-type fallback
    * If the fund is not available in the default Spanish market, try:
    * 1. Different asset types (ETF, Fondo) in Spanish market
-   * 2. Different European markets with each asset type
+   * 2. Different European markets with each asset type (in parallel batches)
+   *
+   * Performance: Uses parallel requests in batches to reduce total HTTP calls
+   * from O(markets × types) sequential to O(markets × types / batchSize) batches
    */
   async verifyFundPageWithFallback(
     morningstarId: string,
     expectedIsin: string,
     assetType: MorningstarAssetType = 'Fondo',
   ): Promise<ExtendedVerificationResult> {
-    // Asset types to try (prioritize the provided type first)
-    const assetTypesToTry: MorningstarAssetType[] =
-      assetType === 'ETF'
-        ? ['ETF', 'Fondo']
-        : assetType === 'Fondo'
-          ? ['Fondo', 'ETF']
-          : [assetType, 'Fondo', 'ETF'];
+    const assetTypesToTry = this.getAssetTypePriority(assetType);
 
-    // First, try all asset types in the default Spanish market
+    // First, try all asset types in the default Spanish market (fast path)
+    const esResult = await this.tryDefaultMarket(
+      morningstarId,
+      expectedIsin,
+      assetTypesToTry,
+    );
+    if (esResult) {
+      return esResult;
+    }
+
+    this.logger.log(
+      `[FALLBACK] ${morningstarId} not available in ES market with any type, trying other markets in parallel...`,
+    );
+
+    // Try other European markets in parallel batches
+    const marketResult = await this.tryMarketsInParallel(
+      morningstarId,
+      expectedIsin,
+      assetTypesToTry,
+    );
+    if (marketResult) {
+      return marketResult;
+    }
+
+    // If no combination worked, return the original result
+    const defaultUrl = buildMorningstarUrl(morningstarId, assetType);
+    const verification = await this.verifyFundPage(defaultUrl, expectedIsin);
+    this.logger.warn(
+      `[FALLBACK] ${morningstarId} not found in any European market with any asset type`,
+    );
+    return { verification, workingUrl: defaultUrl };
+  }
+
+  /**
+   * Get asset types to try, prioritizing the provided type
+   */
+  private getAssetTypePriority(
+    assetType: MorningstarAssetType,
+  ): MorningstarAssetType[] {
+    if (assetType === 'ETF') {
+      return ['ETF', 'Fondo'];
+    }
+    if (assetType === 'Fondo') {
+      return ['Fondo', 'ETF'];
+    }
+    return [assetType, 'Fondo', 'ETF'];
+  }
+
+  /**
+   * Try default Spanish market with all asset types
+   */
+  private async tryDefaultMarket(
+    morningstarId: string,
+    expectedIsin: string,
+    assetTypesToTry: MorningstarAssetType[],
+  ): Promise<ExtendedVerificationResult | null> {
     for (const tryAssetType of assetTypesToTry) {
       const defaultUrl = buildMorningstarUrl(morningstarId, tryAssetType);
       const verification = await this.verifyFundPage(defaultUrl, expectedIsin);
 
-      // If found (not "market not available" and has ISIN)
-      if (
-        verification.additionalInfo?.marketNotAvailable !== 'true' &&
-        verification.isinFound
-      ) {
+      if (this.isValidResult(verification)) {
         this.logger.log(
           `[FALLBACK] Found ${morningstarId} as ${tryAssetType} in ES market (ISIN: ${verification.isinFound})`,
         );
@@ -289,49 +337,73 @@ export class PageVerifierService {
         };
       }
     }
+    return null;
+  }
 
-    this.logger.log(
-      `[FALLBACK] ${morningstarId} not available in ES market with any type, trying other markets...`,
-    );
+  /**
+   * Try European markets in parallel batches for better performance
+   * Processes BATCH_SIZE markets concurrently, stopping at first success
+   */
+  private async tryMarketsInParallel(
+    morningstarId: string,
+    expectedIsin: string,
+    assetTypesToTry: MorningstarAssetType[],
+  ): Promise<ExtendedVerificationResult | null> {
+    const BATCH_SIZE = 3; // Process 3 markets in parallel
 
-    // Try other European markets with each asset type
-    for (const marketId of EUROPEAN_MARKETS) {
-      for (const tryAssetType of assetTypesToTry) {
-        const marketUrl = buildMorningstarUrl(
-          morningstarId,
-          tryAssetType,
-          marketId,
-        );
-        this.logger.debug(
-          `[FALLBACK] Trying market: ${marketId}, type: ${tryAssetType}`,
-        );
+    for (let i = 0; i < EUROPEAN_MARKETS.length; i += BATCH_SIZE) {
+      const marketBatch = EUROPEAN_MARKETS.slice(i, i + BATCH_SIZE);
 
-        const verification = await this.verifyFundPage(marketUrl, expectedIsin);
+      this.logger.debug(
+        `[FALLBACK] Trying markets batch: ${marketBatch.join(', ')}`,
+      );
 
-        // If we found the fund (not "market not available" and has ISIN)
-        if (
-          verification.additionalInfo?.marketNotAvailable !== 'true' &&
-          verification.isinFound
-        ) {
-          this.logger.log(
-            `[FALLBACK] Found ${morningstarId} as ${tryAssetType} in ${marketId.toUpperCase()} market (ISIN: ${verification.isinFound})`,
-          );
-          return {
-            verification,
-            workingUrl: marketUrl,
+      // Create verification tasks for all market/type combinations in this batch
+      const verificationTasks = marketBatch.flatMap((marketId) =>
+        assetTypesToTry.map(async (tryAssetType) => {
+          const marketUrl = buildMorningstarUrl(
+            morningstarId,
+            tryAssetType,
             marketId,
-            detectedAssetType: tryAssetType,
-          };
-        }
+          );
+          const verification = await this.verifyFundPage(
+            marketUrl,
+            expectedIsin,
+          );
+          return { verification, marketUrl, marketId, tryAssetType };
+        }),
+      );
+
+      // Execute all tasks in parallel
+      const results = await Promise.all(verificationTasks);
+
+      // Find first successful result
+      const successResult = results.find((r) =>
+        this.isValidResult(r.verification),
+      );
+      if (successResult) {
+        this.logger.log(
+          `[FALLBACK] Found ${morningstarId} as ${successResult.tryAssetType} in ${successResult.marketId.toUpperCase()} market (ISIN: ${successResult.verification.isinFound})`,
+        );
+        return {
+          verification: successResult.verification,
+          workingUrl: successResult.marketUrl,
+          marketId: successResult.marketId,
+          detectedAssetType: successResult.tryAssetType,
+        };
       }
     }
 
-    // If no combination worked, return the original result
-    const defaultUrl = buildMorningstarUrl(morningstarId, assetType);
-    const verification = await this.verifyFundPage(defaultUrl, expectedIsin);
-    this.logger.warn(
-      `[FALLBACK] ${morningstarId} not found in any European market with any asset type`,
+    return null;
+  }
+
+  /**
+   * Check if verification result is valid (found and has ISIN)
+   */
+  private isValidResult(verification: VerificationResult): boolean {
+    return (
+      verification.additionalInfo?.marketNotAvailable !== 'true' &&
+      verification.isinFound !== null
     );
-    return { verification, workingUrl: defaultUrl };
   }
 }

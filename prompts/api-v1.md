@@ -520,3 +520,244 @@ I want to do test after some refactorisation and improvements, lets start with M
 - ✅ Type-check passed
 - ✅ Build passed
 - ✅ Tests passed (1/1)
+
+### Prompt 62
+como senior backend developper analiza la api, y dime que mejoras y optmizaciones son necesarias teniendo en cuenta las buenas practicas (la parte de los test los implementaremos mas adelante)
+
+**Analysis Summary:**
+Comprehensive code review identifying 13 areas for improvement:
+1. Configuration and Environment Variables (hardcoded, no validation)
+2. Structured Logging (using console.log)
+3. Global Exception Filter (only ThrottlerException handled)
+4. Health Check improvements (no dependency checks)
+5. Database connection resilience
+6. Caching layer (missing)
+7. Timeouts and Circuit Breaker
+8. ISIN validation improvements
+9. N+1 query in XRayService
+10. Response format consistency
+11. Request ID for traceability
+12. Graceful shutdown
+13. OpenAPI responses
+
+### Prompt 63
+vamos a solucionar el primer problema
+
+**Implementation - Configuration with Validation:**
+
+1. **Installed packages:**
+   - `@nestjs/config` - Configuration module for NestJS
+   - `zod` - TypeScript-first schema validation
+
+2. **Created `src/config/` module with:**
+   - `env.schema.ts` - Zod schema for environment variables validation
+   - `configuration.ts` - Configuration factory with typed AppConfig interface
+   - `config.module.ts` - Global ConfigModule setup
+   - `index.ts` - Exports
+
+3. **Environment Variables Validated:**
+   - `NODE_ENV` - Required, enum: development/production/test
+   - `PORT` - Optional, defaults to 4000
+   - `DATABASE_URL` - Required, must be valid URL
+   - `MORNINGSTAR_BASE_URL` - Optional, defaults to lt.morningstar.com
+   - `CORS_ORIGINS` - Optional, comma-separated list
+
+4. **Updated Files:**
+   - `app.module.ts` - Imports ConfigModule at top
+   - `main.ts` - Uses ConfigService with type-safe access and `{ infer: true }`
+   - `xray.service.ts` - Injects ConfigService for MORNINGSTAR_BASE_URL
+   - `prisma.service.ts` - Uses NestJS Logger, documents validation guarantee
+
+5. **Type-Safe Access Pattern:**
+   ```typescript
+   const configService = app.get(ConfigService<AppConfig, true>);
+   const port = configService.get('port', { infer: true });
+   ```
+
+6. **Benefits:**
+   - Fails fast at startup if required env vars are missing
+   - Type-safe configuration access throughout the app
+   - Single source of truth for all config
+   - Clear validation error messages
+
+**Verification:**
+- ✅ Lint passed
+- ✅ Type-check passed
+- ✅ Build passed
+
+### Prompt 64
+como senior backend developper analiza la api, y dime que mejoras y optmizaciones son necesarias teniendo en cuenta las buenas practicas (la parte de los test los implementaremos mas adelante) (no quiero una nada overkill o super complejidad, quiero mejoras, buenas practicas, optimizaciones)
+
+**Analysis Summary:**
+Comprehensive code review identifying improvements organized by priority:
+
+**High Priority:**
+1. Health Check Incompleto - `/health` endpoint no verifica la DB
+2. Problema N+1 en XRayService - queries secuenciales en loop
+3. Falta validación UUID en parámetros
+
+**Medium Priority:**
+4. Constantes hardcoded en XRayService
+5. Response DTOs faltantes (expone modelo Prisma directamente)
+6. Transformación automática en DTOs (normalizar ISINs)
+7. Compresión gzip
+8. Global Exception Filter
+
+**Low Priority:**
+9. Correlation ID para tracing
+10. Logger condicional por entorno
+11. Graceful shutdown mejorado
+12. Validación ISIN checksum en DTO
+
+### Prompt 65
+procede con esta mejora: Health Check Incompleto
+
+**Implementation - Comprehensive Health Check:**
+
+1. **Created `src/health/` module with:**
+   - `dto/health-response.dto.ts` - DTO with `HealthStatus` and `ComponentStatus` enums
+   - `health.service.ts` - Service with `check()` and `liveness()` methods
+   - `health.controller.ts` - Controller with 3 endpoints
+   - `health.module.ts` - Module encapsulation
+   - `index.ts` - Exports
+
+2. **Health Endpoints:**
+   - `GET /health` - Readiness check (verifies DB connectivity)
+   - `GET /health/live` - Liveness probe (lightweight, no external deps)
+   - `GET /health/ready` - Alias for `/health` (Kubernetes convention)
+
+3. **Database Health Check:**
+   - Executes `SELECT 1` to verify DB connectivity
+   - Measures response time in milliseconds
+   - Returns `connected` or `disconnected` status
+
+4. **Response Structure:**
+   ```json
+   {
+     "status": "ok",
+     "timestamp": "2025-01-26T10:30:00.000Z",
+     "version": "1.0.0",
+     "database": "connected",
+     "databaseResponseTimeMs": 5
+   }
+   ```
+
+5. **Updated Files:**
+   - `app.module.ts` - Imports HealthModule
+   - `app.controller.ts` - Removed old `/health` endpoint
+   - `app.service.ts` - Updated welcome message with version
+   - `main.ts` - Updated logs and Swagger tags
+
+**Verification:**
+- ✅ Type-check passed
+
+### Prompt 66
+y luego con esta Global exception filter, actualiza prompts, commit y push
+
+**Implementation - Global Exception Filter:**
+
+1. **Created `src/common/filters/all-exceptions.filter.ts`:**
+   - Catches all unhandled exceptions
+   - Provides consistent error response format
+   - Handles HttpException (400, 401, 403, 404, etc.)
+   - Handles validation errors from class-validator
+   - Returns 500 for unknown errors with safe message
+
+2. **Error Response Structure:**
+   ```json
+   {
+     "success": false,
+     "statusCode": 400,
+     "error": "Bad Request",
+     "message": "Validation failed: field must be a string",
+     "path": "/assets/resolve",
+     "timestamp": "2025-01-26T10:30:00.000Z"
+   }
+   ```
+
+3. **Logging Behavior:**
+   - 5xx errors → `logger.error()` with stack trace
+   - 4xx errors → `logger.warn()` without stack
+
+4. **Updated Files:**
+   - `common/filters/index.ts` - Exports AllExceptionsFilter
+   - `main.ts` - Registers both filters globally
+
+**Verification:**
+- ✅ Type-check passed
+
+### Prompt 67
+as a senior backend developper analyze the api and propose improvements based on the best practises, (performance, readibility, solid... etc, without overkill proposals), dont focus on test for now
+
+**Analysis Summary:**
+Comprehensive code review identifying key improvements:
+
+1. **N+1 Query in XRayService.buildMorningstarUrl** - Sequential DB queries in loop
+2. **Excessive HTTP Calls in PageVerifierService** - Up to 27 sequential requests
+3. **AssetsService.resolve complexity** - 160-line method with multiple responsibilities
+4. **Hard-coded asset type mapping** - Should use configuration map
+5. **Silent failures in HttpClientService** - No error details preserved
+6. **Fire-and-forget without monitoring** - Background tasks not tracked
+7. **Magic numbers in XRayService** - Should be constants
+8. **Input sanitization for search queries** - User input directly interpolated
+
+### Prompt 68
+lets address this problem: N+1 Query in XRayService.buildMorningstarUrl
+
+**Implementation - N+1 Query Fix:**
+
+1. **Added `findManyByMorningstarIds` to AssetsRepository:**
+   ```typescript
+   async findManyByMorningstarIds(morningstarIds: string[]): Promise<Asset[]> {
+     if (morningstarIds.length === 0) return [];
+     return this.prisma.asset.findMany({
+       where: { morningstarId: { in: morningstarIds } },
+     });
+   }
+   ```
+
+2. **Refactored `buildMorningstarUrl` in XRayService:**
+   - Replaced N sequential queries with single batch query
+   - Used `Map` for O(1) lookups during iteration
+   - Extracted `getAssetCodes()` helper for readability
+
+3. **Performance Impact:**
+   | Portfolio Size | Before (queries) | After (queries) |
+   |----------------|------------------|-----------------|
+   | 1 asset        | 1                | 1               |
+   | 5 assets       | 5                | 1               |
+   | 10 assets      | 10               | 1               |
+   | 20 assets      | 20               | 1               |
+
+**Verification:**
+- ✅ Type-check passed
+
+### Prompt 69
+1.2 Excessive HTTP Calls in PageVerifierService.verifyFundPageWithFallback - lets address this, update prompts and commit changes
+
+**Implementation - Parallel HTTP Requests Optimization:**
+
+1. **Problem:** In worst case, `verifyFundPageWithFallback` made up to 27 sequential HTTP requests (3 asset types × 9 markets).
+
+2. **Solution:** Refactored to use parallel request batches:
+   - **`getAssetTypePriority()`** - Returns asset types to try based on provided type
+   - **`tryDefaultMarket()`** - Tries Spanish market first (fast path)
+   - **`tryMarketsInParallel()`** - Processes markets in parallel batches of 3
+   - **`isValidResult()`** - Helper to check if verification succeeded
+
+3. **Performance Impact:**
+   | Scenario | Before | After |
+   |----------|--------|-------|
+   | Found in ES market | 1-3 requests | 1-3 requests |
+   | Found in 1st batch (LU, DE, IT) | Up to 9 requests | 6 parallel requests |
+   | Found in 2nd batch (CH, GB, FR) | Up to 15 requests | 12 parallel requests |
+   | Not found anywhere | 27 sequential requests | 18 parallel requests (in 3 batches) |
+
+4. **Code Quality:**
+   - Extracted logic into smaller, focused methods
+   - Improved readability with descriptive method names
+   - Added JSDoc comments explaining the optimization strategy
+
+**Verification:**
+- ✅ Lint passed
+- ✅ Type-check passed

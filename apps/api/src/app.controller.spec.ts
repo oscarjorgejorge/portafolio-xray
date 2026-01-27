@@ -15,8 +15,9 @@ describe('AppController', () => {
   });
 
   describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(appController.getHello()).toBe('Hello World!');
+    it('should return the API welcome message with version', () => {
+      const result = appController.getHello();
+      expect(result).toMatch(/^Portfolio X-Ray API v\d+\.\d+\.\d+$/);
     });
   });
 });
