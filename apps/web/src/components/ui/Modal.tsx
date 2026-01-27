@@ -38,6 +38,12 @@ const maxWidthClasses = {
 };
 
 /**
+ * Selector for focusable elements within the modal
+ */
+const FOCUSABLE_SELECTOR =
+  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"]):not([disabled])';
+
+/**
  * Modal component with focus trap, escape key handling, and overlay click.
  * Uses createPortal to render at document body level, preventing z-index issues.
  */
@@ -54,6 +60,7 @@ export function Modal({
   const overlayRef = useRef<HTMLDivElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
+  const previousActiveElement = useRef<HTMLElement | null>(null);
 
   // Only render portal after component mounts (client-side only)
   useEffect(() => {
@@ -61,14 +68,49 @@ export function Modal({
     return () => setMounted(false);
   }, []);
 
-  // Handle escape key press
+  // Get all focusable elements within the modal
+  const getFocusableElements = useCallback((): HTMLElement[] => {
+    if (!modalRef.current) return [];
+    return Array.from(
+      modalRef.current.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)
+    );
+  }, []);
+
+  // Handle keyboard events (Escape to close, Tab for focus trap)
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         onClose();
+        return;
+      }
+
+      // Focus trap: handle Tab and Shift+Tab
+      if (event.key === 'Tab') {
+        const focusableElements = getFocusableElements();
+        if (focusableElements.length === 0) {
+          event.preventDefault();
+          return;
+        }
+
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (event.shiftKey) {
+          // Shift+Tab: if on first element, wrap to last
+          if (document.activeElement === firstElement) {
+            event.preventDefault();
+            lastElement.focus();
+          }
+        } else {
+          // Tab: if on last element, wrap to first
+          if (document.activeElement === lastElement) {
+            event.preventDefault();
+            firstElement.focus();
+          }
+        }
       }
     },
-    [onClose]
+    [onClose, getFocusableElements]
   );
 
   // Handle overlay click
@@ -85,21 +127,37 @@ export function Modal({
   useEffect(() => {
     if (!isOpen) return;
 
-    // Add escape key listener
+    // Store currently focused element to restore later
+    previousActiveElement.current = document.activeElement as HTMLElement;
+
+    // Add keyboard listener
     document.addEventListener('keydown', handleKeyDown);
 
     // Prevent body scroll
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
-    // Focus the modal
-    modalRef.current?.focus();
+    // Focus the first focusable element or the modal itself
+    const focusableElements = getFocusableElements();
+    if (focusableElements.length > 0) {
+      // Small delay to ensure DOM is ready
+      requestAnimationFrame(() => {
+        focusableElements[0].focus();
+      });
+    } else {
+      modalRef.current?.focus();
+    }
 
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = originalOverflow;
+
+      // Restore focus to previously focused element
+      if (previousActiveElement.current) {
+        previousActiveElement.current.focus();
+      }
     };
-  }, [isOpen, handleKeyDown]);
+  }, [isOpen, handleKeyDown, getFocusableElements]);
 
   // Don't render anything if not open or not mounted (SSR safety)
   if (!isOpen || !mounted) return null;
