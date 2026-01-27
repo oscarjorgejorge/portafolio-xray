@@ -142,7 +142,7 @@ export const EditableIsin: React.FC<EditableIsinProps> = ({
         {showTooltip && (
           <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 px-2 py-1 bg-slate-900 text-white text-xs rounded shadow-lg z-10 whitespace-nowrap">
             Enter ISIN manually
-            <div className="absolute top-1/2 -left-1 -translate-y-1/2 h-2 w-2 bg-slate-900 rotate-45"></div>
+            <div className="absolute top-1/2 -left-1 -translate-y-1/2 h-2 w-2 bg-slate-900 rotate-45" />
           </div>
         )}
       </div>

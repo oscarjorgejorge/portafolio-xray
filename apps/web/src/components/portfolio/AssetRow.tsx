@@ -79,7 +79,7 @@ const RemoveButton = memo<RemoveButtonProps>(function RemoveButton({
       {showTooltip && (
         <div className="absolute right-0 top-full mt-1 px-2 py-1 bg-slate-900 text-white text-xs rounded shadow-lg z-10 whitespace-nowrap">
           Remove
-          <div className="absolute -top-1 right-2 h-2 w-2 bg-slate-900 rotate-45"></div>
+          <div className="absolute -top-1 right-2 h-2 w-2 bg-slate-900 rotate-45" />
         </div>
       )}
     </div>
