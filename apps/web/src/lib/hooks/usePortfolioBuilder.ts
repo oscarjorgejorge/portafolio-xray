@@ -5,10 +5,7 @@ import { useMutation } from '@tanstack/react-query';
 import type { PortfolioAsset, AllocationMode, AssetType, Asset } from '@/types';
 import { generateXRay } from '@/lib/api/xray';
 import { useShareableUrl } from './useShareableUrl';
-
-// Constants
-const PERCENTAGE_TOTAL = 100;
-const PERCENTAGE_TOLERANCE = 0.01;
+import { VALIDATION } from '@/lib/constants';
 
 interface UsePortfolioBuilderOptions {
   initialAssets?: PortfolioAsset[];
@@ -116,7 +113,7 @@ export function usePortfolioBuilder({
     );
     const totalValid =
       allocationMode === 'percentage'
-        ? Math.abs(totalWeight - PERCENTAGE_TOTAL) < PERCENTAGE_TOLERANCE
+        ? Math.abs(totalWeight - VALIDATION.PERCENTAGE_TOTAL) < VALIDATION.PERCENTAGE_TOLERANCE
         : totalWeight > 0;
     return allResolved && totalValid;
   }, [assets, allocationMode, totalWeight]);
@@ -240,7 +237,7 @@ export function usePortfolioBuilder({
         .filter((asset) => asset.asset)
         .map((asset) => ({
           morningstarId: asset.asset!.morningstarId,
-          weight: totalAmount > 0 ? (asset.weight / totalAmount) * PERCENTAGE_TOTAL : 0,
+          weight: totalAmount > 0 ? (asset.weight / totalAmount) * VALIDATION.PERCENTAGE_TOTAL : 0,
         }));
     } else {
       xrayAssets = assets

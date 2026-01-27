@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-
-const COPY_FEEDBACK_DURATION_MS = 2000;
+import { UI_FEEDBACK } from '@/lib/constants';
 
 interface UseShareableUrlOptions {
   /** Initial shareable URL path (without origin) */
@@ -74,7 +73,7 @@ export function useShareableUrl({
       try {
         await navigator.clipboard.writeText(urlToCopy);
         setCopied(true);
-        setTimeout(() => setCopied(false), COPY_FEEDBACK_DURATION_MS);
+        setTimeout(() => setCopied(false), UI_FEEDBACK.COPY_FEEDBACK_DURATION_MS);
       } catch (error) {
         console.error('Failed to copy to clipboard:', error);
       }
