@@ -23,11 +23,7 @@ const DEFAULT_CONFIG: HttpClientConfig = {
 @Injectable()
 export class HttpClientService {
   private readonly logger = new Logger(HttpClientService.name);
-  private readonly config: HttpClientConfig;
-
-  constructor(config?: Partial<HttpClientConfig>) {
-    this.config = { ...DEFAULT_CONFIG, ...config };
-  }
+  private readonly config: HttpClientConfig = DEFAULT_CONFIG;
 
   /**
    * Perform a GET request
