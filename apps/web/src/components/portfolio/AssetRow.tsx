@@ -4,6 +4,7 @@ import React, { useState, useCallback, memo } from 'react';
 import { PortfolioAsset, AllocationMode } from '@/types';
 import { Spinner } from '@/components/ui/Spinner';
 import { InputNumber } from '@/components/ui/InputNumber';
+import { AssetRowSkeleton } from '@/components/ui/Skeleton';
 import { TrashIcon, ExternalLinkIcon } from '@/components/ui/Icons';
 import { cn } from '@/lib/utils';
 import { EditableIsin } from './EditableIsin';
@@ -114,6 +115,8 @@ interface AssetRowProps {
   onOpenManualInput?: (id: string) => void;
   onAssetUpdated?: (id: string, updatedAsset: Asset) => void;
   error?: string;
+  /** Show loading skeleton instead of content */
+  isLoading?: boolean;
 }
 
 export const AssetRow = memo<AssetRowProps>(function AssetRow({
@@ -124,6 +127,7 @@ export const AssetRow = memo<AssetRowProps>(function AssetRow({
   onOpenManualInput,
   onAssetUpdated,
   error,
+  isLoading = false,
 }) {
   const [showTooltip, setShowTooltip] = useState(false);
 
@@ -158,6 +162,11 @@ export const AssetRow = memo<AssetRowProps>(function AssetRow({
   });
 
   const hasWeightError = Boolean(error && error !== asset.error);
+
+  // Show skeleton when loading
+  if (isLoading) {
+    return <AssetRowSkeleton />;
+  }
 
   return (
     <div className="border border-slate-200 rounded-lg p-4 bg-white">
@@ -308,7 +317,10 @@ export const AssetRow = memo<AssetRowProps>(function AssetRow({
             {hasWeightError && <ErrorMessage error={error!} className="mt-1" />}
           </div>
           {asset.status === 'resolving' && (
-            <p className="text-sm text-slate-500">Resolving...</p>
+            <div className="flex items-center gap-2 text-slate-500">
+              <Spinner size="sm" className="text-blue-500" />
+              <span className="text-sm">Resolving asset...</span>
+            </div>
           )}
           {asset.error && (
             <div role="alert">
