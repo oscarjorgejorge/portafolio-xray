@@ -13,7 +13,10 @@ import { XRayModule } from './xray/xray.module';
 import { HealthModule } from './health/health.module';
 import { HttpClientModule } from './common/http';
 import { LoggerModule } from './common/logger';
-import { RequestIdInterceptor } from './common/interceptors';
+import {
+  RequestIdInterceptor,
+  TransformResponseInterceptor,
+} from './common/interceptors';
 
 @Module({
   imports: [
@@ -67,6 +70,11 @@ import { RequestIdInterceptor } from './common/interceptors';
     {
       provide: APP_INTERCEPTOR,
       useClass: RequestIdInterceptor,
+    },
+    // Transform response interceptor for standardized API responses
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: TransformResponseInterceptor,
     },
     // Apply rate limiting globally to all routes
     {
