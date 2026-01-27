@@ -1,4 +1,8 @@
-import { HttpRequestOptions, HttpResponse } from '../http/http-client.types';
+import {
+  HttpRequestOptions,
+  HttpResponse,
+  CircuitBreakerState,
+} from '../http/http-client.types';
 
 /**
  * HTTP Client Interface
@@ -26,6 +30,23 @@ export interface IHttpClient {
     body?: unknown,
     options?: HttpRequestOptions,
   ): Promise<HttpResponse<T>>;
+
+  /**
+   * Get circuit breaker status for a specific domain
+   * @param domain - The domain to check
+   */
+  getCircuitStatus(domain: string): CircuitBreakerState | undefined;
+
+  /**
+   * Get all circuit breaker statuses for monitoring
+   */
+  getAllCircuitStatuses(): Map<string, CircuitBreakerState>;
+
+  /**
+   * Manually reset a circuit breaker for a domain
+   * @param domain - The domain to reset
+   */
+  resetCircuit(domain: string): void;
 }
 
 /**

@@ -26,6 +26,7 @@ export enum HttpErrorType {
   ABORT = 'ABORT',
   PARSE = 'PARSE',
   HTTP_ERROR = 'HTTP_ERROR',
+  CIRCUIT_OPEN = 'CIRCUIT_OPEN',
   UNKNOWN = 'UNKNOWN',
 }
 
@@ -55,4 +56,39 @@ export interface HttpClientConfig {
   defaultHeaders: Record<string, string>;
   /** Enable request logging */
   enableLogging: boolean;
+}
+
+/**
+ * Circuit Breaker states
+ */
+export enum CircuitState {
+  /** Normal operation - requests pass through */
+  CLOSED = 'CLOSED',
+  /** Circuit is tripped - requests fail immediately */
+  OPEN = 'OPEN',
+  /** Testing if service recovered - allows limited requests */
+  HALF_OPEN = 'HALF_OPEN',
+}
+
+/**
+ * Circuit Breaker configuration
+ */
+export interface CircuitBreakerConfig {
+  /** Number of failures before opening circuit (default: 5) */
+  failureThreshold: number;
+  /** Time in ms to wait before trying half-open (default: 30000) */
+  resetTimeoutMs: number;
+  /** Number of successful requests in half-open to close circuit (default: 2) */
+  successThreshold: number;
+}
+
+/**
+ * Circuit Breaker state per domain
+ */
+export interface CircuitBreakerState {
+  state: CircuitState;
+  failureCount: number;
+  successCount: number;
+  lastFailureTime: number;
+  lastStateChange: number;
 }
