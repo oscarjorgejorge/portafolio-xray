@@ -9,6 +9,7 @@ import { PageLoading } from '@/components/ui/PageLoading';
 import { generateXRay } from '@/lib/api/xray';
 import { useMutation } from '@tanstack/react-query';
 import { useShareableUrl } from '@/lib/hooks/useShareableUrl';
+import { captureException } from '@/lib/services/errorReporting';
 
 function XRayPageContent() {
   const router = useRouter();
@@ -62,7 +63,9 @@ function XRayPageContent() {
           mutate(assets);
         }
       } catch (error) {
-        console.error('Error parsing assets:', error);
+        captureException(error instanceof Error ? error : new Error('Failed to parse assets from URL'), {
+          tags: { action: 'xray-url-parse' },
+        });
       }
     }
   }, [searchParams, mutate]);

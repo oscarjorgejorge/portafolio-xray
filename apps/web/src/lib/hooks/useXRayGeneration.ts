@@ -6,6 +6,7 @@ import type { PortfolioAsset, AllocationMode } from '@/types';
 import { generateXRay } from '@/lib/api/xray';
 import { useShareableUrl } from './useShareableUrl';
 import { VALIDATION } from '@/lib/constants';
+import { captureException } from '@/lib/services/errorReporting';
 
 interface UseXRayGenerationOptions {
   assets: PortfolioAsset[];
@@ -69,7 +70,7 @@ export function useXRayGeneration({
       onSuccess?.();
     },
     onError: (error: Error) => {
-      console.error('Error generating X-Ray:', error);
+      captureException(error, { tags: { action: 'xray-generation' } });
       clearUrls();
       onError?.(error);
     },

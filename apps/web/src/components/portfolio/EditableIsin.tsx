@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { updateAssetIsin } from '@/lib/api/assets';
 import { queryKeys } from '@/lib/api/queryKeys';
+import { captureException } from '@/lib/services/errorReporting';
 import type { Asset } from '@/types';
 import { EditIcon, CheckIcon, CloseIcon, SpinnerIcon } from '@/components/ui/Icons';
 
@@ -93,7 +94,10 @@ export const EditableIsin: React.FC<EditableIsinProps> = ({
       setIsEditing(false);
       setInputValue('');
     } catch (err) {
-      console.error('Failed to update ISIN:', err);
+      captureException(err instanceof Error ? err : new Error('Failed to update ISIN'), {
+        tags: { action: 'isin-update' },
+        extra: { assetId },
+      });
       setError('Failed to save ISIN. Please try again.');
     } finally {
       setIsSaving(false);

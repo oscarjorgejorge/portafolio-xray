@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { UI_FEEDBACK } from '@/lib/constants';
+import { captureException } from '@/lib/services/errorReporting';
 
 interface UseShareableUrlOptions {
   /** Initial shareable URL path (without origin) */
@@ -87,7 +88,8 @@ export function useShareableUrl({
         setTimeout(() => setCopied(false), UI_FEEDBACK.COPY_FEEDBACK_DURATION_MS);
         return true;
       } catch (error) {
-        console.error('Failed to copy to clipboard:', error);
+        const err = error instanceof Error ? error : new Error('Failed to copy to clipboard');
+        captureException(err, { tags: { action: 'clipboard-copy' } });
         setCopyError(true);
         setCopied(false);
         setTimeout(
@@ -96,10 +98,6 @@ export function useShareableUrl({
         );
 
         // Call error callback if provided
-        const err =
-          error instanceof Error
-            ? error
-            : new Error('Failed to copy to clipboard');
         onCopyError?.(err);
 
         // Fallback: try to use execCommand (deprecated but works in more contexts)

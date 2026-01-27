@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { PortfolioBuilder } from '@/components/portfolio/PortfolioBuilder';
 import { PageLoading } from '@/components/ui/PageLoading';
 import { PortfolioBuilderSkeleton } from '@/components/ui/Skeleton';
+import { captureException } from '@/lib/services/errorReporting';
 import type { PortfolioAsset } from '@/types';
 import { resolveAsset } from '@/lib/api/assets';
 import { generateSimpleId } from '@/lib/utils/id';
@@ -92,7 +93,9 @@ function HomePageContent() {
       } catch (error) {
         // Ignore abort errors
         if (error instanceof Error && error.name === 'AbortError') return;
-        console.error('Error parsing shareable URL:', error);
+        captureException(error instanceof Error ? error : new Error('Failed to parse shareable URL'), {
+          tags: { action: 'url-parse' },
+        });
       } finally {
         if (!abortController.signal.aborted) {
           setIsLoading(false);

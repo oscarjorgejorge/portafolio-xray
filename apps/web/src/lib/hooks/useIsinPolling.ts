@@ -3,6 +3,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { getAssetById } from '@/lib/api/assets';
 import { POLLING } from '@/lib/constants';
+import { captureException } from '@/lib/services/errorReporting';
 import type { Asset } from '@/types';
 
 interface UseIsinPollingOptions {
@@ -64,7 +65,10 @@ export function useIsinPolling({
         onIsinResolved(updatedAsset);
       }
     } catch (error) {
-      console.error('Error polling for ISIN:', error);
+      captureException(error instanceof Error ? error : new Error('ISIN polling failed'), {
+        tags: { action: 'isin-polling' },
+        extra: { assetId },
+      });
       // Stop polling on error
       stopPolling();
     }
