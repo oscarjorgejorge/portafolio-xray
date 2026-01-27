@@ -22,14 +22,20 @@ if [ -n "$STAGED_TS_API" ]; then
   echo "Type checking API..."
   npm run type-check --prefix apps/api
   
-  echo "Running API tests..."
-  npm test --prefix apps/api
+  # Only run tests if script exists
+  if npm run --prefix apps/api 2>/dev/null | grep -q "test"; then
+    echo "Running API tests..."
+    npm test --prefix apps/api
+  fi
 fi
 
 if [ -n "$STAGED_TS_WEB" ]; then
   echo "Type checking Web..."
   npm run type-check --prefix apps/web
   
-  echo "Running Web tests..."
-  npm test --prefix apps/web
+  # Only run tests if script exists
+  if npm run --prefix apps/web 2>/dev/null | grep -q "test"; then
+    echo "Running Web tests..."
+    npm test --prefix apps/web
+  fi
 fi
