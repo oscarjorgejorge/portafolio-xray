@@ -141,12 +141,13 @@ jobs:
           npm ci
           npm run build
 
-  # Docker build verification (runs only on main/develop to save CI minutes)
+  # Docker build verification (only for production deployments to save CI minutes)
+  # Runs on: PRs targeting main, or direct pushes to main
   docker-build:
     name: Docker Build Verification
     runs-on: ubuntu-latest
     needs: [build]
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    if: github.base_ref == 'main' || github.ref == 'refs/heads/main'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
