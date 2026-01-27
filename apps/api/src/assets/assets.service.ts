@@ -232,7 +232,11 @@ export class AssetsService implements IAssetsService {
         error,
         input,
       );
-      this.logger.error(`Resolution error for ${input}: ${error}`);
+      // Log as warn since this is a handled/expected error, not a system failure
+      // The error details are captured in errorCode and returned to the client
+      this.logger.warn(
+        `Resolution failed for "${input}": [${errorCode}] ${message}`,
+      );
       return {
         success: false,
         source: ResolutionSource.MANUAL_REQUIRED,
