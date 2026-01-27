@@ -1612,3 +1612,44 @@ como senior frontend developper analiza la web, y dime que mejoras y optmizacion
    - Validates NEXT_PUBLIC_API_URL and NODE_ENV
    - Type-safe access: `env.NEXT_PUBLIC_API_URL`
    - Throws in development if invalid, uses defaults in production
+
+### Prompt 95
+como senior frontend developper analiza la web, y dime que mejoras y optmizaciones que son necesarias teniendo en cuenta las buenas practicas (la parte de los test los implementaremos mas adelante), pero tampoco quiero algo overkill / complejo sin necesidad
+
+### Prompt 96
+vamos con todas las mejoras una a una y haciendo commits
+
+**Results:**
+
+1. **fix(web): sync initialAssets state when prop changes** (`d155d09`):
+   - Added useEffect to synchronize internal state when initialAssets prop changes
+   - Fixes issue where assets from URL parsing were not reflected in portfolio builder state
+
+2. **perf(web): memoize actions in usePortfolioBuilder to prevent re-renders** (`c80d20e`):
+   - Wrapped action handlers in useMemo for stable references
+   - Prevents unnecessary re-renders in child components
+
+3. **refactor(web): replace console.error with centralized error reporting** (`fa26028`):
+   - Use captureException from errorReporting service instead of console.error
+   - Better error tracking in production
+   - Affected: hooks (useXRayGeneration, useShareableUrl, useIsinPolling), components (EditableIsin), pages
+
+4. **feat(web): add user feedback for URL parsing errors** (`b034570`):
+   - Display Alert component when portfolio URL parsing fails
+   - Users are informed to add assets manually
+
+5. **perf(web): optimize getAssetById with Map for O(1) lookups** (`311b0ce`):
+   - Replace Array.find() with Map.get() for constant-time asset lookups
+   - Improves performance for portfolios with many assets
+
+6. **chore(web): add displayName to memoized components in AssetRow** (`0552694`):
+   - Added displayName to WeightInput, RemoveButton, ErrorMessage, AssetRow
+   - Improves React DevTools debugging
+
+7. **refactor(web): improve env.ts typing with explicit return type and control flow** (`caa868d`):
+   - Added explicit Env return type to getEnv function
+   - Fixed control flow to clearly return defaults in production when validation fails
+
+8. **refactor(web): use React useId() for accessibility IDs and improve id.ts docs** (`3ad6f6e`):
+   - Replaced hardcoded modal-title ID with useId() for proper multi-modal support
+   - Added comprehensive documentation to id.ts explaining when to use useId() vs generateSimpleId()
