@@ -17,11 +17,35 @@ export interface HttpRequestOptions {
   retryDelay?: number;
 }
 
+/**
+ * HTTP Error types for categorizing failures
+ */
+export enum HttpErrorType {
+  NETWORK = 'NETWORK',
+  TIMEOUT = 'TIMEOUT',
+  ABORT = 'ABORT',
+  PARSE = 'PARSE',
+  HTTP_ERROR = 'HTTP_ERROR',
+  UNKNOWN = 'UNKNOWN',
+}
+
+/**
+ * HTTP Error details for debugging
+ */
+export interface HttpError {
+  type: HttpErrorType;
+  message: string;
+  /** Original error if available */
+  cause?: Error;
+}
+
 export interface HttpResponse<T> {
   data: T | null;
   status: number;
   ok: boolean;
   headers?: Headers;
+  /** Error details when ok=false */
+  error?: HttpError;
 }
 
 export interface HttpClientConfig {
