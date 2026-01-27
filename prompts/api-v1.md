@@ -1569,3 +1569,46 @@ como senior frontend developper analiza la web, y dime que mejoras y optmizacion
    - Create lightweight fetch-based API client
    - Remove axios dependency (~13KB gzipped savings)
    - Maintain same interface with proper timeout/error handling
+
+### Prompt 94
+como senior frontend developper analiza la web, y dime que mejoras y optmizaciones que son necesarias teniendo en cuenta las buenas practicas (la parte de los test los implementaremos mas adelante), pero tampoco quiero algo overkill / complejo sin necesidad
+
+**Implementations (7 commits):**
+
+1. **fix(web): add abort controller to prevent race conditions on URL parsing** (`3effbf7`):
+   - Added AbortController to cancel pending requests on component unmount
+   - Updated resolveAsset API to support abort signal parameter
+   - Prevents state updates on unmounted components when loading from shared URL
+
+2. **feat(web): add Next.js loading components for route segments** (`c84addb`):
+   - Created loading.tsx for [locale] route with PortfolioBuilderSkeleton
+   - Created loading.tsx for xray route with spinner
+   - Better UX during page transitions
+
+3. **perf(web): lazy load modal components to reduce initial bundle size** (`b87948e`):
+   - Used next/dynamic for AssetAlternatives, ManualAssetInput, ClearAllConfirmation
+   - Components only loaded when needed (ssr: false)
+   - Reduces initial JavaScript bundle
+
+4. **refactor(web): add barrel exports for API module** (`1642c9d`):
+   - Created lib/api/index.ts with centralized exports
+   - Exports: apiClient, ApiError, all API functions, queryKeys, schemas, types
+   - Cleaner imports: `import { resolveAsset, queryKeys } from '@/lib/api'`
+
+5. **style(web): add semantic CSS variables and design tokens to Tailwind config** (`7712c4e`):
+   - Added CSS variables: --primary, --muted, --card, --border
+   - Extended Tailwind theme with semantic color tokens
+   - Moved slide-in animation to Tailwind config
+   - Better design system foundation
+
+6. **chore(web): enhance ESLint config with stricter rules and fix violations** (`e02ef53`):
+   - Added rules: jsx-boolean-value, jsx-no-useless-fragment, eqeqeq, no-nested-ternary
+   - Added import organization rules: first, newline-after-import, no-duplicates
+   - Fixed duplicate imports in loading.tsx
+   - Fixed useless fragments in layout components
+
+7. **feat(web): add typed environment configuration with Zod validation** (`4d81491`):
+   - Created lib/env.ts with Zod schema for environment variables
+   - Validates NEXT_PUBLIC_API_URL and NODE_ENV
+   - Type-safe access: `env.NEXT_PUBLIC_API_URL`
+   - Throws in development if invalid, uses defaults in production
