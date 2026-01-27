@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useCallback } from 'react';
-import { getAssetById, Asset } from '@/lib/api/assets';
+import { getAssetById } from '@/lib/api/assets';
+import type { Asset } from '@/types';
 
 interface UseIsinPollingOptions {
   /** Asset ID to poll */

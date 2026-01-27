@@ -4,7 +4,8 @@ import React, { useState } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
-import { confirmAsset, type AssetType } from '@/lib/api/assets';
+import { confirmAsset } from '@/lib/api/assets';
+import type { AssetType } from '@/types';
 import { useMutation } from '@tanstack/react-query';
 
 interface ManualAssetInputProps {

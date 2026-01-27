@@ -2,9 +2,8 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import type { PortfolioAsset, AllocationMode } from '@/types';
+import type { PortfolioAsset, AllocationMode, AssetType, Asset } from '@/types';
 import { generateXRay } from '@/lib/api/xray';
-import { type AssetType, type Asset } from '@/lib/api/assets';
 import { useShareableUrl } from './useShareableUrl';
 
 // Constants

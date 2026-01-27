@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { updateAssetIsin } from '@/lib/api/assets';
-import type { Asset } from '@/lib/api/assets';
+import type { Asset } from '@/types';
 import { EditIcon, CheckIcon, CloseIcon, SpinnerIcon } from '@/components/ui/Icons';
 
 interface EditableIsinProps {

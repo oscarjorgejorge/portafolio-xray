@@ -3,8 +3,8 @@
 import React from 'react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import type { AlternativeAsset } from '@/lib/api/assets';
-import { confirmAsset, type AssetType } from '@/lib/api/assets';
+import { confirmAsset } from '@/lib/api/assets';
+import type { AlternativeAsset, AssetType } from '@/types';
 import { useMutation } from '@tanstack/react-query';
 
 interface AssetAlternativesProps {

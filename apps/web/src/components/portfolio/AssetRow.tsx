@@ -6,7 +6,7 @@ import { Spinner } from '@/components/ui/Spinner';
 import { TrashIcon, ExternalLinkIcon } from '@/components/ui/Icons';
 import { EditableIsin } from './EditableIsin';
 import { useIsinPolling } from '@/lib/hooks/useIsinPolling';
-import type { Asset } from '@/lib/api/assets';
+import type { Asset } from '@/types';
 
 // ============================================
 // Sub-components to reduce code duplication

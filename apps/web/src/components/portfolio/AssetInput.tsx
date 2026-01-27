@@ -4,8 +4,8 @@ import React, { useState } from 'react';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { useMutation } from '@tanstack/react-query';
-import { resolveAsset, type AssetType } from '@/lib/api/assets';
-import type { PortfolioAsset } from '@/types';
+import { resolveAsset } from '@/lib/api/assets';
+import type { PortfolioAsset, AssetType } from '@/types';
 import { generateSimpleId } from '@/lib/utils/id';
 
 interface AssetInputProps {
