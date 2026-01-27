@@ -132,14 +132,6 @@ export function usePortfolioBuilder({
     [assetManagement, xrayGeneration]
   );
 
-  // Handler: Asset updated (ISIN resolved)
-  const handleAssetUpdated = useCallback(
-    (id: string, updatedAsset: Asset) => {
-      assetManagement.updateAsset(id, updatedAsset);
-    },
-    [assetManagement]
-  );
-
   // Handler: Alternative selected
   const handleAlternativeSelected = useCallback(
     (assetId: string, morningstarId: string, name: string, url: string) => {
@@ -158,20 +150,8 @@ export function usePortfolioBuilder({
     [assetManagement]
   );
 
-  // Handler: Generate X-Ray
-  const handleGenerate = useCallback(() => {
-    xrayGeneration.generate();
-  }, [xrayGeneration]);
-
-  // Handler: Copy URL
-  const handleCopyUrl = useCallback(() => {
-    xrayGeneration.copyUrl();
-  }, [xrayGeneration]);
-
-  // Handler: Clear all
-  const handleClearAll = useCallback(() => {
-    setShowClearAllConfirmation(true);
-  }, []);
+  // Handler: Clear all - simple state toggle, no need for useCallback
+  const handleClearAll = () => setShowClearAllConfirmation(true);
 
   // Handler: Confirm clear all
   const handleConfirmClearAll = useCallback(() => {
@@ -179,11 +159,6 @@ export function usePortfolioBuilder({
     xrayGeneration.clearUrls();
     setShowClearAllConfirmation(false);
   }, [assetManagement, xrayGeneration]);
-
-  // Handler: Open PDF
-  const handleOpenPDF = useCallback(() => {
-    xrayGeneration.openPdf();
-  }, [xrayGeneration]);
 
   return {
     // State
@@ -207,14 +182,14 @@ export function usePortfolioBuilder({
     handleAssetResolved,
     handleWeightChange,
     handleRemove,
-    handleAssetUpdated,
+    handleAssetUpdated: assetManagement.updateAsset,
     handleAlternativeSelected,
     handleManualConfirmed,
-    handleGenerate,
-    handleCopyUrl,
+    handleGenerate: xrayGeneration.generate,
+    handleCopyUrl: xrayGeneration.copyUrl,
     handleClearAll,
     handleConfirmClearAll,
-    handleOpenPDF,
+    handleOpenPDF: xrayGeneration.openPdf,
     setSelectedAssetForAlternatives,
     setSelectedAssetForManual,
     setShowClearAllConfirmation,
