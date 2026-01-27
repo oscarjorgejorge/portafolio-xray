@@ -18,6 +18,7 @@ import {
 } from '../common/utils/identifier-classifier';
 import { createContextLogger } from '../common/logger';
 import { EntityNotFoundException } from '../common/exceptions';
+import { CACHE_CONFIG } from '../common/constants';
 import { IAssetsService } from './interfaces';
 import {
   ResolveAssetResponse,
@@ -29,9 +30,6 @@ import {
 } from './types';
 import { toResolvedAssetDto } from './mappers';
 import type { AppConfig } from '../config';
-
-/** Cache key prefix for asset resolution results */
-const CACHE_KEY_PREFIX = 'asset:';
 
 @Injectable()
 export class AssetsService implements IAssetsService {
@@ -57,7 +55,7 @@ export class AssetsService implements IAssetsService {
     // Input is already normalized (trimmed & uppercased) by DTO Transform decorator
     const input = dto.input;
     const identifierType = IdentifierClassifier.classify(input);
-    const cacheKey = `${CACHE_KEY_PREFIX}${input}`;
+    const cacheKey = `${CACHE_CONFIG.ASSET_KEY_PREFIX}${input}`;
 
     // Step 0: Check in-memory cache first (fastest)
     const memoryCached =
@@ -360,7 +358,7 @@ export class AssetsService implements IAssetsService {
 
     // Step 1: Check in-memory cache first (parallel lookups)
     const memoryCachePromises = classifiedInputs.map(async (item) => {
-      const cacheKey = `${CACHE_KEY_PREFIX}${item.normalized}`;
+      const cacheKey = `${CACHE_CONFIG.ASSET_KEY_PREFIX}${item.normalized}`;
       const cached =
         await this.cacheManager.get<ResolveAssetResponse>(cacheKey);
       return { normalized: item.normalized, cached };
@@ -420,7 +418,7 @@ export class AssetsService implements IAssetsService {
         results.set(asset.morningstarId.toUpperCase(), response);
 
         // Queue cache write for parallel execution
-        const cacheKey = `${CACHE_KEY_PREFIX}${asset.morningstarId.toUpperCase()}`;
+        const cacheKey = `${CACHE_CONFIG.ASSET_KEY_PREFIX}${asset.morningstarId.toUpperCase()}`;
         cachePromises.push(this.cacheManager.set(cacheKey, response));
       }
 
@@ -448,7 +446,7 @@ export class AssetsService implements IAssetsService {
           results.set(asset.isin.toUpperCase(), response);
 
           // Queue cache write for parallel execution
-          const cacheKey = `${CACHE_KEY_PREFIX}${asset.isin.toUpperCase()}`;
+          const cacheKey = `${CACHE_CONFIG.ASSET_KEY_PREFIX}${asset.isin.toUpperCase()}`;
           cachePromises.push(this.cacheManager.set(cacheKey, response));
         }
       }
@@ -531,10 +529,14 @@ export class AssetsService implements IAssetsService {
     const { isin, morningstarId, ticker } = options;
     const keys: string[] = [];
 
-    if (isin) keys.push(`${CACHE_KEY_PREFIX}${isin.toUpperCase()}`);
+    if (isin)
+      keys.push(`${CACHE_CONFIG.ASSET_KEY_PREFIX}${isin.toUpperCase()}`);
     if (morningstarId)
-      keys.push(`${CACHE_KEY_PREFIX}${morningstarId.toUpperCase()}`);
-    if (ticker) keys.push(`${CACHE_KEY_PREFIX}${ticker.toUpperCase()}`);
+      keys.push(
+        `${CACHE_CONFIG.ASSET_KEY_PREFIX}${morningstarId.toUpperCase()}`,
+      );
+    if (ticker)
+      keys.push(`${CACHE_CONFIG.ASSET_KEY_PREFIX}${ticker.toUpperCase()}`);
 
     if (keys.length === 0) return;
 
