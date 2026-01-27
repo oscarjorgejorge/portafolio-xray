@@ -39,12 +39,14 @@ const WeightInput: React.FC<WeightInputProps> = ({
       </label>
       <input
         type="number"
+        inputMode="decimal"
         value={value || ''}
         onChange={onChange}
         min="0"
         step="0.01"
         placeholder="0"
         aria-label={label}
+        aria-invalid={hasError}
         className={`
           ${isMobile ? 'flex-1 px-3 py-2' : 'w-full px-2 py-1.5'} border rounded-lg text-sm
           text-slate-900 bg-white
@@ -302,7 +304,7 @@ export const AssetRow: React.FC<AssetRowProps> = ({
             <p className="text-sm text-slate-500">Resolving...</p>
           )}
           {asset.error && (
-            <div>
+            <div role="alert">
               <p className="text-sm text-red-600">{asset.error}</p>
               {(asset.status === 'manual_required' || asset.status === 'error') && onOpenManualInput && (
                 <button

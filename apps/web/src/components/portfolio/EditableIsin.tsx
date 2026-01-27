@@ -162,6 +162,8 @@ export const EditableIsin: React.FC<EditableIsinProps> = ({
           placeholder="e.g., LU2485535293"
           maxLength={12}
           disabled={isSaving}
+          aria-label="ISIN code"
+          aria-invalid={Boolean(error)}
           className={`
             w-32 px-2 py-0.5 text-sm border rounded
             focus:outline-none focus:ring-1 focus:ring-blue-500
@@ -175,6 +177,7 @@ export const EditableIsin: React.FC<EditableIsinProps> = ({
           disabled={isSaving}
           className="p-1 text-green-600 hover:text-green-700 hover:bg-green-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           title="Save"
+          aria-label="Save ISIN"
         >
           {isSaving ? <SpinnerIcon /> : <CheckIcon />}
         </button>
@@ -184,13 +187,14 @@ export const EditableIsin: React.FC<EditableIsinProps> = ({
           disabled={isSaving}
           className="p-1 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           title="Cancel"
+          aria-label="Cancel editing"
         >
           <CloseIcon />
         </button>
       </div>
       {/* Error message */}
       {error && (
-        <span className="text-xs text-red-600 mt-0.5">{error}</span>
+        <span className="text-xs text-red-600 mt-0.5" role="alert">{error}</span>
       )}
     </div>
   );

@@ -29,6 +29,8 @@ export const Input: React.FC<InputProps> = ({
       )}
       <input
         id={inputId}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? `${inputId}-error` : undefined}
         className={`
           w-full px-3 py-2 border rounded-lg
           text-slate-900 bg-white
@@ -39,7 +41,7 @@ export const Input: React.FC<InputProps> = ({
         {...props}
       />
       {error && (
-        <p className="mt-1 text-sm text-red-600" role="alert">
+        <p id={`${inputId}-error`} className="mt-1 text-sm text-red-600" role="alert">
           {error}
         </p>
       )}
