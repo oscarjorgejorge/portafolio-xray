@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import type { PortfolioAsset, AllocationMode } from '@/types';
 import { generateXRay } from '@/lib/api/xray';
 import { type AssetType, type Asset } from '@/lib/api/assets';
+import { useShareableUrl } from './useShareableUrl';
 
 // Constants
 const PERCENTAGE_TOTAL = 100;
@@ -75,11 +76,17 @@ export function usePortfolioBuilder({
     useState<PortfolioAsset | null>(null);
   const [showClearAllConfirmation, setShowClearAllConfirmation] = useState(false);
 
-  // Shareable URL states
-  const [shareableUrl, setShareableUrl] = useState<string | null>(null);
-  const [morningstarUrl, setMorningstarUrl] = useState<string | null>(null);
-  const [fullShareableUrl, setFullShareableUrl] = useState<string>('');
-  const [copied, setCopied] = useState(false);
+  // Use shared URL hook
+  const {
+    shareableUrl,
+    morningstarUrl,
+    fullShareableUrl,
+    copied,
+    setUrls,
+    copyToClipboard,
+    openMorningstarPdf,
+    clearUrls,
+  } = useShareableUrl();
 
   // Toast state
   const [showSuccessToast, setShowSuccessToast] = useState(false);
@@ -88,27 +95,14 @@ export function usePortfolioBuilder({
   const generateMutation = useMutation({
     mutationFn: generateXRay,
     onSuccess: (data) => {
-      setShareableUrl(data.shareableUrl);
-      setMorningstarUrl(data.morningstarUrl);
-      if (typeof window !== 'undefined') {
-        setFullShareableUrl(`${window.location.origin}${data.shareableUrl}`);
-      }
+      setUrls(data.shareableUrl, data.morningstarUrl);
       setShowSuccessToast(true);
     },
     onError: (error: Error) => {
       console.error('Error generating X-Ray:', error);
-      setShareableUrl(null);
-      setMorningstarUrl(null);
-      setFullShareableUrl('');
+      clearUrls();
     },
   });
-
-  // Update full URL when shareableUrl changes (client-side only)
-  useEffect(() => {
-    if (shareableUrl && typeof window !== 'undefined') {
-      setFullShareableUrl(`${window.location.origin}${shareableUrl}`);
-    }
-  }, [shareableUrl]);
 
   // Calculate total weight
   const totalWeight = useMemo(() => {
@@ -128,18 +122,11 @@ export function usePortfolioBuilder({
     return allResolved && totalValid;
   }, [assets, allocationMode, totalWeight]);
 
-  // Helper function to clear shareable URLs when portfolio changes
-  const clearShareableUrls = useCallback(() => {
-    setShareableUrl(null);
-    setMorningstarUrl(null);
-    setFullShareableUrl('');
-  }, []);
-
   // Handler: Asset resolved from input
   const handleAssetResolved = useCallback(
     (newAsset: PortfolioAsset) => {
       setAssets((prev) => [...prev, newAsset]);
-      clearShareableUrls();
+      clearUrls();
 
       if (newAsset.status === 'low_confidence') {
         setSelectedAssetForAlternatives(newAsset);
@@ -147,7 +134,7 @@ export function usePortfolioBuilder({
         setSelectedAssetForManual(newAsset);
       }
     },
-    [clearShareableUrls]
+    [clearUrls]
   );
 
   // Handler: Weight change
@@ -156,18 +143,18 @@ export function usePortfolioBuilder({
       setAssets((prev) =>
         prev.map((asset) => (asset.id === id ? { ...asset, weight } : asset))
       );
-      clearShareableUrls();
+      clearUrls();
     },
-    [clearShareableUrls]
+    [clearUrls]
   );
 
   // Handler: Remove asset
   const handleRemove = useCallback(
     (id: string) => {
       setAssets((prev) => prev.filter((asset) => asset.id !== id));
-      clearShareableUrls();
+      clearUrls();
     },
-    [clearShareableUrls]
+    [clearUrls]
   );
 
   // Handler: Asset updated (ISIN resolved)
@@ -270,13 +257,8 @@ export function usePortfolioBuilder({
 
   // Handler: Copy URL
   const handleCopyUrl = useCallback(() => {
-    if (fullShareableUrl) {
-      navigator.clipboard.writeText(fullShareableUrl).then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      });
-    }
-  }, [fullShareableUrl]);
+    copyToClipboard();
+  }, [copyToClipboard]);
 
   // Handler: Clear all
   const handleClearAll = useCallback(() => {
@@ -286,18 +268,14 @@ export function usePortfolioBuilder({
   // Handler: Confirm clear all
   const handleConfirmClearAll = useCallback(() => {
     setAssets([]);
-    setShareableUrl(null);
-    setMorningstarUrl(null);
-    setFullShareableUrl('');
+    clearUrls();
     setShowClearAllConfirmation(false);
-  }, []);
+  }, [clearUrls]);
 
   // Handler: Open PDF
   const handleOpenPDF = useCallback(() => {
-    if (morningstarUrl) {
-      window.open(morningstarUrl, '_blank');
-    }
-  }, [morningstarUrl]);
+    openMorningstarPdf();
+  }, [openMorningstarPdf]);
 
   // Helper: Get asset by ID
   const getAssetById = useCallback(
