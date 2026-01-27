@@ -2,14 +2,23 @@ import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { AssetsRepository } from './assets.repository';
 import { MorningstarResolverService } from './resolver';
 import { IsinEnrichmentService } from './isin-enrichment.service';
-import { ResolveAssetDto, ConfirmAssetDto } from './dto';
+import {
+  ResolveAssetDto,
+  ConfirmAssetDto,
+  BatchResolveAssetDto,
+  BatchResolveAssetItemDto,
+} from './dto';
 import { Asset, AssetSource, AssetType } from '@prisma/client';
 import {
   IdentifierClassifier,
   IdentifierType,
 } from '../common/utils/identifier-classifier';
 import { IAssetsService } from './interfaces';
-import { ResolveAssetResponse } from './types';
+import {
+  ResolveAssetResponse,
+  BatchResolveAssetResponse,
+  BatchResolveResultItem,
+} from './types';
 
 @Injectable()
 export class AssetsService implements IAssetsService {
@@ -182,6 +191,166 @@ export class AssetsService implements IAssetsService {
         error: `Error resolving asset "${input}". Please try again or provide Morningstar ID manually.`,
       };
     }
+  }
+
+  /**
+   * Batch resolve multiple assets in a single request
+   * Optimized to reduce N+1 API calls from the frontend
+   *
+   * Strategy:
+   * 1. Batch cache lookup for all ISINs and Morningstar IDs
+   * 2. Process uncached items in parallel with concurrency control
+   * 3. Return all results together
+   *
+   * @param dto - Batch resolve request with up to 20 assets
+   */
+  async resolveBatch(
+    dto: BatchResolveAssetDto,
+  ): Promise<BatchResolveAssetResponse> {
+    const startTime = Date.now();
+    this.logger.log(
+      `[BATCH] Starting batch resolution for ${dto.assets.length} assets`,
+    );
+
+    // Step 1: Classify all inputs and prepare for batch cache lookup
+    const classifiedInputs = dto.assets.map((item) => ({
+      original: item,
+      normalized: item.input.trim().toUpperCase(),
+      type: IdentifierClassifier.classify(item.input.trim().toUpperCase()),
+    }));
+
+    // Step 2: Batch cache lookup
+    const cacheResults = await this.batchCacheLookup(classifiedInputs);
+
+    // Step 3: Identify uncached items
+    const uncachedItems = classifiedInputs.filter(
+      (item) => !cacheResults.has(item.normalized),
+    );
+
+    this.logger.log(
+      `[BATCH] Cache hits: ${cacheResults.size}, Cache misses: ${uncachedItems.length}`,
+    );
+
+    // Step 4: Resolve uncached items in parallel with concurrency control
+    const CONCURRENCY_LIMIT = 5; // Avoid overwhelming external APIs
+    const resolvedResults = new Map<string, ResolveAssetResponse>();
+
+    for (let i = 0; i < uncachedItems.length; i += CONCURRENCY_LIMIT) {
+      const batch = uncachedItems.slice(i, i + CONCURRENCY_LIMIT);
+      const batchPromises = batch.map(async (item) => {
+        const result = await this.resolve({
+          input: item.original.input,
+          assetType: item.original.assetType,
+        });
+        return { normalized: item.normalized, result };
+      });
+
+      const batchResults = await Promise.all(batchPromises);
+      batchResults.forEach(({ normalized, result }) => {
+        resolvedResults.set(normalized, result);
+      });
+    }
+
+    // Step 5: Combine results in original order
+    const results: BatchResolveResultItem[] = classifiedInputs.map((item) => {
+      const cachedResult = cacheResults.get(item.normalized);
+      const resolvedResult = resolvedResults.get(item.normalized);
+      const result = cachedResult ||
+        resolvedResult || {
+          success: false,
+          source: 'manual_required' as const,
+          error: 'Resolution failed unexpectedly',
+        };
+
+      return {
+        input: item.original.input,
+        result,
+      };
+    });
+
+    // Step 6: Calculate statistics
+    const resolved = results.filter((r) => r.result.success).length;
+    const manualRequired = results.filter(
+      (r) => !r.result.success && r.result.source === 'manual_required',
+    ).length;
+
+    const duration = Date.now() - startTime;
+    this.logger.log(
+      `[BATCH] Completed batch resolution in ${duration}ms: ${resolved} resolved, ${manualRequired} manual required`,
+    );
+
+    return {
+      total: dto.assets.length,
+      resolved,
+      manualRequired,
+      results,
+    };
+  }
+
+  /**
+   * Perform batch cache lookup for multiple inputs
+   * Optimizes database queries by batching ISINs and Morningstar IDs separately
+   */
+  private async batchCacheLookup(
+    classifiedInputs: Array<{
+      original: BatchResolveAssetItemDto;
+      normalized: string;
+      type: IdentifierType;
+    }>,
+  ): Promise<Map<string, ResolveAssetResponse>> {
+    const results = new Map<string, ResolveAssetResponse>();
+
+    // Separate inputs by type for batch queries
+    const isins = classifiedInputs
+      .filter((i) => i.type === IdentifierType.ISIN)
+      .map((i) => i.normalized);
+
+    const morningstarIds = classifiedInputs
+      .filter((i) => i.type === IdentifierType.MORNINGSTAR_ID)
+      .map((i) => i.normalized);
+
+    // Batch query for Morningstar IDs
+    if (morningstarIds.length > 0) {
+      const msAssets =
+        await this.assetsRepository.findManyByMorningstarIds(morningstarIds);
+      for (const asset of msAssets) {
+        // Skip if needs re-resolution (no ISIN and enrichment complete)
+        if (!asset.isin && !asset.isinPending) continue;
+
+        results.set(asset.morningstarId.toUpperCase(), {
+          success: true,
+          source: 'cache',
+          asset,
+          isinPending: asset.isinPending,
+        });
+      }
+    }
+
+    // Individual queries for ISINs (findFirst doesn't support batch)
+    // This is still more efficient than the N+1 pattern because we skip external resolution
+    if (isins.length > 0) {
+      const isinPromises = isins.map(async (isin) => {
+        const asset = await this.assetsRepository.findByIsin(isin);
+        if (asset && (asset.isin || asset.isinPending)) {
+          return { isin, asset };
+        }
+        return null;
+      });
+
+      const isinResults = await Promise.all(isinPromises);
+      for (const result of isinResults) {
+        if (result) {
+          results.set(result.isin, {
+            success: true,
+            source: 'cache',
+            asset: result.asset,
+            isinPending: result.asset.isinPending,
+          });
+        }
+      }
+    }
+
+    return results;
   }
 
   async getById(id: string): Promise<Asset> {

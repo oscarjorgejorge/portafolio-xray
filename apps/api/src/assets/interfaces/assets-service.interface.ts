@@ -1,6 +1,6 @@
 import { Asset } from '@prisma/client';
-import { ResolveAssetDto, ConfirmAssetDto } from '../dto';
-import { ResolveAssetResponse } from '../types';
+import { ResolveAssetDto, ConfirmAssetDto, BatchResolveAssetDto } from '../dto';
+import { ResolveAssetResponse, BatchResolveAssetResponse } from '../types';
 
 /**
  * Assets Service Interface
@@ -13,6 +13,13 @@ export interface IAssetsService {
    * @param dto - Resolution request containing the identifier
    */
   resolve(dto: ResolveAssetDto): Promise<ResolveAssetResponse>;
+
+  /**
+   * Batch resolve multiple assets in a single request
+   * Optimized to reduce N+1 API calls from the frontend
+   * @param dto - Batch resolution request with up to 20 assets
+   */
+  resolveBatch(dto: BatchResolveAssetDto): Promise<BatchResolveAssetResponse>;
 
   /**
    * Get a cached asset by its internal UUID

@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -9,11 +9,15 @@ import { AssetsModule } from './assets/assets.module';
 import { XRayModule } from './xray/xray.module';
 import { HealthModule } from './health/health.module';
 import { HttpClientModule } from './common/http';
+import { LoggerModule } from './common/logger';
+import { RequestIdInterceptor } from './common/interceptors';
 
 @Module({
   imports: [
     // Configuration module - validates env vars at startup
     ConfigModule,
+    // Global logger module with request ID correlation
+    LoggerModule,
     // Global HTTP client for all modules
     HttpClientModule,
     // Rate limiting configuration
@@ -44,6 +48,11 @@ import { HttpClientModule } from './common/http';
   controllers: [AppController],
   providers: [
     AppService,
+    // Request ID interceptor for request correlation and logging
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: RequestIdInterceptor,
+    },
     // Apply rate limiting globally to all routes
     {
       provide: APP_GUARD,

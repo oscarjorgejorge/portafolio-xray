@@ -978,3 +978,155 @@ y luego con esta: Validación de UUIDs Faltante en Controllers, update the promp
 - Consistent error messages: NestJS provides standard 400 response
 - Security: Prevents injection attempts via malformed IDs
 - Performance: Avoids unnecessary database queries
+
+### Prompt 77
+como senior backend developper analiza la api, y dime que mejoras y optmizaciones son necesarias teniendo en cuenta las buenas practicas (la parte de los test los implementaremos mas adelante)
+
+**Analysis Summary:**
+Comprehensive code review identifying improvements organized by priority:
+
+**High Priority:**
+1. Inyección de Dependencias Incompleta - interfaces defined but not used for injection
+2. Request ID en logs - no correlation between logs in same request
+3. Manejo de Errores del PrismaService - no retry/circuit breaker
+4. Falta de Validación de ISIN en ConfirmAssetDto
+5. Fire-and-Forget Sin Control - ISIN enrichment without job queue
+
+**Medium Priority:**
+6. Falta API Versioning
+7. Response DTOs Inconsistentes
+8. Timeouts Hardcodeados
+9. Falta Caching Layer
+10. Health Check Incompleto
+11. Falta Graceful Shutdown
+12. Método mapMorningstarType debería ser utility
+
+**Low Priority:**
+13. Consultas N+1 Potenciales
+14. Índices de Base de Datos
+15. Compresión de Respuestas
+16. Métricas y Observabilidad
+17. DTOs con Class-transformer/validator Mixtos
+
+### Prompt 78
+lets go with this improvement: Request ID en logs
+
+**Implementation - Request ID Correlation in Logs:**
+
+1. **Created `src/common/context/` module:**
+   - `request-context.ts` - AsyncLocalStorage for request context
+   - Exports: `RequestContext`, `getRequestId()`, `getRequestContext()`, `REQUEST_ID_HEADER`
+   - Request context includes: `requestId`, `startTime`, `method`, `path`
+
+2. **Created `src/common/interceptors/` module:**
+   - `request-id.interceptor.ts` - NestJS interceptor for request ID management
+   - Generates UUID if not provided in `x-request-id` header
+   - Propagates existing request ID from client
+   - Adds request ID to response headers
+   - Logs request start/end with duration
+   - Stores context in AsyncLocalStorage for entire request lifecycle
+
+3. **Created `src/common/logger/` module:**
+   - `context-logger.service.ts` - Transient logger service with request ID
+   - `logger.module.ts` - Global module for ContextLoggerService
+   - Log format: `timestamp [LEVEL] [requestId] [Context] message`
+   - Automatically includes request ID from AsyncLocalStorage
+
+4. **Updated `src/common/filters/all-exceptions.filter.ts`:**
+   - Added `requestId` to error response
+   - Logs errors with request ID for correlation
+   - Response includes `requestId` field for client debugging
+
+5. **Updated `src/app.module.ts`:**
+   - Added `LoggerModule` to imports
+   - Registered `RequestIdInterceptor` globally via `APP_INTERCEPTOR`
+
+**Log Output Example:**
+```
+[abc-123-def] --> GET /assets/resolve
+2026-01-27T10:30:00.000Z LOG     [abc-123-def] [AssetsService] Resolving asset: IE00B4L5Y983
+[abc-123-def] <-- GET /assets/resolve 200 150ms
+```
+
+**Benefits:**
+- All logs from a single request share the same ID
+- Clients receive `x-request-id` header to reference in support tickets
+- Distributed tracing ready - can pass request ID to downstream services
+- Error responses include request ID for debugging
+- Performance tracking with request duration
+
+### Prompt 79
+yes, and later Consultas N+1 Potenciales, lets go with this one
+
+**Implementation - Batch Resolve Endpoint (N+1 API Fix):**
+
+1. **Analysis:**
+   - Database queries were already optimized (XRayService uses batch lookup)
+   - PageVerifierService uses parallel batch processing
+   - **Real issue:** Frontend makes N individual `/assets/resolve` calls
+   - Solution: Add batch resolve endpoint to reduce HTTP round trips
+
+2. **Created `src/assets/dto/batch-resolve-asset.dto.ts`:**
+   - `BatchResolveAssetItemDto` - Single asset request in batch
+   - `BatchResolveAssetDto` - Array of up to 20 assets
+   - Validation with `@ArrayMinSize(1)`, `@ArrayMaxSize(20)`
+
+3. **Created `src/assets/types/batch-resolve-response.type.ts`:**
+   - `BatchResolveResultItem` - Individual result with original input
+   - `BatchResolveAssetResponse` - Total counts and results array
+
+4. **Added `resolveBatch` method to AssetsService:**
+   - **Step 1:** Classify all inputs (ISIN, Morningstar ID, UNKNOWN)
+   - **Step 2:** Batch cache lookup for ISINs and Morningstar IDs
+   - **Step 3:** Process uncached items in parallel with concurrency limit (5)
+   - **Step 4:** Combine results in original order
+   - **Step 5:** Return statistics (total, resolved, manualRequired)
+
+5. **Added `batchCacheLookup` private method:**
+   - Uses `findManyByMorningstarIds` for batch DB query
+   - Parallel ISIN lookups (findFirst doesn't support batch)
+   - Returns Map for O(1) result lookup
+
+6. **Added `POST /assets/resolve/batch` endpoint:**
+   - Accepts array of assets (max 20)
+   - Returns batch results with statistics
+   - Full Swagger documentation
+
+7. **Updated interfaces:**
+   - Added `resolveBatch` to `IAssetsService`
+
+**API Endpoint:**
+```
+POST /assets/resolve/batch
+Body: {
+  "assets": [
+    { "input": "IE00B4L5Y983", "assetType": "ETF" },
+    { "input": "LU0996182563" },
+    { "input": "0P0000YXJO" }
+  ]
+}
+
+Response: {
+  "total": 3,
+  "resolved": 2,
+  "manualRequired": 1,
+  "results": [
+    { "input": "IE00B4L5Y983", "result": { "success": true, "source": "cache", ... } },
+    ...
+  ]
+}
+```
+
+**Performance Impact:**
+| Scenario | Before | After |
+|----------|--------|-------|
+| 5 assets | 5 HTTP calls, 5+ DB queries | 1 HTTP call, 1 batch query + parallel processing |
+| 10 assets | 10 HTTP calls, 10+ DB queries | 1 HTTP call, 1 batch query + parallel processing |
+| 20 assets | 20 HTTP calls, 20+ DB queries | 1 HTTP call, 1 batch query + parallel processing |
+
+**Benefits:**
+- Reduces frontend HTTP calls from N to 1
+- Batch cache lookup minimizes DB queries
+- Parallel processing with concurrency control (5)
+- Maintains individual error handling per asset
+- Statistics for UI feedback
