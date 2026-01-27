@@ -1130,3 +1130,51 @@ Response: {
 - Parallel processing with concurrency control (5)
 - Maintains individual error handling per asset
 - Statistics for UI feedback
+
+### Prompt 80
+can you explain me more about this? (Screenshot showing recommendations: Database Indexes, Response Compression, Metrics/Observability)
+
+**Explanation provided for:**
+1. **Database Indexes** - Only `isin` index exists, recommended adding composite indexes
+2. **Response Compression** - No gzip/brotli compression enabled
+3. **Metrics and Observability** - No instrumentation for Prometheus/OpenTelemetry
+
+### Prompt 81
+regarding to Response Compression, there is some change required on the front?
+
+**Answer:** No changes required on frontend. Axios automatically:
+- Sends `Accept-Encoding: gzip, deflate, br` header
+- Decompresses responses when server returns `Content-Encoding: gzip`
+
+### Prompt 82
+apply this change, and the database changes
+
+**Implementation - Response Compression:**
+
+1. **Installed packages:**
+   - `compression` - Express middleware for gzip/brotli compression
+   - `@types/compression` - TypeScript definitions
+
+2. **Updated `src/main.ts`:**
+   - Added `import compression from 'compression'`
+   - Added `app.use(compression())` before Helmet middleware
+   - Added startup log: "Response compression enabled"
+
+**Implementation - Database Composite Indexes:**
+
+1. **Updated `prisma/schema.prisma`:**
+   - Added `@@index([isin, isinPending])` - For polling queries
+   - Added `@@index([morningstarId, type])` - For type filtering
+
+2. **Created migration:**
+   - `prisma/migrations/20260127000000_add_composite_indexes/migration.sql`
+   - SQL:
+     ```sql
+     CREATE INDEX "assets_isin_isin_pending_idx" ON "assets"("isin", "isin_pending");
+     CREATE INDEX "assets_morningstar_id_type_idx" ON "assets"("morningstar_id", "type");
+     ```
+
+**Note:** Migration was created manually since database was not running. Apply with:
+```bash
+npx prisma migrate deploy
+```

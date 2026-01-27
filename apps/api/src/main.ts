@@ -3,6 +3,7 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
+import compression from 'compression';
 import { AppModule } from './app.module';
 import {
   ThrottlerExceptionFilter,
@@ -31,6 +32,10 @@ async function bootstrap(): Promise<void> {
     logger.log(`Environment: ${nodeEnv}`);
     logger.log(`Port: ${port}`);
     logger.log(`Production mode: ${isProduction}`);
+
+    // Compression middleware for response optimization (gzip/brotli)
+    app.use(compression());
+    logger.log('Response compression enabled');
 
     // Security: Helmet middleware for HTTP headers
     app.use(
