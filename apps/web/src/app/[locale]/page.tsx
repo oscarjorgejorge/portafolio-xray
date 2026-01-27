@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { PortfolioBuilder } from '@/components/portfolio/PortfolioBuilder';
+import { PageLoading } from '@/components/ui/PageLoading';
 import type { PortfolioAsset } from '@/types';
 import { resolveAsset } from '@/lib/api/assets';
 import { generateSimpleId } from '@/lib/utils/id';
@@ -99,15 +100,7 @@ function HomePageContent() {
 
 export default function HomePage() {
   return (
-    <Suspense fallback={
-      <main className="min-h-screen bg-slate-100 py-8">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl lg:max-w-6xl xl:max-w-7xl">
-          <div className="text-center py-12">
-            <p className="text-slate-700">Loading...</p>
-          </div>
-        </div>
-      </main>
-    }>
+    <Suspense fallback={<PageLoading />}>
       <HomePageContent />
     </Suspense>
   );

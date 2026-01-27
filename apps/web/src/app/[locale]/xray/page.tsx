@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
+import { PageLoading } from '@/components/ui/PageLoading';
 import { generateXRay } from '@/lib/api/xray';
 import { useMutation } from '@tanstack/react-query';
 
@@ -83,17 +84,7 @@ function XRayPageContent() {
   };
 
   if (generateMutation.isPending) {
-    return (
-      <main className="min-h-screen bg-slate-100 py-8">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl lg:max-w-6xl xl:max-w-7xl">
-          <Card>
-            <div className="text-center py-12">
-              <p className="text-slate-700">Generating X-Ray URL...</p>
-            </div>
-          </Card>
-        </div>
-      </main>
-    );
+    return <PageLoading message="Generating X-Ray URL..." />;
   }
 
   if (generateMutation.isError) {
@@ -225,17 +216,7 @@ function XRayPageContent() {
 
 export default function XRayPage() {
   return (
-    <Suspense fallback={
-      <main className="min-h-screen bg-slate-100 py-8">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl lg:max-w-6xl xl:max-w-7xl">
-          <Card>
-            <div className="text-center py-12">
-              <p className="text-slate-700">Loading...</p>
-            </div>
-          </Card>
-        </div>
-      </main>
-    }>
+    <Suspense fallback={<PageLoading />}>
       <XRayPageContent />
     </Suspense>
   );
