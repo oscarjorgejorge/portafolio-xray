@@ -3,13 +3,12 @@ import {
   IsNotEmpty,
   IsEnum,
   IsOptional,
-  Length,
   MaxLength,
-  Matches,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { trimUppercase, trimString } from '../../common/transforms';
+import { IsValidIsin } from '../../common/validators';
 
 export enum AssetTypeDto {
   ETF = 'ETF',
@@ -28,11 +27,7 @@ export class ConfirmAssetDto {
   @Transform(trimUppercase)
   @IsString()
   @IsNotEmpty()
-  @Length(12, 12, { message: 'ISIN must be exactly 12 characters' })
-  @Matches(/^[A-Z]{2}[A-Z0-9]{10}$/, {
-    message:
-      'ISIN must be 2 uppercase letters followed by 10 alphanumeric characters',
-  })
+  @IsValidIsin()
   isin!: string;
 
   @ApiProperty({
