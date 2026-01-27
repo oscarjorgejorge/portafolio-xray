@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import type { PortfolioAsset, AllocationMode, Asset } from '@/types';
 import { useAssetManagement } from './useAssetManagement';
 import { usePortfolioValidation } from './usePortfolioValidation';
@@ -150,8 +150,10 @@ export function usePortfolioBuilder({
     [assetManagement]
   );
 
-  // Handler: Clear all - simple state toggle, no need for useCallback
-  const handleClearAll = () => setShowClearAllConfirmation(true);
+  // Handler: Clear all - memoized for stable reference
+  const handleClearAll = useCallback(() => {
+    setShowClearAllConfirmation(true);
+  }, []);
 
   // Handler: Confirm clear all
   const handleConfirmClearAll = useCallback(() => {
@@ -160,8 +162,46 @@ export function usePortfolioBuilder({
     setShowClearAllConfirmation(false);
   }, [assetManagement, xrayGeneration]);
 
+  // Memoize actions object to prevent unnecessary re-renders in consumers
+  const actions = useMemo(
+    () => ({
+      setAllocationMode,
+      handleAssetResolved,
+      handleWeightChange,
+      handleRemove,
+      handleAssetUpdated: assetManagement.updateAsset,
+      handleAlternativeSelected,
+      handleManualConfirmed,
+      handleGenerate: xrayGeneration.generate,
+      handleCopyUrl: xrayGeneration.copyUrl,
+      handleClearAll,
+      handleConfirmClearAll,
+      handleOpenPDF: xrayGeneration.openPdf,
+      setSelectedAssetForAlternatives,
+      setSelectedAssetForManual,
+      setShowClearAllConfirmation,
+      setShowSuccessToast,
+      getAssetById: assetManagement.getAssetById,
+    }),
+    [
+      setAllocationMode,
+      handleAssetResolved,
+      handleWeightChange,
+      handleRemove,
+      assetManagement.updateAsset,
+      handleAlternativeSelected,
+      handleManualConfirmed,
+      xrayGeneration.generate,
+      xrayGeneration.copyUrl,
+      handleClearAll,
+      handleConfirmClearAll,
+      xrayGeneration.openPdf,
+      assetManagement.getAssetById,
+    ]
+  );
+
   return {
-    // State
+    // State (these change and should trigger re-renders)
     assets: assetManagement.assets,
     allocationMode,
     selectedAssetForAlternatives,
@@ -177,23 +217,7 @@ export function usePortfolioBuilder({
     isGenerating: xrayGeneration.isGenerating,
     generateError: xrayGeneration.generateError,
 
-    // Actions
-    setAllocationMode,
-    handleAssetResolved,
-    handleWeightChange,
-    handleRemove,
-    handleAssetUpdated: assetManagement.updateAsset,
-    handleAlternativeSelected,
-    handleManualConfirmed,
-    handleGenerate: xrayGeneration.generate,
-    handleCopyUrl: xrayGeneration.copyUrl,
-    handleClearAll,
-    handleConfirmClearAll,
-    handleOpenPDF: xrayGeneration.openPdf,
-    setSelectedAssetForAlternatives,
-    setSelectedAssetForManual,
-    setShowClearAllConfirmation,
-    setShowSuccessToast,
-    getAssetById: assetManagement.getAssetById,
+    // Actions (memoized for stable references)
+    ...actions,
   };
 }
