@@ -13,13 +13,25 @@ import type { AppConfig } from './config';
 
 const logger = new Logger('Bootstrap');
 
+/**
+ * Get log levels based on environment
+ * - Production: error, warn, log (no debug to reduce noise)
+ * - Development/Test: error, warn, log, debug
+ */
+function getLogLevels(): ('error' | 'warn' | 'log' | 'debug' | 'verbose')[] {
+  if (process.env.NODE_ENV === 'production') {
+    return ['error', 'warn', 'log'];
+  }
+  return ['error', 'warn', 'log', 'debug'];
+}
+
 async function bootstrap(): Promise<void> {
   try {
     logger.log('Starting API server...');
 
     // Create the application - ConfigModule validates env vars here
     const app = await NestFactory.create(AppModule, {
-      logger: ['error', 'warn', 'log', 'debug'],
+      logger: getLogLevels(),
     });
 
     // Get validated configuration with type-safe access

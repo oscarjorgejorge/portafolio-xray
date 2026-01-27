@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { CacheModule } from '@nestjs/cache-manager';
@@ -13,7 +13,11 @@ import { XRayModule } from './xray/xray.module';
 import { HealthModule } from './health/health.module';
 import { HttpClientModule } from './common/http';
 import { LoggerModule } from './common/logger';
-import { RequestIdInterceptor } from './common/interceptors';
+import {
+  RequestIdInterceptor,
+  TransformResponseInterceptor,
+} from './common/interceptors';
+import { RequestLoggerMiddleware } from './common/middleware';
 
 @Module({
   imports: [
@@ -68,6 +72,11 @@ import { RequestIdInterceptor } from './common/interceptors';
       provide: APP_INTERCEPTOR,
       useClass: RequestIdInterceptor,
     },
+    // Transform response interceptor for standardized API responses
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: TransformResponseInterceptor,
+    },
     // Apply rate limiting globally to all routes
     {
       provide: APP_GUARD,
@@ -75,4 +84,12 @@ import { RequestIdInterceptor } from './common/interceptors';
     },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  /**
+   * Configure middleware for the application
+   * RequestLoggerMiddleware logs all HTTP requests with timing and status
+   */
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(RequestLoggerMiddleware).forRoutes('*');
+  }
+}

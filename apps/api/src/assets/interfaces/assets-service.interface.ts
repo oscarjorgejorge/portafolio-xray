@@ -1,6 +1,9 @@
-import { Asset } from '@prisma/client';
 import { ResolveAssetDto, ConfirmAssetDto, BatchResolveAssetDto } from '../dto';
-import { ResolveAssetResponse, BatchResolveAssetResponse } from '../types';
+import {
+  ResolveAssetResponse,
+  BatchResolveAssetResponse,
+  ResolvedAssetDto,
+} from '../types';
 
 /**
  * Assets Service Interface
@@ -26,14 +29,14 @@ export interface IAssetsService {
    * @param id - Internal asset UUID
    * @throws NotFoundException if asset not found
    */
-  getById(id: string): Promise<Asset>;
+  getById(id: string): Promise<ResolvedAssetDto>;
 
   /**
    * Confirm and save an asset manually
    * Used when automatic resolution fails
    * @param dto - Asset data to confirm
    */
-  confirm(dto: ConfirmAssetDto): Promise<Asset>;
+  confirm(dto: ConfirmAssetDto): Promise<ResolvedAssetDto>;
 
   /**
    * Update ISIN for an existing asset
@@ -42,7 +45,7 @@ export interface IAssetsService {
    * @param isin - New ISIN value
    * @throws NotFoundException if asset not found
    */
-  updateIsin(id: string, isin: string): Promise<Asset>;
+  updateIsin(id: string, isin: string): Promise<ResolvedAssetDto>;
 }
 
 /**

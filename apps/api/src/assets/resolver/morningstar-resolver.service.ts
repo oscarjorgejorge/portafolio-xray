@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import {
   SearchResult,
   ScoredResult,
@@ -9,6 +9,7 @@ import {
   IdentifierClassifier,
   IdentifierType,
 } from '../../common/utils/identifier-classifier';
+import { createContextLogger } from '../../common/logger';
 import {
   DEFAULT_RESOLVER_CONFIG,
   SCORE_WEIGHTS,
@@ -36,7 +37,9 @@ import { IMorningstarResolver } from '../interfaces';
  */
 @Injectable()
 export class MorningstarResolverService implements IMorningstarResolver {
-  private readonly logger = new Logger(MorningstarResolverService.name);
+  private readonly logger = createContextLogger(
+    MorningstarResolverService.name,
+  );
   private readonly config = DEFAULT_RESOLVER_CONFIG;
 
   constructor(

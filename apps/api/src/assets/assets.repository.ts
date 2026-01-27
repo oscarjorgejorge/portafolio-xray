@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Asset, Prisma } from '@prisma/client';
+import { Asset } from '@prisma/client';
 import {
   IAssetsRepository,
   CreateAssetData,
+  UpdateAssetData,
   UpsertAssetByIsinData,
   UpsertAssetByMorningstarIdData,
 } from './interfaces';
@@ -79,10 +80,26 @@ export class AssetsRepository implements IAssetsRepository {
     });
   }
 
-  async update(id: string, data: Prisma.AssetUpdateInput): Promise<Asset> {
+  async update(id: string, data: UpdateAssetData): Promise<Asset> {
     return this.prisma.asset.update({
       where: { id },
-      data,
+      data: {
+        ...(data.isin !== undefined && {
+          isin: data.isin?.toUpperCase() ?? null,
+        }),
+        ...(data.morningstarId !== undefined && {
+          morningstarId: data.morningstarId,
+        }),
+        ...(data.ticker !== undefined && { ticker: data.ticker }),
+        ...(data.name !== undefined && { name: data.name }),
+        ...(data.type !== undefined && { type: data.type }),
+        ...(data.url !== undefined && { url: data.url }),
+        ...(data.source !== undefined && { source: data.source }),
+        ...(data.isinPending !== undefined && {
+          isinPending: data.isinPending,
+        }),
+        ...(data.isinManual !== undefined && { isinManual: data.isinManual }),
+      },
     });
   }
 

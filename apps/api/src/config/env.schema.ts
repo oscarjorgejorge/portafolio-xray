@@ -31,6 +31,23 @@ export const envSchema = z.object({
   // In-Memory Cache
   CACHE_TTL_MS: z.coerce.number().min(0).default(300000), // 5 minutes default
   CACHE_MAX_ITEMS: z.coerce.number().min(1).default(1000),
+
+  // Resolution Settings
+  BATCH_CONCURRENCY_LIMIT: z.coerce.number().min(1).max(20).default(5),
+  MAX_ALTERNATIVES: z.coerce.number().min(1).max(20).default(5),
+  ISIN_ENRICHMENT_CONCURRENCY: z.coerce.number().min(1).max(20).default(5),
+  ISIN_ENRICHMENT_TIMEOUT_MS: z.coerce.number().min(1000).default(15000),
+
+  // HTTP Client Settings
+  HTTP_DEFAULT_TIMEOUT_MS: z.coerce.number().min(1000).default(10000),
+
+  // Circuit Breaker Settings
+  /** Number of consecutive failures before opening the circuit */
+  CIRCUIT_FAILURE_THRESHOLD: z.coerce.number().min(1).max(50).default(5),
+  /** Time in ms to wait before attempting to close the circuit */
+  CIRCUIT_RESET_TIMEOUT_MS: z.coerce.number().min(1000).default(30000),
+  /** Number of successes in half-open state before closing the circuit */
+  CIRCUIT_SUCCESS_THRESHOLD: z.coerce.number().min(1).max(10).default(2),
 });
 
 /**

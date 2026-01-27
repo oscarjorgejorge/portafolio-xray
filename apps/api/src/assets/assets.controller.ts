@@ -17,8 +17,11 @@ import {
   UpdateIsinDto,
   BatchResolveAssetDto,
 } from './dto';
-import type { Asset } from '@prisma/client';
-import type { ResolveAssetResponse, BatchResolveAssetResponse } from './types';
+import {
+  ResolveAssetResponse,
+  BatchResolveAssetResponse,
+  ResolvedAssetDto,
+} from './types';
 
 @ApiTags('assets')
 @Controller('assets')
@@ -35,30 +38,11 @@ export class AssetsController {
   @ApiResponse({
     status: 200,
     description: 'Asset resolved successfully',
-    schema: {
-      type: 'object',
-      properties: {
-        success: { type: 'boolean', example: true },
-        source: {
-          type: 'string',
-          enum: ['cache', 'resolved', 'manual_required'],
-          example: 'cache',
-        },
-        asset: {
-          type: 'object',
-          properties: {
-            id: { type: 'string', example: 'uuid' },
-            isin: { type: 'string', example: 'IE00B4L5Y983' },
-            morningstarId: { type: 'string', example: '0P0000YXJO' },
-            name: {
-              type: 'string',
-              example: 'iShares Core MSCI World UCITS ETF',
-            },
-            type: { type: 'string', enum: ['ETF', 'FUND', 'STOCK', 'ETC'] },
-          },
-        },
-      },
-    },
+    type: ResolveAssetResponse,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid input data',
   })
   async resolve(@Body() dto: ResolveAssetDto): Promise<ResolveAssetResponse> {
     return this.assetsService.resolve(dto);
@@ -75,31 +59,7 @@ export class AssetsController {
   @ApiResponse({
     status: 200,
     description: 'Batch resolution completed',
-    schema: {
-      type: 'object',
-      properties: {
-        total: { type: 'number', example: 5 },
-        resolved: { type: 'number', example: 4 },
-        manualRequired: { type: 'number', example: 1 },
-        results: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              input: { type: 'string', example: 'IE00B4L5Y983' },
-              result: {
-                type: 'object',
-                properties: {
-                  success: { type: 'boolean', example: true },
-                  source: { type: 'string', example: 'cache' },
-                  asset: { type: 'object' },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
+    type: BatchResolveAssetResponse,
   })
   @ApiResponse({
     status: 400,
@@ -124,6 +84,7 @@ export class AssetsController {
   @ApiResponse({
     status: 200,
     description: 'Asset found',
+    type: ResolvedAssetDto,
   })
   @ApiResponse({
     status: 400,
@@ -133,7 +94,9 @@ export class AssetsController {
     status: 404,
     description: 'Asset not found',
   })
-  async getById(@Param('id', ParseUUIDPipe) id: string): Promise<Asset> {
+  async getById(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<ResolvedAssetDto> {
     return this.assetsService.getById(id);
   }
 
@@ -147,12 +110,13 @@ export class AssetsController {
   @ApiResponse({
     status: 201,
     description: 'Asset confirmed and saved',
+    type: ResolvedAssetDto,
   })
   @ApiResponse({
     status: 400,
     description: 'Invalid input data',
   })
-  async confirm(@Body() dto: ConfirmAssetDto): Promise<Asset> {
+  async confirm(@Body() dto: ConfirmAssetDto): Promise<ResolvedAssetDto> {
     return this.assetsService.confirm(dto);
   }
 
@@ -171,6 +135,7 @@ export class AssetsController {
   @ApiResponse({
     status: 200,
     description: 'ISIN updated successfully',
+    type: ResolvedAssetDto,
   })
   @ApiResponse({
     status: 400,
@@ -183,7 +148,7 @@ export class AssetsController {
   async updateIsin(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateIsinDto,
-  ): Promise<Asset> {
+  ): Promise<ResolvedAssetDto> {
     return this.assetsService.updateIsin(id, dto.isin);
   }
 }

@@ -1,122 +1,102 @@
-import { Injectable, LoggerService, Scope } from '@nestjs/common';
+import { Logger, LoggerService } from '@nestjs/common';
 import { getRequestId } from '../context';
 
 /**
- * Log levels for formatting
- */
-type LogLevel = 'LOG' | 'ERROR' | 'WARN' | 'DEBUG' | 'VERBOSE';
-
-/**
- * Context-aware logger service that automatically includes request ID in all log messages.
+ * Context-aware logger that extends NestJS Logger to automatically include
+ * request ID in all log messages.
  *
  * Features:
- * - Transient scope: each injection gets a new instance
+ * - Extends NestJS Logger for familiar API
  * - Automatic request ID inclusion from AsyncLocalStorage
- * - Configurable context (class name)
  * - Consistent log format across the application
+ * - Can be used as a drop-in replacement for NestJS Logger
  *
- * Log format: timestamp [LEVEL] [requestId] [Context] message
+ * @example
+ * ```typescript
+ * // Instead of: private readonly logger = new Logger(MyService.name);
+ * // Use:
+ * private readonly logger = new ContextLogger(MyService.name);
+ *
+ * // Or use the factory function:
+ * private readonly logger = createContextLogger(MyService.name);
+ * ```
+ */
+export class ContextLogger extends Logger implements LoggerService {
+  constructor(context: string) {
+    super(context);
+  }
+
+  /**
+   * Prepend request ID to the message if available
+   */
+  private formatMessage(message: string): string {
+    const requestId = getRequestId();
+    if (requestId) {
+      return `[${requestId}] ${message}`;
+    }
+    return message;
+  }
+
+  log(message: string, ...optionalParams: unknown[]): void {
+    super.log(this.formatMessage(message), ...optionalParams);
+  }
+
+  error(message: string, ...optionalParams: unknown[]): void {
+    super.error(this.formatMessage(message), ...optionalParams);
+  }
+
+  warn(message: string, ...optionalParams: unknown[]): void {
+    super.warn(this.formatMessage(message), ...optionalParams);
+  }
+
+  debug(message: string, ...optionalParams: unknown[]): void {
+    super.debug(this.formatMessage(message), ...optionalParams);
+  }
+
+  verbose(message: string, ...optionalParams: unknown[]): void {
+    super.verbose(this.formatMessage(message), ...optionalParams);
+  }
+}
+
+/**
+ * Factory function to create a context-aware logger.
+ * This is a convenience function for creating ContextLogger instances.
+ *
+ * @param context - The context name (typically the class name)
+ * @returns A new ContextLogger instance
  *
  * @example
  * ```typescript
  * @Injectable()
  * export class MyService {
- *   constructor(private readonly logger: ContextLoggerService) {
- *     this.logger.setContext(MyService.name);
- *   }
+ *   private readonly logger = createContextLogger(MyService.name);
  *
  *   doSomething() {
  *     this.logger.log('Processing request');
- *     // Output: 2026-01-27T10:30:00.000Z LOG     [abc-123] [MyService] Processing request
+ *     // Output includes request ID: [INFO] [abc-123] [MyService] Processing request
  *   }
  * }
  * ```
  */
-@Injectable({ scope: Scope.TRANSIENT })
-export class ContextLoggerService implements LoggerService {
-  private context?: string;
+export function createContextLogger(context: string): ContextLogger {
+  return new ContextLogger(context);
+}
 
-  /**
-   * Set the context (typically the class name) for log messages
-   */
+/**
+ * @deprecated Use ContextLogger or createContextLogger instead.
+ * Kept for backward compatibility with injectable logger pattern.
+ */
+export class ContextLoggerService extends ContextLogger {
+  private _context = 'Application';
+
+  constructor() {
+    super('Application');
+  }
+
   setContext(context: string): void {
-    this.context = context;
-  }
-
-  /**
-   * Log a message at INFO level
-   */
-  log(message: string, ...optionalParams: unknown[]): void {
-    this.printMessage('LOG', message, optionalParams);
-  }
-
-  /**
-   * Log a message at ERROR level
-   */
-  error(message: string, ...optionalParams: unknown[]): void {
-    this.printMessage('ERROR', message, optionalParams);
-  }
-
-  /**
-   * Log a message at WARN level
-   */
-  warn(message: string, ...optionalParams: unknown[]): void {
-    this.printMessage('WARN', message, optionalParams);
-  }
-
-  /**
-   * Log a message at DEBUG level
-   */
-  debug(message: string, ...optionalParams: unknown[]): void {
-    this.printMessage('DEBUG', message, optionalParams);
-  }
-
-  /**
-   * Log a message at VERBOSE level
-   */
-  verbose(message: string, ...optionalParams: unknown[]): void {
-    this.printMessage('VERBOSE', message, optionalParams);
-  }
-
-  /**
-   * Internal method to format and print log messages
-   */
-  private printMessage(
-    level: LogLevel,
-    message: string,
-    optionalParams: unknown[],
-  ): void {
-    const requestId = getRequestId();
-    const timestamp = new Date().toISOString();
-    const contextStr = this.context ? `[${this.context}]` : '';
-    const requestIdStr = requestId ? `[${requestId}]` : '[-]';
-
-    // Format: timestamp [LEVEL] [requestId] [context] message
-    const formattedMessage = `${timestamp} ${level.padEnd(7)} ${requestIdStr} ${contextStr} ${message}`;
-
-    // Extract stack trace from optional params if present (for errors)
-    const stack =
-      optionalParams.length > 0 && typeof optionalParams[0] === 'string'
-        ? optionalParams[0]
-        : undefined;
-
-    switch (level) {
-      case 'ERROR':
-        if (stack) {
-          console.error(formattedMessage, '\n', stack);
-        } else {
-          console.error(formattedMessage);
-        }
-        break;
-      case 'WARN':
-        console.warn(formattedMessage);
-        break;
-      case 'DEBUG':
-      case 'VERBOSE':
-        console.debug(formattedMessage);
-        break;
-      default:
-        console.log(formattedMessage);
-    }
+    this._context = context;
+    // Update the internal context - workaround since Logger
+    // doesn't expose a public setContext method
+    Object.assign(this, { context });
   }
 }

@@ -2,7 +2,7 @@ import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { XRayService } from './xray.service';
 import { GenerateXRayDto } from './dto';
-import type { GenerateXRayResponse } from './types';
+import { GenerateXRayResponse } from './types';
 
 @ApiTags('xray')
 @Controller('xray')
@@ -14,31 +14,17 @@ export class XRayController {
   @ApiOperation({
     summary: 'Generate Morningstar X-Ray URL',
     description:
-      'Generates a Morningstar X-Ray PDF URL from a portfolio of assets. The total weight of all assets must equal 100%.',
+      'Generates a Morningstar X-Ray PDF URL from a portfolio of assets. The total weight of all assets must equal 100%. Each morningstarId must be unique.',
   })
   @ApiResponse({
     status: 200,
     description: 'X-Ray URL generated successfully',
-    schema: {
-      type: 'object',
-      properties: {
-        morningstarUrl: {
-          type: 'string',
-          description: 'Direct URL to Morningstar X-Ray PDF',
-          example:
-            'https://lt.morningstar.com/j2uwuwirpv/xraypdf/default.aspx?LanguageId=es-ES&PortfolioType=2&SecurityTokenList=F00000THA5%5D2%5D0%5DFOESP%24%24ALL_1340%7C0P0001UHI6%5D3%5D0%5DE0WWE%24%24ALL_1340&values=30000%7C20000',
-        },
-        shareableUrl: {
-          type: 'string',
-          description: 'Shareable app URL with portfolio encoded',
-          example: '/xray?assets=0P0000YXJO:40,F00000THA5:30,0P000168Z7:30',
-        },
-      },
-    },
+    type: GenerateXRayResponse,
   })
   @ApiResponse({
     status: 400,
-    description: 'Invalid input - total weight must equal 100%',
+    description:
+      'Invalid input - total weight must equal 100% or duplicate morningstarId found',
   })
   async generate(@Body() dto: GenerateXRayDto): Promise<GenerateXRayResponse> {
     return this.xrayService.generate(dto);

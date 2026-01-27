@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException, Logger, Inject } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { ConfigService } from '@nestjs/config';
 import { Cache } from 'cache-manager';
 import { AssetsRepository } from './assets.repository';
 import { MorningstarResolverService } from './resolver';
@@ -15,29 +16,45 @@ import {
   IdentifierClassifier,
   IdentifierType,
 } from '../common/utils/identifier-classifier';
+import { createContextLogger } from '../common/logger';
 import { IAssetsService } from './interfaces';
 import {
   ResolveAssetResponse,
+  ResolutionSource,
+  ResolutionErrorCode,
   BatchResolveAssetResponse,
   BatchResolveResultItem,
+  ResolvedAssetDto,
 } from './types';
+import { toResolvedAssetDto } from './mappers';
+import type { AppConfig } from '../config';
 
 /** Cache key prefix for asset resolution results */
 const CACHE_KEY_PREFIX = 'asset:';
 
 @Injectable()
 export class AssetsService implements IAssetsService {
-  private readonly logger = new Logger(AssetsService.name);
+  private readonly logger = createContextLogger(AssetsService.name);
+  private readonly batchConcurrencyLimit: number;
+  private readonly maxAlternatives: number;
 
   constructor(
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
     private readonly assetsRepository: AssetsRepository,
     private readonly morningstarResolver: MorningstarResolverService,
     private readonly isinEnrichmentService: IsinEnrichmentService,
-  ) {}
+    private readonly configService: ConfigService<AppConfig, true>,
+  ) {
+    const resolutionConfig = this.configService.get('resolution', {
+      infer: true,
+    });
+    this.batchConcurrencyLimit = resolutionConfig.batchConcurrencyLimit;
+    this.maxAlternatives = resolutionConfig.maxAlternatives;
+  }
 
   async resolve(dto: ResolveAssetDto): Promise<ResolveAssetResponse> {
-    const input = dto.input.trim().toUpperCase();
+    // Input is already normalized (trimmed & uppercased) by DTO Transform decorator
+    const input = dto.input;
     const identifierType = IdentifierClassifier.classify(input);
     const cacheKey = `${CACHE_KEY_PREFIX}${input}`;
 
@@ -66,8 +83,8 @@ export class AssetsService implements IAssetsService {
         this.logger.log(`[DB CACHE] Hit for: ${input}`);
         const response: ResolveAssetResponse = {
           success: true,
-          source: 'cache',
-          asset: cachedAsset,
+          source: ResolutionSource.CACHE,
+          asset: toResolvedAssetDto(cachedAsset),
           isinPending: cachedAsset.isinPending,
         };
         // Store in memory cache for faster subsequent access
@@ -166,8 +183,8 @@ export class AssetsService implements IAssetsService {
 
         const response: ResolveAssetResponse = {
           success: true,
-          source: 'resolved',
-          asset: savedAsset,
+          source: ResolutionSource.RESOLVED,
+          asset: toResolvedAssetDto(savedAsset),
           isinPending: needsIsinEnrichment,
         };
 
@@ -186,7 +203,7 @@ export class AssetsService implements IAssetsService {
         // Return alternatives for user to pick
         const alternatives = resolution.allResults
           .filter((r) => r.morningstarId)
-          .slice(0, 5)
+          .slice(0, this.maxAlternatives)
           .map((r) => ({
             morningstarId: r.morningstarId!,
             name: r.title,
@@ -196,7 +213,8 @@ export class AssetsService implements IAssetsService {
 
         return {
           success: false,
-          source: 'manual_required',
+          source: ResolutionSource.MANUAL_REQUIRED,
+          errorCode: ResolutionErrorCode.AMBIGUOUS_MATCH,
           alternatives,
           error: `Asset "${input}" found but needs confirmation. Confidence: ${(resolution.confidence * 100).toFixed(1)}%`,
         };
@@ -205,15 +223,21 @@ export class AssetsService implements IAssetsService {
       // Not found
       return {
         success: false,
-        source: 'manual_required',
+        source: ResolutionSource.MANUAL_REQUIRED,
+        errorCode: ResolutionErrorCode.NOT_FOUND,
         error: `Asset with identifier "${input}" not found. Please provide Morningstar ID manually.`,
       };
     } catch (error) {
+      const { errorCode, message } = this.categorizeResolutionError(
+        error,
+        input,
+      );
       this.logger.error(`Resolution error for ${input}: ${error}`);
       return {
         success: false,
-        source: 'manual_required',
-        error: `Error resolving asset "${input}". Please try again or provide Morningstar ID manually.`,
+        source: ResolutionSource.MANUAL_REQUIRED,
+        errorCode,
+        error: message,
       };
     }
   }
@@ -238,10 +262,11 @@ export class AssetsService implements IAssetsService {
     );
 
     // Step 1: Classify all inputs and prepare for batch cache lookup
+    // Inputs are already normalized (trimmed & uppercased) by DTO Transform decorator
     const classifiedInputs = dto.assets.map((item) => ({
       original: item,
-      normalized: item.input.trim().toUpperCase(),
-      type: IdentifierClassifier.classify(item.input.trim().toUpperCase()),
+      normalized: item.input,
+      type: IdentifierClassifier.classify(item.input),
     }));
 
     // Step 2: Batch cache lookup
@@ -257,11 +282,10 @@ export class AssetsService implements IAssetsService {
     );
 
     // Step 4: Resolve uncached items in parallel with concurrency control
-    const CONCURRENCY_LIMIT = 5; // Avoid overwhelming external APIs
     const resolvedResults = new Map<string, ResolveAssetResponse>();
 
-    for (let i = 0; i < uncachedItems.length; i += CONCURRENCY_LIMIT) {
-      const batch = uncachedItems.slice(i, i + CONCURRENCY_LIMIT);
+    for (let i = 0; i < uncachedItems.length; i += this.batchConcurrencyLimit) {
+      const batch = uncachedItems.slice(i, i + this.batchConcurrencyLimit);
       const batchPromises = batch.map(async (item) => {
         const result = await this.resolve({
           input: item.original.input,
@@ -283,7 +307,7 @@ export class AssetsService implements IAssetsService {
       const result = cachedResult ||
         resolvedResult || {
           success: false,
-          source: 'manual_required' as const,
+          source: ResolutionSource.MANUAL_REQUIRED,
           error: 'Resolution failed unexpectedly',
         };
 
@@ -296,7 +320,9 @@ export class AssetsService implements IAssetsService {
     // Step 6: Calculate statistics
     const resolved = results.filter((r) => r.result.success).length;
     const manualRequired = results.filter(
-      (r) => !r.result.success && r.result.source === 'manual_required',
+      (r) =>
+        !r.result.success &&
+        r.result.source === ResolutionSource.MANUAL_REQUIRED,
     ).length;
 
     const duration = Date.now() - startTime;
@@ -314,7 +340,9 @@ export class AssetsService implements IAssetsService {
 
   /**
    * Perform batch cache lookup for multiple inputs
-   * Optimizes database queries by batching ISINs and Morningstar IDs separately
+   * Strategy:
+   * 1. Check in-memory cache first (fastest)
+   * 2. For cache misses, batch query database by type (ISINs and Morningstar IDs)
    */
   private async batchCacheLookup(
     classifiedInputs: Array<{
@@ -325,62 +353,117 @@ export class AssetsService implements IAssetsService {
   ): Promise<Map<string, ResolveAssetResponse>> {
     const results = new Map<string, ResolveAssetResponse>();
 
-    // Separate inputs by type for batch queries
-    const isins = classifiedInputs
+    // Step 1: Check in-memory cache first (parallel lookups)
+    const memoryCachePromises = classifiedInputs.map(async (item) => {
+      const cacheKey = `${CACHE_KEY_PREFIX}${item.normalized}`;
+      const cached =
+        await this.cacheManager.get<ResolveAssetResponse>(cacheKey);
+      return { normalized: item.normalized, cached };
+    });
+
+    const memoryCacheResults = await Promise.all(memoryCachePromises);
+    const memoryHits = new Set<string>();
+
+    for (const { normalized, cached } of memoryCacheResults) {
+      if (cached) {
+        results.set(normalized, cached);
+        memoryHits.add(normalized);
+      }
+    }
+
+    if (memoryHits.size > 0) {
+      this.logger.debug(
+        `[BATCH] Memory cache hits: ${memoryHits.size}/${classifiedInputs.length}`,
+      );
+    }
+
+    // Step 2: Filter out memory cache hits for DB lookup
+    const uncachedInputs = classifiedInputs.filter(
+      (i) => !memoryHits.has(i.normalized),
+    );
+
+    if (uncachedInputs.length === 0) {
+      return results;
+    }
+
+    // Separate inputs by type for batch DB queries
+    const isins = uncachedInputs
       .filter((i) => i.type === IdentifierType.ISIN)
       .map((i) => i.normalized);
 
-    const morningstarIds = classifiedInputs
+    const morningstarIds = uncachedInputs
       .filter((i) => i.type === IdentifierType.MORNINGSTAR_ID)
       .map((i) => i.normalized);
 
-    // Batch query for Morningstar IDs
+    // Batch query for Morningstar IDs with parallel cache writes
     if (morningstarIds.length > 0) {
       const msAssets =
         await this.assetsRepository.findManyByMorningstarIds(morningstarIds);
+
+      const cachePromises: Promise<unknown>[] = [];
+
       for (const asset of msAssets) {
         // Skip if needs re-resolution (no ISIN and enrichment complete)
         if (!asset.isin && !asset.isinPending) continue;
 
-        results.set(asset.morningstarId.toUpperCase(), {
+        const response: ResolveAssetResponse = {
           success: true,
-          source: 'cache',
-          asset,
+          source: ResolutionSource.CACHE,
+          asset: toResolvedAssetDto(asset),
           isinPending: asset.isinPending,
-        });
+        };
+        results.set(asset.morningstarId.toUpperCase(), response);
+
+        // Queue cache write for parallel execution
+        const cacheKey = `${CACHE_KEY_PREFIX}${asset.morningstarId.toUpperCase()}`;
+        cachePromises.push(this.cacheManager.set(cacheKey, response));
       }
+
+      // Execute all cache writes in parallel
+      await Promise.all(cachePromises);
     }
 
-    // Batch query for ISINs (single query instead of N queries)
+    // Batch query for ISINs with parallel cache writes
     if (isins.length > 0) {
       const isinAssets = await this.assetsRepository.findManyByIsins(isins);
+
+      const cachePromises: Promise<unknown>[] = [];
+
       for (const asset of isinAssets) {
         // Skip if needs re-resolution (no ISIN and enrichment complete)
         if (!asset.isin && !asset.isinPending) continue;
 
         if (asset.isin) {
-          results.set(asset.isin.toUpperCase(), {
+          const response: ResolveAssetResponse = {
             success: true,
-            source: 'cache',
-            asset,
+            source: ResolutionSource.CACHE,
+            asset: toResolvedAssetDto(asset),
             isinPending: asset.isinPending,
-          });
+          };
+          results.set(asset.isin.toUpperCase(), response);
+
+          // Queue cache write for parallel execution
+          const cacheKey = `${CACHE_KEY_PREFIX}${asset.isin.toUpperCase()}`;
+          cachePromises.push(this.cacheManager.set(cacheKey, response));
         }
       }
+
+      // Execute all cache writes in parallel
+      await Promise.all(cachePromises);
     }
 
     return results;
   }
 
-  async getById(id: string): Promise<Asset> {
+  async getById(id: string): Promise<ResolvedAssetDto> {
     const asset = await this.assetsRepository.findById(id);
     if (!asset) {
       throw new NotFoundException(`Asset with id "${id}" not found`);
     }
-    return asset;
+    return toResolvedAssetDto(asset);
   }
 
-  async confirm(dto: ConfirmAssetDto): Promise<Asset> {
+  async confirm(dto: ConfirmAssetDto): Promise<ResolvedAssetDto> {
     // Create or update asset with manual source
     const asset = await this.assetsRepository.upsertByIsin({
       isin: dto.isin,
@@ -395,7 +478,7 @@ export class AssetsService implements IAssetsService {
     // Invalidate cache for both ISIN and Morningstar ID
     await this.invalidateAssetCache(dto.isin, dto.morningstarId);
 
-    return asset;
+    return toResolvedAssetDto(asset);
   }
 
   /**
@@ -404,7 +487,7 @@ export class AssetsService implements IAssetsService {
    * @param id - Asset UUID
    * @param isin - New ISIN value
    */
-  async updateIsin(id: string, isin: string): Promise<Asset> {
+  async updateIsin(id: string, isin: string): Promise<ResolvedAssetDto> {
     this.logger.log(`Manually updating ISIN for asset ${id}: ${isin}`);
 
     try {
@@ -418,7 +501,7 @@ export class AssetsService implements IAssetsService {
       // Invalidate cache for ISIN and Morningstar ID
       await this.invalidateAssetCache(isin, asset.morningstarId);
 
-      return asset;
+      return toResolvedAssetDto(asset);
     } catch (error) {
       // Convert repository error to NestJS NotFoundException
       if (error instanceof Error && error.message.includes('not found')) {
@@ -472,5 +555,60 @@ export class AssetsService implements IAssetsService {
       default:
         return AssetType.FUND;
     }
+  }
+
+  /**
+   * Categorize resolution errors for better client handling
+   * @param error - The caught error
+   * @param input - The input that was being resolved
+   * @returns Error code and user-friendly message
+   */
+  private categorizeResolutionError(
+    error: unknown,
+    input: string,
+  ): { errorCode: ResolutionErrorCode; message: string } {
+    const errorMessage =
+      error instanceof Error ? error.message.toLowerCase() : String(error);
+
+    // Check for timeout errors
+    if (
+      errorMessage.includes('timeout') ||
+      errorMessage.includes('timed out')
+    ) {
+      return {
+        errorCode: ResolutionErrorCode.TIMEOUT,
+        message: `Resolution timed out for "${input}". Please try again.`,
+      };
+    }
+
+    // Check for network errors
+    if (
+      errorMessage.includes('network') ||
+      errorMessage.includes('econnrefused') ||
+      errorMessage.includes('enotfound') ||
+      errorMessage.includes('fetch failed')
+    ) {
+      return {
+        errorCode: ResolutionErrorCode.NETWORK_ERROR,
+        message: `Network error while resolving "${input}". Please check your connection and try again.`,
+      };
+    }
+
+    // Check for circuit breaker open (service unavailable)
+    if (
+      errorMessage.includes('circuit') ||
+      errorMessage.includes('service unavailable')
+    ) {
+      return {
+        errorCode: ResolutionErrorCode.SERVICE_UNAVAILABLE,
+        message: `Service temporarily unavailable. Please try again in a few moments.`,
+      };
+    }
+
+    // Default to unknown error
+    return {
+      errorCode: ResolutionErrorCode.UNKNOWN,
+      message: `Error resolving asset "${input}". Please try again or provide Morningstar ID manually.`,
+    };
   }
 }
