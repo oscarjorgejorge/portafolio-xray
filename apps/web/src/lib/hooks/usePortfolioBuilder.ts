@@ -1,11 +1,10 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
-import { useMutation } from '@tanstack/react-query';
-import type { PortfolioAsset, AllocationMode, AssetType, Asset } from '@/types';
-import { generateXRay } from '@/lib/api/xray';
-import { useShareableUrl } from './useShareableUrl';
-import { VALIDATION } from '@/lib/constants';
+import { useState, useCallback } from 'react';
+import type { PortfolioAsset, AllocationMode, Asset } from '@/types';
+import { useAssetManagement } from './useAssetManagement';
+import { usePortfolioValidation } from './usePortfolioValidation';
+import { useXRayGeneration } from './useXRayGeneration';
 
 interface UsePortfolioBuilderOptions {
   initialAssets?: PortfolioAsset[];
@@ -58,71 +57,53 @@ interface UsePortfolioBuilderReturn {
   getAssetById: (id: string) => PortfolioAsset | undefined;
 }
 
+/**
+ * Main hook for portfolio builder functionality.
+ * Composes smaller hooks for asset management, validation, and X-Ray generation.
+ */
 export function usePortfolioBuilder({
   initialAssets = [],
 }: UsePortfolioBuilderOptions = {}): UsePortfolioBuilderReturn {
-  // Core state
-  const [assets, setAssets] = useState<PortfolioAsset[]>(initialAssets);
-  const [allocationMode, setAllocationMode] = useState<AllocationMode>('percentage');
+  // Allocation mode state
+  const [allocationMode, setAllocationMode] =
+    useState<AllocationMode>('percentage');
 
   // Modal states
   const [selectedAssetForAlternatives, setSelectedAssetForAlternatives] =
     useState<PortfolioAsset | null>(null);
   const [selectedAssetForManual, setSelectedAssetForManual] =
     useState<PortfolioAsset | null>(null);
-  const [showClearAllConfirmation, setShowClearAllConfirmation] = useState(false);
-
-  // Use shared URL hook
-  const {
-    shareableUrl,
-    morningstarUrl,
-    fullShareableUrl,
-    copied,
-    setUrls,
-    copyToClipboard,
-    openMorningstarPdf,
-    clearUrls,
-  } = useShareableUrl();
+  const [showClearAllConfirmation, setShowClearAllConfirmation] =
+    useState(false);
 
   // Toast state
   const [showSuccessToast, setShowSuccessToast] = useState(false);
 
-  // Generate mutation
-  const generateMutation = useMutation({
-    mutationFn: generateXRay,
-    onSuccess: (data) => {
-      setUrls(data.shareableUrl, data.morningstarUrl);
-      setShowSuccessToast(true);
-    },
-    onError: (error: Error) => {
-      console.error('Error generating X-Ray:', error);
-      clearUrls();
-    },
+  // Asset management hook with clearUrls callback
+  const assetManagement = useAssetManagement({
+    initialAssets,
+    // onAssetsChange will be set after xrayGeneration is created
   });
 
-  // Calculate total weight
-  const totalWeight = useMemo(() => {
-    return assets.reduce((sum, asset) => sum + (asset.weight || 0), 0);
-  }, [assets]);
+  // Validation hook
+  const { totalWeight, isValid } = usePortfolioValidation({
+    assets: assetManagement.assets,
+    allocationMode,
+  });
 
-  // Check if portfolio is valid
-  const isValid = useMemo(() => {
-    if (assets.length === 0) return false;
-    const allResolved = assets.every(
-      (asset) => asset.status === 'resolved' && asset.asset
-    );
-    const totalValid =
-      allocationMode === 'percentage'
-        ? Math.abs(totalWeight - VALIDATION.PERCENTAGE_TOTAL) < VALIDATION.PERCENTAGE_TOLERANCE
-        : totalWeight > 0;
-    return allResolved && totalValid;
-  }, [assets, allocationMode, totalWeight]);
+  // X-Ray generation hook
+  const xrayGeneration = useXRayGeneration({
+    assets: assetManagement.assets,
+    allocationMode,
+    isValid,
+    onSuccess: () => setShowSuccessToast(true),
+  });
 
   // Handler: Asset resolved from input
   const handleAssetResolved = useCallback(
     (newAsset: PortfolioAsset) => {
-      setAssets((prev) => [...prev, newAsset]);
-      clearUrls();
+      assetManagement.addAsset(newAsset);
+      xrayGeneration.clearUrls();
 
       if (newAsset.status === 'low_confidence') {
         setSelectedAssetForAlternatives(newAsset);
@@ -130,131 +111,62 @@ export function usePortfolioBuilder({
         setSelectedAssetForManual(newAsset);
       }
     },
-    [clearUrls]
+    [assetManagement, xrayGeneration]
   );
 
   // Handler: Weight change
   const handleWeightChange = useCallback(
     (id: string, weight: number) => {
-      setAssets((prev) =>
-        prev.map((asset) => (asset.id === id ? { ...asset, weight } : asset))
-      );
-      clearUrls();
+      assetManagement.updateWeight(id, weight);
+      xrayGeneration.clearUrls();
     },
-    [clearUrls]
+    [assetManagement, xrayGeneration]
   );
 
   // Handler: Remove asset
   const handleRemove = useCallback(
     (id: string) => {
-      setAssets((prev) => prev.filter((asset) => asset.id !== id));
-      clearUrls();
+      assetManagement.removeAsset(id);
+      xrayGeneration.clearUrls();
     },
-    [clearUrls]
+    [assetManagement, xrayGeneration]
   );
 
   // Handler: Asset updated (ISIN resolved)
-  const handleAssetUpdated = useCallback((id: string, updatedAsset: Asset) => {
-    setAssets((prev) =>
-      prev.map((asset) =>
-        asset.id === id
-          ? {
-              ...asset,
-              asset: updatedAsset,
-              isinPending: updatedAsset.isinPending || false,
-            }
-          : asset
-      )
-    );
-  }, []);
+  const handleAssetUpdated = useCallback(
+    (id: string, updatedAsset: Asset) => {
+      assetManagement.updateAsset(id, updatedAsset);
+    },
+    [assetManagement]
+  );
 
   // Handler: Alternative selected
   const handleAlternativeSelected = useCallback(
     (assetId: string, morningstarId: string, name: string, url: string) => {
-      setAssets((prev) =>
-        prev.map((asset) =>
-          asset.id === assetId
-            ? {
-                ...asset,
-                status: 'resolved' as const,
-                asset: {
-                  id: '',
-                  isin: asset.identifier,
-                  morningstarId,
-                  name,
-                  url,
-                  type: 'FUND' as AssetType,
-                  source: 'manual',
-                  createdAt: new Date().toISOString(),
-                  updatedAt: new Date().toISOString(),
-                },
-              }
-            : asset
-        )
-      );
+      assetManagement.resolveAssetManually(assetId, morningstarId, name, url);
       setSelectedAssetForAlternatives(null);
     },
-    []
+    [assetManagement]
   );
 
   // Handler: Manual confirmed
   const handleManualConfirmed = useCallback(
     (assetId: string, morningstarId: string, name: string, url: string) => {
-      setAssets((prev) =>
-        prev.map((asset) =>
-          asset.id === assetId
-            ? {
-                ...asset,
-                status: 'resolved' as const,
-                asset: {
-                  id: '',
-                  isin: asset.identifier,
-                  morningstarId,
-                  name,
-                  url,
-                  type: 'FUND' as AssetType,
-                  source: 'manual',
-                  createdAt: new Date().toISOString(),
-                  updatedAt: new Date().toISOString(),
-                },
-              }
-            : asset
-        )
-      );
+      assetManagement.resolveAssetManually(assetId, morningstarId, name, url);
       setSelectedAssetForManual(null);
     },
-    []
+    [assetManagement]
   );
 
   // Handler: Generate X-Ray
   const handleGenerate = useCallback(() => {
-    if (!isValid) return;
-
-    let xrayAssets;
-    if (allocationMode === 'amount') {
-      const totalAmount = assets.reduce((sum, asset) => sum + (asset.weight || 0), 0);
-      xrayAssets = assets
-        .filter((asset) => asset.asset)
-        .map((asset) => ({
-          morningstarId: asset.asset!.morningstarId,
-          weight: totalAmount > 0 ? (asset.weight / totalAmount) * VALIDATION.PERCENTAGE_TOTAL : 0,
-        }));
-    } else {
-      xrayAssets = assets
-        .filter((asset) => asset.asset)
-        .map((asset) => ({
-          morningstarId: asset.asset!.morningstarId,
-          weight: asset.weight,
-        }));
-    }
-
-    generateMutation.mutate(xrayAssets);
-  }, [isValid, allocationMode, assets, generateMutation]);
+    xrayGeneration.generate();
+  }, [xrayGeneration]);
 
   // Handler: Copy URL
   const handleCopyUrl = useCallback(() => {
-    copyToClipboard();
-  }, [copyToClipboard]);
+    xrayGeneration.copyUrl();
+  }, [xrayGeneration]);
 
   // Handler: Clear all
   const handleClearAll = useCallback(() => {
@@ -263,38 +175,32 @@ export function usePortfolioBuilder({
 
   // Handler: Confirm clear all
   const handleConfirmClearAll = useCallback(() => {
-    setAssets([]);
-    clearUrls();
+    assetManagement.clearAll();
+    xrayGeneration.clearUrls();
     setShowClearAllConfirmation(false);
-  }, [clearUrls]);
+  }, [assetManagement, xrayGeneration]);
 
   // Handler: Open PDF
   const handleOpenPDF = useCallback(() => {
-    openMorningstarPdf();
-  }, [openMorningstarPdf]);
-
-  // Helper: Get asset by ID
-  const getAssetById = useCallback(
-    (id: string) => assets.find((a) => a.id === id),
-    [assets]
-  );
+    xrayGeneration.openPdf();
+  }, [xrayGeneration]);
 
   return {
     // State
-    assets,
+    assets: assetManagement.assets,
     allocationMode,
     selectedAssetForAlternatives,
     selectedAssetForManual,
     showClearAllConfirmation,
-    shareableUrl,
-    morningstarUrl,
-    fullShareableUrl,
-    copied,
+    shareableUrl: xrayGeneration.shareableUrl,
+    morningstarUrl: xrayGeneration.morningstarUrl,
+    fullShareableUrl: xrayGeneration.fullShareableUrl,
+    copied: xrayGeneration.copied,
     showSuccessToast,
     totalWeight,
     isValid,
-    isGenerating: generateMutation.isPending,
-    generateError: generateMutation.error,
+    isGenerating: xrayGeneration.isGenerating,
+    generateError: xrayGeneration.generateError,
 
     // Actions
     setAllocationMode,
@@ -313,6 +219,6 @@ export function usePortfolioBuilder({
     setSelectedAssetForManual,
     setShowClearAllConfirmation,
     setShowSuccessToast,
-    getAssetById,
+    getAssetById: assetManagement.getAssetById,
   };
 }
