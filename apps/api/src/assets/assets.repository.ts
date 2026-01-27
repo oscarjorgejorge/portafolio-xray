@@ -18,6 +18,23 @@ export class AssetsRepository {
     });
   }
 
+  /**
+   * Find multiple assets by their Morningstar IDs in a single query
+   * @param morningstarIds - Array of Morningstar IDs to look up
+   * @returns Array of found assets (may be fewer than input if some don't exist)
+   */
+  async findManyByMorningstarIds(morningstarIds: string[]): Promise<Asset[]> {
+    if (morningstarIds.length === 0) {
+      return [];
+    }
+
+    return this.prisma.asset.findMany({
+      where: {
+        morningstarId: { in: morningstarIds },
+      },
+    });
+  }
+
   async findById(id: string): Promise<Asset | null> {
     return this.prisma.asset.findUnique({
       where: { id },

@@ -685,3 +685,79 @@ y luego con esta Global exception filter, actualiza prompts, commit y push
 
 **Verification:**
 - ✅ Type-check passed
+
+### Prompt 67
+as a senior backend developper analyze the api and propose improvements based on the best practises, (performance, readibility, solid... etc, without overkill proposals), dont focus on test for now
+
+**Analysis Summary:**
+Comprehensive code review identifying key improvements:
+
+1. **N+1 Query in XRayService.buildMorningstarUrl** - Sequential DB queries in loop
+2. **Excessive HTTP Calls in PageVerifierService** - Up to 27 sequential requests
+3. **AssetsService.resolve complexity** - 160-line method with multiple responsibilities
+4. **Hard-coded asset type mapping** - Should use configuration map
+5. **Silent failures in HttpClientService** - No error details preserved
+6. **Fire-and-forget without monitoring** - Background tasks not tracked
+7. **Magic numbers in XRayService** - Should be constants
+8. **Input sanitization for search queries** - User input directly interpolated
+
+### Prompt 68
+lets address this problem: N+1 Query in XRayService.buildMorningstarUrl
+
+**Implementation - N+1 Query Fix:**
+
+1. **Added `findManyByMorningstarIds` to AssetsRepository:**
+   ```typescript
+   async findManyByMorningstarIds(morningstarIds: string[]): Promise<Asset[]> {
+     if (morningstarIds.length === 0) return [];
+     return this.prisma.asset.findMany({
+       where: { morningstarId: { in: morningstarIds } },
+     });
+   }
+   ```
+
+2. **Refactored `buildMorningstarUrl` in XRayService:**
+   - Replaced N sequential queries with single batch query
+   - Used `Map` for O(1) lookups during iteration
+   - Extracted `getAssetCodes()` helper for readability
+
+3. **Performance Impact:**
+   | Portfolio Size | Before (queries) | After (queries) |
+   |----------------|------------------|-----------------|
+   | 1 asset        | 1                | 1               |
+   | 5 assets       | 5                | 1               |
+   | 10 assets      | 10               | 1               |
+   | 20 assets      | 20               | 1               |
+
+**Verification:**
+- ✅ Type-check passed
+
+### Prompt 69
+1.2 Excessive HTTP Calls in PageVerifierService.verifyFundPageWithFallback - lets address this, update prompts and commit changes
+
+**Implementation - Parallel HTTP Requests Optimization:**
+
+1. **Problem:** In worst case, `verifyFundPageWithFallback` made up to 27 sequential HTTP requests (3 asset types × 9 markets).
+
+2. **Solution:** Refactored to use parallel request batches:
+   - **`getAssetTypePriority()`** - Returns asset types to try based on provided type
+   - **`tryDefaultMarket()`** - Tries Spanish market first (fast path)
+   - **`tryMarketsInParallel()`** - Processes markets in parallel batches of 3
+   - **`isValidResult()`** - Helper to check if verification succeeded
+
+3. **Performance Impact:**
+   | Scenario | Before | After |
+   |----------|--------|-------|
+   | Found in ES market | 1-3 requests | 1-3 requests |
+   | Found in 1st batch (LU, DE, IT) | Up to 9 requests | 6 parallel requests |
+   | Found in 2nd batch (CH, GB, FR) | Up to 15 requests | 12 parallel requests |
+   | Not found anywhere | 27 sequential requests | 18 parallel requests (in 3 batches) |
+
+4. **Code Quality:**
+   - Extracted logic into smaller, focused methods
+   - Improved readability with descriptive method names
+   - Added JSDoc comments explaining the optimization strategy
+
+**Verification:**
+- ✅ Lint passed
+- ✅ Type-check passed
