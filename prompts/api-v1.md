@@ -1653,3 +1653,39 @@ vamos con todas las mejoras una a una y haciendo commits
 8. **refactor(web): use React useId() for accessibility IDs and improve id.ts docs** (`3ad6f6e`):
    - Replaced hardcoded modal-title ID with useId() for proper multi-modal support
    - Added comprehensive documentation to id.ts explaining when to use useId() vs generateSimpleId()
+
+### Prompt 97
+como senior frontend developper analiza la web, y dime que mejoras y optmizaciones que son necesarias teniendo en cuenta las buenas practicas (la parte de los test los implementaremos mas adelante), pero tampoco quiero algo overkill / complejo sin necesidad
+
+### Prompt 98
+vamos con todas las mejoras una a una, y vamos haciendo commits
+
+**Results:**
+
+1. **feat(web): add React Query DevTools for development** (`e0482ee`):
+   - Added @tanstack/react-query-devtools for better debugging experience
+   - DevTools only load in development mode, positioned at bottom-left
+
+2. **refactor(web): fix type imports in types/index.ts to use standard imports** (`69ee0f2`):
+   - Replaced inline `import()` syntax with proper type imports
+   - Asset and AlternativeAsset now use standard import type syntax
+
+3. **refactor(web): extract PortfolioSummary and ShareableUrlSection components** (`53fa4a9`):
+   - Created PortfolioSummary component for weight display and action buttons
+   - Created ShareableUrlSection component for shareable link UI
+   - Reduced PortfolioBuilder from 258 to 200 lines
+   - Both components are memoized for performance
+
+4. **refactor(web): use CSS design tokens in UI components for consistency** (`e8ae1c4`):
+   - Updated Button, Card, Input, InputNumber to use design tokens
+   - Uses bg-primary, text-foreground, border-border, bg-muted, etc.
+   - Better theme consistency across components
+
+5. **feat(web): improve copy button UX with error state feedback** (`6443efa`):
+   - Added CopyState type ('idle' | 'copied' | 'error')
+   - Copy button now shows "Failed" with danger variant on error
+   - Added aria-live for accessibility announcements
+
+6. **refactor(web): silence env validation logs on client-side** (`fe88e02`):
+   - Environment validation errors only logged on server
+   - Prevents console noise in browser DevTools
