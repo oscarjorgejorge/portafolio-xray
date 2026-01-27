@@ -1,4 +1,6 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger, Inject } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 import { AssetsRepository } from './assets.repository';
 import { MorningstarResolverService } from './resolver';
 import { IsinEnrichmentService } from './isin-enrichment.service';
@@ -20,11 +22,15 @@ import {
   BatchResolveResultItem,
 } from './types';
 
+/** Cache key prefix for asset resolution results */
+const CACHE_KEY_PREFIX = 'asset:';
+
 @Injectable()
 export class AssetsService implements IAssetsService {
   private readonly logger = new Logger(AssetsService.name);
 
   constructor(
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
     private readonly assetsRepository: AssetsRepository,
     private readonly morningstarResolver: MorningstarResolverService,
     private readonly isinEnrichmentService: IsinEnrichmentService,
@@ -33,8 +39,17 @@ export class AssetsService implements IAssetsService {
   async resolve(dto: ResolveAssetDto): Promise<ResolveAssetResponse> {
     const input = dto.input.trim().toUpperCase();
     const identifierType = IdentifierClassifier.classify(input);
+    const cacheKey = `${CACHE_KEY_PREFIX}${input}`;
 
-    // Step 1: Search in cache
+    // Step 0: Check in-memory cache first (fastest)
+    const memoryCached =
+      await this.cacheManager.get<ResolveAssetResponse>(cacheKey);
+    if (memoryCached) {
+      this.logger.debug(`[MEMORY CACHE] Hit for: ${input}`);
+      return memoryCached;
+    }
+
+    // Step 1: Search in database cache
     let cachedAsset: Asset | null = null;
 
     if (identifierType === IdentifierType.ISIN) {
@@ -48,23 +63,26 @@ export class AssetsService implements IAssetsService {
       const needsReResolution = !cachedAsset.isin && !cachedAsset.isinPending;
 
       if (!needsReResolution) {
-        this.logger.log(`Cache hit for: ${input}`);
-        return {
+        this.logger.log(`[DB CACHE] Hit for: ${input}`);
+        const response: ResolveAssetResponse = {
           success: true,
           source: 'cache',
           asset: cachedAsset,
           isinPending: cachedAsset.isinPending,
         };
+        // Store in memory cache for faster subsequent access
+        await this.cacheManager.set(cacheKey, response);
+        return response;
       }
 
       this.logger.log(
-        `Cache hit for: ${input}, but ISIN missing - attempting re-resolution`,
+        `[DB CACHE] Hit for: ${input}, but ISIN missing - attempting re-resolution`,
       );
       // Continue to re-resolution logic below
     }
 
     // Step 2: If not in cache, use Morningstar resolver
-    this.logger.log(`Cache miss for: ${input}, resolving externally...`);
+    this.logger.log(`[CACHE MISS] for: ${input}, resolving externally...`);
 
     try {
       const resolution = await this.morningstarResolver.resolve(input);
@@ -146,12 +164,19 @@ export class AssetsService implements IAssetsService {
           );
         }
 
-        return {
+        const response: ResolveAssetResponse = {
           success: true,
           source: 'resolved',
           asset: savedAsset,
           isinPending: needsIsinEnrichment,
         };
+
+        // Cache successful resolutions in memory (only if not pending enrichment)
+        if (!needsIsinEnrichment) {
+          await this.cacheManager.set(cacheKey, response);
+        }
+
+        return response;
       }
 
       if (
@@ -357,7 +382,7 @@ export class AssetsService implements IAssetsService {
 
   async confirm(dto: ConfirmAssetDto): Promise<Asset> {
     // Create or update asset with manual source
-    return this.assetsRepository.upsertByIsin({
+    const asset = await this.assetsRepository.upsertByIsin({
       isin: dto.isin,
       morningstarId: dto.morningstarId,
       name: dto.name,
@@ -366,6 +391,11 @@ export class AssetsService implements IAssetsService {
       source: AssetSource.manual,
       ticker: dto.ticker,
     });
+
+    // Invalidate cache for both ISIN and Morningstar ID
+    await this.invalidateAssetCache(dto.isin, dto.morningstarId);
+
+    return asset;
   }
 
   /**
@@ -379,17 +409,42 @@ export class AssetsService implements IAssetsService {
 
     try {
       // Use transactional method to ensure atomicity
-      return await this.assetsRepository.updateIsinWithVerification(
+      const asset = await this.assetsRepository.updateIsinWithVerification(
         id,
         isin,
         true,
       ); // Mark as manually entered
+
+      // Invalidate cache for ISIN and Morningstar ID
+      await this.invalidateAssetCache(isin, asset.morningstarId);
+
+      return asset;
     } catch (error) {
       // Convert repository error to NestJS NotFoundException
       if (error instanceof Error && error.message.includes('not found')) {
         throw new NotFoundException(`Asset with id "${id}" not found`);
       }
       throw error;
+    }
+  }
+
+  /**
+   * Invalidate in-memory cache for an asset
+   * @param isin - Optional ISIN to invalidate
+   * @param morningstarId - Optional Morningstar ID to invalidate
+   */
+  private async invalidateAssetCache(
+    isin?: string | null,
+    morningstarId?: string,
+  ): Promise<void> {
+    const keys: string[] = [];
+    if (isin) keys.push(`${CACHE_KEY_PREFIX}${isin.toUpperCase()}`);
+    if (morningstarId)
+      keys.push(`${CACHE_KEY_PREFIX}${morningstarId.toUpperCase()}`);
+
+    for (const key of keys) {
+      await this.cacheManager.del(key);
+      this.logger.debug(`[CACHE] Invalidated: ${key}`);
     }
   }
 

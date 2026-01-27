@@ -27,6 +27,10 @@ export const envSchema = z.object({
 
   // CORS
   CORS_ORIGINS: z.string().default('http://localhost:3000'),
+
+  // In-Memory Cache
+  CACHE_TTL_MS: z.coerce.number().min(0).default(300000), // 5 minutes default
+  CACHE_MAX_ITEMS: z.coerce.number().min(1).default(1000),
 });
 
 /**

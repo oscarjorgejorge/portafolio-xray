@@ -1,9 +1,12 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { CacheModule } from '@nestjs/cache-manager';
+import { ConfigService } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule } from './config';
+import type { AppConfig } from './config';
 import { PrismaModule } from './prisma/prisma.module';
 import { AssetsModule } from './assets/assets.module';
 import { XRayModule } from './xray/xray.module';
@@ -20,6 +23,18 @@ import { RequestIdInterceptor } from './common/interceptors';
     LoggerModule,
     // Global HTTP client for all modules
     HttpClientModule,
+    // In-memory cache for frequently accessed assets
+    CacheModule.registerAsync({
+      isGlobal: true,
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService<AppConfig, true>) => {
+        const cacheConfig = configService.get('cache', { infer: true });
+        return {
+          ttl: cacheConfig.ttlMs,
+          max: cacheConfig.maxItems,
+        };
+      },
+    }),
     // Rate limiting configuration
     // - ttl: Time window in milliseconds (60000ms = 1 minute)
     // - limit: Maximum requests per IP within the time window
