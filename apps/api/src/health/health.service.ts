@@ -6,10 +6,13 @@ import {
   HealthStatus,
   ComponentStatus,
   EnrichmentStatusDto,
+  CircuitBreakerStatusDto,
+  CircuitBreakerStatus,
 } from './dto/health-response.dto';
 import { IHealthService } from './interfaces';
 import { LivenessResponse } from './types';
 import { createContextLogger } from '../common/logger';
+import { HttpClientService, CircuitState } from '../common/http';
 
 // Get version from package.json at build time
 const APP_VERSION = process.env.npm_package_version || '1.0.0';
@@ -20,6 +23,7 @@ export class HealthService implements IHealthService {
 
   constructor(
     private readonly prisma: PrismaService,
+    private readonly httpClient: HttpClientService,
     @Optional() private readonly isinEnrichment?: IsinEnrichmentService,
   ) {}
 
@@ -48,11 +52,14 @@ export class HealthService implements IHealthService {
       this.logger.warn(`Database health check failed: ${error}`);
     }
 
-    // Determine overall status
-    const status = this.determineOverallStatus(databaseStatus);
-
     // Get enrichment queue status if available
     const enrichment = this.getEnrichmentStatus();
+
+    // Get circuit breaker status for external services
+    const circuitBreaker = this.getCircuitBreakerStatus();
+
+    // Determine overall status (include circuit breaker in health assessment)
+    const status = this.determineOverallStatus(databaseStatus, circuitBreaker);
 
     return {
       status,
@@ -61,6 +68,7 @@ export class HealthService implements IHealthService {
       database: databaseStatus,
       databaseResponseTimeMs,
       ...(enrichment && { enrichment }),
+      ...(circuitBreaker && { circuitBreaker }),
       ...(error && { error }),
     };
   }
@@ -81,6 +89,52 @@ export class HealthService implements IHealthService {
   }
 
   /**
+   * Get circuit breaker status for all tracked external services
+   * Returns undefined if no circuits are being tracked
+   */
+  private getCircuitBreakerStatus(): CircuitBreakerStatusDto | undefined {
+    const statuses = this.httpClient.getAllCircuitStatuses();
+
+    if (statuses.size === 0) {
+      return undefined;
+    }
+
+    const domains: Record<string, CircuitBreakerStatus> = {};
+    let openCircuits = 0;
+
+    statuses.forEach((state, domain) => {
+      // Map internal CircuitState to DTO enum
+      domains[domain] = this.mapCircuitState(state.state);
+
+      if (state.state === CircuitState.OPEN) {
+        openCircuits++;
+      }
+    });
+
+    return {
+      domains,
+      openCircuits,
+      totalCircuits: statuses.size,
+    };
+  }
+
+  /**
+   * Map internal CircuitState to DTO CircuitBreakerStatus
+   */
+  private mapCircuitState(state: CircuitState): CircuitBreakerStatus {
+    switch (state) {
+      case CircuitState.CLOSED:
+        return CircuitBreakerStatus.CLOSED;
+      case CircuitState.OPEN:
+        return CircuitBreakerStatus.OPEN;
+      case CircuitState.HALF_OPEN:
+        return CircuitBreakerStatus.HALF_OPEN;
+      default:
+        return CircuitBreakerStatus.CLOSED;
+    }
+  }
+
+  /**
    * Lightweight liveness check - just confirms the service is running
    * Does not check external dependencies
    */
@@ -93,15 +147,26 @@ export class HealthService implements IHealthService {
 
   /**
    * Determine overall health status based on component statuses
+   * - Database down = DEGRADED (critical component)
+   * - Circuit breakers open = DEGRADED (external dependencies failing)
+   * - All OK = OK
    */
   private determineOverallStatus(
     databaseStatus: ComponentStatus,
+    circuitBreaker?: CircuitBreakerStatusDto,
   ): HealthStatus {
-    if (databaseStatus === ComponentStatus.CONNECTED) {
-      return HealthStatus.OK;
-    }
     // Database is critical - if it's down, the service is degraded
-    return HealthStatus.DEGRADED;
+    if (databaseStatus !== ComponentStatus.CONNECTED) {
+      return HealthStatus.DEGRADED;
+    }
+
+    // If any circuit breaker is open, service is degraded
+    // (external dependencies are failing)
+    if (circuitBreaker && circuitBreaker.openCircuits > 0) {
+      return HealthStatus.DEGRADED;
+    }
+
+    return HealthStatus.OK;
   }
 
   /**
