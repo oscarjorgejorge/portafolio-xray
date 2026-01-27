@@ -9,7 +9,7 @@ import {
   ArrayMaxSize,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import { AssetTypeDto } from './confirm-asset.dto';
 
 /**
@@ -20,6 +20,9 @@ export class BatchResolveAssetItemDto {
     description: 'Asset identifier - can be ISIN, Morningstar ID, or ticker',
     example: 'IE00B4L5Y983',
   })
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim().toUpperCase() : value,
+  )
   @IsString()
   @IsNotEmpty()
   input!: string;

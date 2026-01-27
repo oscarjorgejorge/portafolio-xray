@@ -7,7 +7,7 @@ import {
   ValidateNested,
   ArrayMinSize,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class XRayAssetDto {
@@ -15,6 +15,9 @@ export class XRayAssetDto {
     description: 'Morningstar unique identifier',
     example: '0P0000YXJO',
   })
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim().toUpperCase() : value,
+  )
   @IsString()
   morningstarId!: string;
 

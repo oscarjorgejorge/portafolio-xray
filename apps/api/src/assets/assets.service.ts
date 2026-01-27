@@ -37,7 +37,8 @@ export class AssetsService implements IAssetsService {
   ) {}
 
   async resolve(dto: ResolveAssetDto): Promise<ResolveAssetResponse> {
-    const input = dto.input.trim().toUpperCase();
+    // Input is already normalized (trimmed & uppercased) by DTO Transform decorator
+    const input = dto.input;
     const identifierType = IdentifierClassifier.classify(input);
     const cacheKey = `${CACHE_KEY_PREFIX}${input}`;
 
@@ -238,10 +239,11 @@ export class AssetsService implements IAssetsService {
     );
 
     // Step 1: Classify all inputs and prepare for batch cache lookup
+    // Inputs are already normalized (trimmed & uppercased) by DTO Transform decorator
     const classifiedInputs = dto.assets.map((item) => ({
       original: item,
-      normalized: item.input.trim().toUpperCase(),
-      type: IdentifierClassifier.classify(item.input.trim().toUpperCase()),
+      normalized: item.input,
+      type: IdentifierClassifier.classify(item.input),
     }));
 
     // Step 2: Batch cache lookup
