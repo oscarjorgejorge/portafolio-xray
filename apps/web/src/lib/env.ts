@@ -44,10 +44,13 @@ function getEnv(): Env {
   });
 
   if (!parsed.success) {
-    console.error(
-      '❌ Invalid environment variables:',
-      parsed.error.flatten().fieldErrors
-    );
+    // Only log errors on the server to avoid console noise in browser
+    if (typeof window === 'undefined') {
+      console.error(
+        '❌ Invalid environment variables:',
+        parsed.error.flatten().fieldErrors
+      );
+    }
     // In development, throw to catch config issues early
     // In production, use defaults to prevent crashes
     if (process.env.NODE_ENV === 'development') {
