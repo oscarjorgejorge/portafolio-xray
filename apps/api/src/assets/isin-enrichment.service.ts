@@ -1,7 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { AssetsRepository } from './assets.repository';
 import * as cheerio from 'cheerio';
 import { HttpClientService } from '../common/http';
+import { createContextLogger } from '../common/logger';
 import { getErrorMessage } from './resolver/utils/error-handler';
 import { VALID_ISIN_PREFIXES } from './resolver/utils/constants';
 import { IIsinEnrichmentService } from './interfaces';
@@ -17,7 +18,7 @@ import { IIsinEnrichmentService } from './interfaces';
  */
 @Injectable()
 export class IsinEnrichmentService implements IIsinEnrichmentService {
-  private readonly logger = new Logger(IsinEnrichmentService.name);
+  private readonly logger = createContextLogger(IsinEnrichmentService.name);
 
   /**
    * Track enrichments currently in progress to prevent duplicate concurrent operations

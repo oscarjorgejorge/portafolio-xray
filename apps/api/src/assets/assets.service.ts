@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Logger, Inject } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 import { AssetsRepository } from './assets.repository';
@@ -15,6 +15,7 @@ import {
   IdentifierClassifier,
   IdentifierType,
 } from '../common/utils/identifier-classifier';
+import { createContextLogger } from '../common/logger';
 import { IAssetsService } from './interfaces';
 import {
   ResolveAssetResponse,
@@ -27,7 +28,7 @@ const CACHE_KEY_PREFIX = 'asset:';
 
 @Injectable()
 export class AssetsService implements IAssetsService {
-  private readonly logger = new Logger(AssetsService.name);
+  private readonly logger = createContextLogger(AssetsService.name);
 
   constructor(
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,

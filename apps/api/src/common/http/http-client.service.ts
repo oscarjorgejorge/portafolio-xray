@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import {
   HttpRequestOptions,
   HttpResponse,
@@ -8,6 +8,7 @@ import {
   HttpError,
 } from './http-client.types';
 import { IHttpClient } from '../interfaces';
+import { createContextLogger } from '../logger';
 
 const DEFAULT_CONFIG: HttpClientConfig = {
   defaultTimeout: 10000,
@@ -31,7 +32,7 @@ const DEFAULT_CONFIG: HttpClientConfig = {
  */
 @Injectable()
 export class HttpClientService implements IHttpClient {
-  private readonly logger = new Logger(HttpClientService.name);
+  private readonly logger = createContextLogger(HttpClientService.name);
   private readonly config: HttpClientConfig = DEFAULT_CONFIG;
 
   /**
