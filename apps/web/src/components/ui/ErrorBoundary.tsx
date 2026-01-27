@@ -2,10 +2,13 @@
 
 import React, { Component, ReactNode } from 'react';
 import { Button } from './Button';
+import { captureException } from '@/lib/services/errorReporting';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
   fallback?: ReactNode;
+  /** Optional name to identify which boundary caught the error */
+  boundaryName?: string;
 }
 
 interface ErrorBoundaryState {
@@ -16,6 +19,7 @@ interface ErrorBoundaryState {
 /**
  * Error Boundary component to catch JavaScript errors in child components.
  * Prevents the entire app from crashing and shows a fallback UI.
+ * Reports errors to the centralized error reporting service.
  */
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
@@ -28,8 +32,14 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
-    // Log error to console in development
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
+    // Report error to centralized error reporting service
+    captureException(error, {
+      componentStack: errorInfo.componentStack || undefined,
+      tags: {
+        boundary: this.props.boundaryName || 'unknown',
+        type: 'react-error-boundary',
+      },
+    });
   }
 
   handleRetry = (): void => {
