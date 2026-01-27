@@ -112,7 +112,12 @@ export const AssetInput: React.FC<AssetInputProps> = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2">
+    <form
+      onSubmit={handleSubmit}
+      className="flex gap-2"
+      aria-label="Add asset to portfolio"
+      aria-busy={resolveMutation.isPending}
+    >
       <div className="flex-1">
         <Input
           placeholder="Enter ISIN, Morningstar ID, or ticker (e.g., IE00B4L5Y983)"
@@ -120,6 +125,7 @@ export const AssetInput: React.FC<AssetInputProps> = ({
           onChange={(e) => setInput(e.target.value)}
           error={error || undefined}
           disabled={resolveMutation.isPending}
+          aria-label="Asset identifier input"
         />
       </div>
       <Button

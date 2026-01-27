@@ -6,6 +6,7 @@ export { ErrorBoundary } from './ErrorBoundary';
 export { Input } from './Input';
 export { Modal } from './Modal';
 export { PageLoading } from './PageLoading';
+export { ScreenReaderAnnounce, useScreenReaderAnnounce } from './ScreenReaderAnnounce';
 export { Spinner } from './Spinner';
 export { Toast, ToastContainer } from './Toast';
 

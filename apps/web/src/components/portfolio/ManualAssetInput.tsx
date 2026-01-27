@@ -57,7 +57,11 @@ export const ManualAssetInput: React.FC<ManualAssetInputProps> = ({
         The asset could not be resolved automatically. Please enter the
         Morningstar details manually.
       </p>
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form
+        onSubmit={handleSubmit}
+        className="space-y-4"
+        aria-busy={confirmMutation.isPending}
+      >
         <Input
           label="Morningstar ID"
           value={morningstarId}
@@ -81,10 +85,14 @@ export const ManualAssetInput: React.FC<ManualAssetInputProps> = ({
           required
         />
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">
+          <label
+            htmlFor="asset-type-select"
+            className="block text-sm font-medium text-slate-700 mb-1"
+          >
             Asset Type
           </label>
           <select
+            id="asset-type-select"
             value={assetType}
             onChange={(e) => setAssetType(e.target.value as AssetType)}
             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-900"
