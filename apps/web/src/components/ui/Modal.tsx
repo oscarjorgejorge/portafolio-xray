@@ -6,6 +6,7 @@ import React, {
   ReactNode,
   useCallback,
   useState,
+  useId,
 } from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
@@ -57,6 +58,7 @@ export function Modal({
   closeOnOverlayClick = true,
   className,
 }: ModalProps) {
+  const titleId = useId();
   const overlayRef = useRef<HTMLDivElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
@@ -169,7 +171,7 @@ export function Modal({
       className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
       role="dialog"
       aria-modal="true"
-      aria-labelledby={title ? 'modal-title' : undefined}
+      aria-labelledby={title ? titleId : undefined}
     >
       <div
         ref={modalRef}
@@ -184,7 +186,7 @@ export function Modal({
           <div className="flex items-center justify-between mb-4">
             {title && (
               <h2
-                id="modal-title"
+                id={titleId}
                 className="text-lg font-semibold text-slate-900"
               >
                 {title}
