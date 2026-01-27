@@ -7,6 +7,7 @@ import {
   ValidateNested,
   ArrayMinSize,
   ArrayMaxSize,
+  MaxLength,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type, Transform } from 'class-transformer';
@@ -20,10 +21,12 @@ export class BatchResolveAssetItemDto {
   @ApiProperty({
     description: 'Asset identifier - can be ISIN, Morningstar ID, or ticker',
     example: 'IE00B4L5Y983',
+    maxLength: 50,
   })
   @Transform(trimUppercase)
   @IsString()
   @IsNotEmpty()
+  @MaxLength(50, { message: 'Input identifier must not exceed 50 characters' })
   input!: string;
 
   @ApiPropertyOptional({

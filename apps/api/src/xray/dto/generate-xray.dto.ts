@@ -6,6 +6,8 @@ import {
   Max,
   ValidateNested,
   ArrayMinSize,
+  MaxLength,
+  IsNotEmpty,
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
@@ -16,9 +18,14 @@ export class XRayAssetDto {
   @ApiProperty({
     description: 'Morningstar unique identifier',
     example: '0P0000YXJO',
+    maxLength: 20,
   })
   @Transform(trimUppercase)
   @IsString()
+  @IsNotEmpty()
+  @MaxLength(20, {
+    message: 'Morningstar ID must not exceed 20 characters',
+  })
   morningstarId!: string;
 
   @ApiProperty({
