@@ -3,14 +3,18 @@ import {
   SearchResult,
   ScoredResult,
   ResolutionResult,
-  MorningstarAssetType,
   VerificationResult,
 } from './resolver.types';
 import {
   IdentifierClassifier,
   IdentifierType,
 } from '../../common/utils/identifier-classifier';
-import { DEFAULT_RESOLVER_CONFIG, SCORE_WEIGHTS } from './utils/constants';
+import {
+  DEFAULT_RESOLVER_CONFIG,
+  SCORE_WEIGHTS,
+  MS_ASSET_TYPES,
+  MorningstarAssetType,
+} from './utils/constants';
 
 // Search strategies
 import { ApiSearchStrategy } from './strategies/api-search.strategy';
@@ -225,7 +229,7 @@ export class MorningstarResolverService implements IMorningstarResolver {
       await this.verifier.verifyFundPageWithFallback(
         bestMatch.morningstarId,
         '',
-        bestMatch.assetType || 'Fondo',
+        bestMatch.assetType || MS_ASSET_TYPES.FUND,
       );
 
     // Update the URL if we found a working market
@@ -278,8 +282,12 @@ export class MorningstarResolverService implements IMorningstarResolver {
       `[DIRECT] No search results for Morningstar ID ${normalizedInput}, trying direct verification...`,
     );
 
-    const assetTypesToTry: MorningstarAssetType[] = ['Fondo', 'ETF', 'Accion'];
-    let foundAssetType: MorningstarAssetType = 'Fondo';
+    const assetTypesToTry: MorningstarAssetType[] = [
+      MS_ASSET_TYPES.FUND,
+      MS_ASSET_TYPES.ETF,
+      MS_ASSET_TYPES.STOCK,
+    ];
+    let foundAssetType: MorningstarAssetType = MS_ASSET_TYPES.FUND;
     let verResultFound: VerificationResult | null = null;
     let workingUrlFound = '';
     let marketIdFound: string | undefined;
@@ -310,7 +318,7 @@ export class MorningstarResolverService implements IMorningstarResolver {
       : await this.verifier.verifyFundPageWithFallback(
           normalizedInput,
           '',
-          'Fondo',
+          MS_ASSET_TYPES.FUND,
         );
 
     // If we found the fund in any market
@@ -365,7 +373,7 @@ export class MorningstarResolverService implements IMorningstarResolver {
       await this.verifier.verifyFundPageWithFallback(
         bestMatch.morningstarId!,
         normalizedInput,
-        bestMatch.assetType || 'Fondo',
+        bestMatch.assetType || MS_ASSET_TYPES.FUND,
       );
 
     // Update the URL if we found a working market
@@ -410,7 +418,7 @@ export class MorningstarResolverService implements IMorningstarResolver {
       await this.verifier.verifyFundPageWithFallback(
         bestMatch.morningstarId!,
         '',
-        bestMatch.assetType || 'Fondo',
+        bestMatch.assetType || MS_ASSET_TYPES.FUND,
       );
 
     // Update the URL if we found a working market
@@ -455,7 +463,7 @@ export class MorningstarResolverService implements IMorningstarResolver {
   ): 'resolved' | 'needs_review' | 'not_found' {
     // Check if this is a fund with "F" ID that we prioritized
     const isPrioritizedFund =
-      bestMatch.assetType === 'Fondo' &&
+      bestMatch.assetType === MS_ASSET_TYPES.FUND &&
       bestMatch.morningstarId?.toUpperCase().startsWith('F') &&
       scoredResults.some(
         (r) =>

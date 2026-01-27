@@ -1,4 +1,21 @@
-import { MorningstarAssetType, ResolverConfig } from '../resolver.types';
+import { ResolverConfig } from '../resolver.types';
+
+/**
+ * Morningstar asset type constants
+ * Used throughout the resolver for consistent asset type references
+ */
+export const MS_ASSET_TYPES = {
+  FUND: 'Fondo',
+  ETF: 'ETF',
+  STOCK: 'Accion',
+  UNKNOWN: 'Desconocido',
+} as const;
+
+/**
+ * Type alias for Morningstar asset type values
+ */
+export type MorningstarAssetType =
+  (typeof MS_ASSET_TYPES)[keyof typeof MS_ASSET_TYPES];
 
 /**
  * Default resolver configuration
@@ -73,14 +90,14 @@ export const EUROPEAN_MARKETS = [
  * Morningstar type mapping from API codes to asset types
  */
 export const MORNINGSTAR_TYPE_MAP: Record<string, MorningstarAssetType> = {
-  FO: 'Fondo',
-  FE: 'Fondo',
-  FC: 'Fondo',
-  CE: 'ETF',
-  ET: 'ETF',
-  ST: 'Accion',
-  EQ: 'Accion',
-  IX: 'Fondo',
+  FO: MS_ASSET_TYPES.FUND,
+  FE: MS_ASSET_TYPES.FUND,
+  FC: MS_ASSET_TYPES.FUND,
+  CE: MS_ASSET_TYPES.ETF,
+  ET: MS_ASSET_TYPES.ETF,
+  ST: MS_ASSET_TYPES.STOCK,
+  EQ: MS_ASSET_TYPES.STOCK,
+  IX: MS_ASSET_TYPES.FUND,
 };
 
 /**

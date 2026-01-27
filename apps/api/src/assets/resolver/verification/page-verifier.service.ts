@@ -1,7 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as cheerio from 'cheerio';
-import { VerificationResult, MorningstarAssetType } from '../resolver.types';
-import { EUROPEAN_MARKETS } from '../utils/constants';
+import { VerificationResult } from '../resolver.types';
+import {
+  EUROPEAN_MARKETS,
+  MS_ASSET_TYPES,
+  MorningstarAssetType,
+} from '../utils/constants';
 import { isValidIsin } from '../utils/id-extractor';
 import { buildMorningstarUrl } from '../utils/url-builder';
 import { HttpClientService } from '../../../common/http';
@@ -262,7 +266,7 @@ export class PageVerifierService {
   async verifyFundPageWithFallback(
     morningstarId: string,
     expectedIsin: string,
-    assetType: MorningstarAssetType = 'Fondo',
+    assetType: MorningstarAssetType = MS_ASSET_TYPES.FUND,
   ): Promise<ExtendedVerificationResult> {
     const assetTypesToTry = this.getAssetTypePriority(assetType);
 
@@ -305,13 +309,13 @@ export class PageVerifierService {
   private getAssetTypePriority(
     assetType: MorningstarAssetType,
   ): MorningstarAssetType[] {
-    if (assetType === 'ETF') {
-      return ['ETF', 'Fondo'];
+    if (assetType === MS_ASSET_TYPES.ETF) {
+      return [MS_ASSET_TYPES.ETF, MS_ASSET_TYPES.FUND];
     }
-    if (assetType === 'Fondo') {
-      return ['Fondo', 'ETF'];
+    if (assetType === MS_ASSET_TYPES.FUND) {
+      return [MS_ASSET_TYPES.FUND, MS_ASSET_TYPES.ETF];
     }
-    return [assetType, 'Fondo', 'ETF'];
+    return [assetType, MS_ASSET_TYPES.FUND, MS_ASSET_TYPES.ETF];
   }
 
   /**

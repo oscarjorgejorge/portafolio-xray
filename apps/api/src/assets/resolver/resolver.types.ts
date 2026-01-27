@@ -4,12 +4,13 @@
  */
 
 import { IdentifierType } from '../../common/utils/identifier-classifier';
+import type { MorningstarAssetType } from './utils/constants';
 
 // Re-export InputType from centralized classifier for backward compatibility
 export type InputType = IdentifierType;
 
-// Asset type according to Morningstar
-export type MorningstarAssetType = 'Fondo' | 'ETF' | 'Accion' | 'Desconocido';
+// Re-export MorningstarAssetType from centralized constants
+export type { MorningstarAssetType } from './utils/constants';
 
 // Individual search result
 export interface SearchResult {

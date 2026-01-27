@@ -9,6 +9,7 @@ import {
   SCORE_WEIGHTS,
   MAX_SCORES,
   MIN_WORD_LENGTH_FOR_MATCHING,
+  MS_ASSET_TYPES,
 } from '../utils/constants';
 
 /**
@@ -96,7 +97,7 @@ export class ResultScorerService {
     // Fund IDs starting with "F" bonus (preferred format for funds)
     if (
       result.morningstarId &&
-      result.assetType === 'Fondo' &&
+      result.assetType === MS_ASSET_TYPES.FUND &&
       result.morningstarId.toUpperCase().startsWith('F')
     ) {
       breakdown.typeMatch += SCORE_WEIGHTS.FUND_F_ID_BONUS;
@@ -132,7 +133,8 @@ export class ResultScorerService {
 
     const firstResult = scoredResults[0];
     const isFund =
-      firstResult?.assetType === 'Fondo' || firstResult?.assetType === 'ETF';
+      firstResult?.assetType === MS_ASSET_TYPES.FUND ||
+      firstResult?.assetType === MS_ASSET_TYPES.ETF;
 
     if (!isFund || !firstResult?.title) return scoredResults;
 

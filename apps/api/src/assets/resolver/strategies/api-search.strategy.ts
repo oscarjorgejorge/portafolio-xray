@@ -1,11 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
-import {
-  SearchResult,
-  MorningstarAssetType,
-  MorningstarApiItem,
-} from '../resolver.types';
+import { SearchResult, MorningstarApiItem } from '../resolver.types';
 import { SearchStrategy } from './search-strategy.interface';
-import { MORNINGSTAR_TYPE_MAP } from '../utils/constants';
+import {
+  MORNINGSTAR_TYPE_MAP,
+  MS_ASSET_TYPES,
+  MorningstarAssetType,
+} from '../utils/constants';
 import { buildApiSearchUrl, buildMorningstarUrl } from '../utils/url-builder';
 import { isValidIsin } from '../utils/id-extractor';
 import { safeJsonParse } from '../utils/error-handler';
@@ -97,10 +97,10 @@ export class ApiSearchStrategy implements SearchStrategy {
     // but rawType correctly identifies them as CE (Collective Investment/ETF)
     const isETF = rawType === 'CE' || rawType === 'ET';
     const detectedAssetType: MorningstarAssetType = isETF
-      ? 'ETF'
+      ? MS_ASSET_TYPES.ETF
       : isStock
-        ? 'Accion'
-        : 'Fondo';
+        ? MS_ASSET_TYPES.STOCK
+        : MS_ASSET_TYPES.FUND;
 
     // Get IDs based on asset type
     const { principalId, secondaryId } = this.extractIds(item, isStock);
@@ -196,8 +196,8 @@ export class ApiSearchStrategy implements SearchStrategy {
   private mapMorningstarType(
     rawType: string | undefined,
   ): MorningstarAssetType {
-    if (!rawType) return 'Desconocido';
+    if (!rawType) return MS_ASSET_TYPES.UNKNOWN;
     const upperType = rawType.toUpperCase();
-    return MORNINGSTAR_TYPE_MAP[upperType] || 'Desconocido';
+    return MORNINGSTAR_TYPE_MAP[upperType] || MS_ASSET_TYPES.UNKNOWN;
   }
 }
