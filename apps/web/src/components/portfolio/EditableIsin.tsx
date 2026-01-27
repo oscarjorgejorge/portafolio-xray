@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { updateAssetIsin } from '@/lib/api/assets';
+import { queryKeys } from '@/lib/api/queryKeys';
 import type { Asset } from '@/types';
 import { EditIcon, CheckIcon, CloseIcon, SpinnerIcon } from '@/components/ui/Icons';
 
@@ -21,6 +23,7 @@ export const EditableIsin: React.FC<EditableIsinProps> = ({
   isinManual = false,
   onIsinUpdated,
 }) => {
+  const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -80,6 +83,12 @@ export const EditableIsin: React.FC<EditableIsinProps> = ({
 
     try {
       const updatedAsset = await updateAssetIsin(assetId, normalized);
+      
+      // Invalidate cached asset data to ensure consistency
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.assets.byId(assetId),
+      });
+      
       onIsinUpdated(updatedAsset);
       setIsEditing(false);
       setInputValue('');
