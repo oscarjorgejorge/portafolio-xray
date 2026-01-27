@@ -1,4 +1,4 @@
-import { Asset, AssetSource, AssetType, Prisma } from '@prisma/client';
+import { Asset, AssetSource, AssetType } from '@prisma/client';
 
 /**
  * Assets Repository Interface
@@ -49,7 +49,7 @@ export interface IAssetsRepository {
    * @param id - Asset UUID
    * @param data - Partial asset data to update
    */
-  update(id: string, data: Prisma.AssetUpdateInput): Promise<Asset>;
+  update(id: string, data: UpdateAssetData): Promise<Asset>;
 
   /**
    * Create or update asset by ISIN
@@ -132,6 +132,22 @@ export interface UpsertAssetByMorningstarIdData {
   source: AssetSource;
   ticker?: string;
   isinPending?: boolean;
+}
+
+/**
+ * Data for partial asset update (ORM-agnostic)
+ * All fields are optional - only provided fields will be updated
+ */
+export interface UpdateAssetData {
+  isin?: string | null;
+  morningstarId?: string;
+  ticker?: string | null;
+  name?: string;
+  type?: AssetType;
+  url?: string;
+  source?: AssetSource;
+  isinPending?: boolean;
+  isinManual?: boolean;
 }
 
 /**
