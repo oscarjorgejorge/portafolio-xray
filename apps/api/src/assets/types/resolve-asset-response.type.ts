@@ -14,6 +14,25 @@ export enum ResolutionSource {
 }
 
 /**
+ * Error codes for asset resolution failures
+ * Helps clients categorize and handle errors appropriately
+ */
+export enum ResolutionErrorCode {
+  /** Asset not found in any source */
+  NOT_FOUND = 'NOT_FOUND',
+  /** Multiple matches found, needs manual selection */
+  AMBIGUOUS_MATCH = 'AMBIGUOUS_MATCH',
+  /** Network error during external resolution */
+  NETWORK_ERROR = 'NETWORK_ERROR',
+  /** Request timed out */
+  TIMEOUT = 'TIMEOUT',
+  /** External service temporarily unavailable (circuit open) */
+  SERVICE_UNAVAILABLE = 'SERVICE_UNAVAILABLE',
+  /** Unknown or unexpected error */
+  UNKNOWN = 'UNKNOWN',
+}
+
+/**
  * @deprecated Use ResolutionSource enum instead
  */
 export type ResolveAssetSource = `${ResolutionSource}`;
@@ -145,7 +164,15 @@ export class ResolveAssetResponse {
   alternatives?: AssetAlternativeDto[];
 
   @ApiPropertyOptional({
-    description: 'Error message when resolution fails',
+    description: 'Error code for categorizing the failure type',
+    enum: ResolutionErrorCode,
+    enumName: 'ResolutionErrorCode',
+    example: ResolutionErrorCode.NOT_FOUND,
+  })
+  errorCode?: ResolutionErrorCode;
+
+  @ApiPropertyOptional({
+    description: 'Human-readable error message when resolution fails',
     example: 'Asset with identifier "INVALID" not found',
   })
   error?: string;

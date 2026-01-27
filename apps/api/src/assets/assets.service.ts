@@ -21,6 +21,7 @@ import { IAssetsService } from './interfaces';
 import {
   ResolveAssetResponse,
   ResolutionSource,
+  ResolutionErrorCode,
   BatchResolveAssetResponse,
   BatchResolveResultItem,
   ResolvedAssetDto,
@@ -213,6 +214,7 @@ export class AssetsService implements IAssetsService {
         return {
           success: false,
           source: ResolutionSource.MANUAL_REQUIRED,
+          errorCode: ResolutionErrorCode.AMBIGUOUS_MATCH,
           alternatives,
           error: `Asset "${input}" found but needs confirmation. Confidence: ${(resolution.confidence * 100).toFixed(1)}%`,
         };
@@ -222,14 +224,20 @@ export class AssetsService implements IAssetsService {
       return {
         success: false,
         source: ResolutionSource.MANUAL_REQUIRED,
+        errorCode: ResolutionErrorCode.NOT_FOUND,
         error: `Asset with identifier "${input}" not found. Please provide Morningstar ID manually.`,
       };
     } catch (error) {
+      const { errorCode, message } = this.categorizeResolutionError(
+        error,
+        input,
+      );
       this.logger.error(`Resolution error for ${input}: ${error}`);
       return {
         success: false,
         source: ResolutionSource.MANUAL_REQUIRED,
-        error: `Error resolving asset "${input}". Please try again or provide Morningstar ID manually.`,
+        errorCode,
+        error: message,
       };
     }
   }
@@ -547,5 +555,60 @@ export class AssetsService implements IAssetsService {
       default:
         return AssetType.FUND;
     }
+  }
+
+  /**
+   * Categorize resolution errors for better client handling
+   * @param error - The caught error
+   * @param input - The input that was being resolved
+   * @returns Error code and user-friendly message
+   */
+  private categorizeResolutionError(
+    error: unknown,
+    input: string,
+  ): { errorCode: ResolutionErrorCode; message: string } {
+    const errorMessage =
+      error instanceof Error ? error.message.toLowerCase() : String(error);
+
+    // Check for timeout errors
+    if (
+      errorMessage.includes('timeout') ||
+      errorMessage.includes('timed out')
+    ) {
+      return {
+        errorCode: ResolutionErrorCode.TIMEOUT,
+        message: `Resolution timed out for "${input}". Please try again.`,
+      };
+    }
+
+    // Check for network errors
+    if (
+      errorMessage.includes('network') ||
+      errorMessage.includes('econnrefused') ||
+      errorMessage.includes('enotfound') ||
+      errorMessage.includes('fetch failed')
+    ) {
+      return {
+        errorCode: ResolutionErrorCode.NETWORK_ERROR,
+        message: `Network error while resolving "${input}". Please check your connection and try again.`,
+      };
+    }
+
+    // Check for circuit breaker open (service unavailable)
+    if (
+      errorMessage.includes('circuit') ||
+      errorMessage.includes('service unavailable')
+    ) {
+      return {
+        errorCode: ResolutionErrorCode.SERVICE_UNAVAILABLE,
+        message: `Service temporarily unavailable. Please try again in a few moments.`,
+      };
+    }
+
+    // Default to unknown error
+    return {
+      errorCode: ResolutionErrorCode.UNKNOWN,
+      message: `Error resolving asset "${input}". Please try again or provide Morningstar ID manually.`,
+    };
   }
 }
