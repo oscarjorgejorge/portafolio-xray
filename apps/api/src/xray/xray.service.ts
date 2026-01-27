@@ -6,6 +6,10 @@ import type { AppConfig } from '../config';
 import type { Asset } from '@prisma/client';
 import { IXRayService } from './interfaces';
 import { GenerateXRayResponse } from './types';
+import {
+  getMorningstarTypeCode,
+  getMorningstarExchangeCode,
+} from './constants';
 
 @Injectable()
 export class XRayService implements IXRayService {
@@ -91,23 +95,18 @@ export class XRayService implements IXRayService {
 
   /**
    * Get type code and exchange code for an asset
+   * Uses centralized constants for Morningstar codes
    * @param dbAsset - Asset from database (if found)
    */
   private getAssetCodes(dbAsset: Asset | undefined): {
     typeCode: string;
     exchangeCode: string;
   } {
-    if (dbAsset) {
-      // Use type from database
-      if (dbAsset.type === 'STOCK') {
-        return { typeCode: '3', exchangeCode: 'E0WWE' };
-      }
-      // FUND, ETF, ETC all use type code 2
-      return { typeCode: '2', exchangeCode: 'FOESP' };
-    }
-
-    // Default to fund for unknown types
-    return { typeCode: '2', exchangeCode: 'FOESP' };
+    const assetType = dbAsset?.type ?? null;
+    return {
+      typeCode: getMorningstarTypeCode(assetType),
+      exchangeCode: getMorningstarExchangeCode(assetType),
+    };
   }
 
   /**
