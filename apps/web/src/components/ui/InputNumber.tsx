@@ -119,7 +119,7 @@ export const InputNumber = forwardRef<HTMLInputElement, InputNumberProps>(
             className={cn(
               'w-full border rounded-lg text-slate-900 bg-white',
               'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
-              'disabled:opacity-50 disabled:cursor-not-allowed',
+              'disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed disabled:opacity-75',
               error ? 'border-red-500' : 'border-slate-300',
               sizeClasses[size],
               suffix && 'pr-8',
