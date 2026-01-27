@@ -1,3 +1,5 @@
+import type { Asset, AlternativeAsset } from '@/lib/api/assets';
+
 // Re-export API types for centralized access
 export type { Asset, AssetType, AlternativeAsset } from '@/lib/api/assets';
 
@@ -21,7 +23,7 @@ export interface PortfolioAsset {
   /** ISIN or Morningstar ID (user input) */
   identifier: string;
   /** Resolved asset from API */
-  asset?: import('@/lib/api/assets').Asset;
+  asset?: Asset;
   /** Percentage or amount */
   weight: number;
   /** Current resolution status */
@@ -29,7 +31,7 @@ export interface PortfolioAsset {
   /** Error message if resolution failed */
   error?: string;
   /** Alternative assets for low confidence matches */
-  alternatives?: import('@/lib/api/assets').AlternativeAsset[];
+  alternatives?: AlternativeAsset[];
   /** True when ISIN enrichment is in progress */
   isinPending?: boolean;
 }
