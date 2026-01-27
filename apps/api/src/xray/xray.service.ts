@@ -116,23 +116,4 @@ export class XRayService implements IXRayService {
     // Return relative URL - frontend will handle full URL
     return `/xray?assets=${encodeURIComponent(assetsParam)}`;
   }
-
-  /**
-   * Parse shareable URL back to assets array
-   */
-  parseShareableUrl(assetsParam: string): XRayAssetDto[] {
-    const assets: XRayAssetDto[] = [];
-
-    const pairs = decodeURIComponent(assetsParam).split(',');
-    for (const pair of pairs) {
-      const [morningstarId, weightStr] = pair.split(':');
-      const weight = parseFloat(weightStr);
-
-      if (morningstarId && !isNaN(weight)) {
-        assets.push({ morningstarId, weight });
-      }
-    }
-
-    return assets;
-  }
 }

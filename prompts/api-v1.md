@@ -1246,3 +1246,117 @@ y luego Cache en memoria para assets frecuentes, HttpClient error handling silen
      - `categorizeError()` method classifies errors appropriately
      - Network, timeout, and abort errors properly categorized
      - All retries exhausted returns last error details
+
+### Prompt 86
+como senior backend developper analiza la api, y dime que mejoras y optmizaciones son necesarias teniendo en cuenta las buenas practicas (la parte de los test los implementaremos mas adelante), pero tampoco quiero algo overkill / complejo sin necesitad
+
+**Analysis Summary:**
+Comprehensive code review identifying practical improvements (not overkill):
+
+**Already Well Implemented:**
+- Proper separation of concerns (Controller → Service → Repository)
+- NestJS best practices with dependency injection
+- Validation with class-validator and DTOs
+- Environment validation with Zod at startup
+- Global exception filter with consistent error format
+- Rate limiting with multiple tiers
+- Security middlewares (Helmet, CORS)
+- Swagger documentation
+- Request ID correlation for tracing
+- Graceful shutdown hooks
+- Health checks (liveness + readiness)
+- Compression middleware
+- In-memory cache layer on top of DB cache
+- Connection pooling for PostgreSQL
+- Interfaces for services (IoC ready)
+- Batch operations to reduce N+1 calls
+- Deduplication in background enrichment
+
+**Recommended Improvements:**
+1. Logging inconsistency - services use standard Logger instead of ContextLoggerService
+2. Missing response interceptor for standardized success responses
+3. API versioning (simple `/v1/` prefix)
+4. Hardcoded values in XRayService should be constants
+5. No timeouts on database transactions
+6. Fixed retry delay in HTTP client (could use exponential backoff)
+7. Manual input normalization in services (should be in DTOs with @Transform)
+8. Magic numbers (concurrency limits, timeouts) should be configurable
+
+### Prompt 87
+vamos a realizar estas mejoras: Completar el Barrel Export de Config, Normalización Automática en DTOs, Estandarizar Respuestas de Éxito, Estandarizar Logging con Request ID - crea un commit despues de cada mejora
+
+**Implementations:**
+
+1. **Completar el Barrel Export de Config** (`85a617e`):
+   - Added `DbPoolConfig` and `CacheConfig` type exports to `config/index.ts`
+   - All configuration types now accessible from single import
+
+2. **Normalización Automática en DTOs** (`52b41be`):
+   - Added `@Transform` decorators to all DTOs for automatic normalization
+   - String inputs are trimmed and uppercased where appropriate
+   - Type-safe transforms with `{ value: unknown }` parameter typing
+   - Removed manual normalization from AssetsService
+   - Affected DTOs: ResolveAssetDto, BatchResolveAssetItemDto, ConfirmAssetDto, UpdateIsinDto, XRayAssetDto
+
+3. **Estandarizar Respuestas de Éxito** (`58d446e`):
+   - Created `TransformResponseInterceptor` in `common/interceptors/`
+   - Wraps all success responses in standard format:
+     ```json
+     {
+       "success": true,
+       "data": { ... },
+       "timestamp": "2026-01-27T10:30:00.000Z",
+       "requestId": "abc-123"
+     }
+     ```
+   - Registered globally in AppModule
+   - Consistent with error responses from AllExceptionsFilter
+
+4. **Estandarizar Logging con Request ID** (`1cd13e8`):
+   - Created `ContextLogger` class extending NestJS Logger
+   - Added `createContextLogger(context)` factory function
+   - Automatically includes request ID from AsyncLocalStorage in all logs
+   - Updated services to use ContextLogger:
+     - AssetsService
+     - MorningstarResolverService
+     - IsinEnrichmentService
+     - HttpClientService
+   - Log format: `[LOG] [abc-123] [ServiceName] Message`
+
+### Prompt 88
+no seria buena idea unificar este transform para no repetir el codigo? en un transform propio?
+
+**Implementation - Centralized Transform Functions** (`b77f26e`):
+
+1. **Created `src/common/transforms/` module:**
+   - `string.transforms.ts` - Reusable transform functions
+   - `index.ts` - Barrel exports
+
+2. **Transform functions:**
+   - `trimUppercase` - Trims whitespace and converts to uppercase (for ISIN, tickers, IDs)
+   - `trimString` - Trims whitespace only (for names, URLs)
+
+3. **Updated all DTOs to use centralized transforms:**
+   - `ResolveAssetDto` - uses `trimUppercase`
+   - `BatchResolveAssetItemDto` - uses `trimUppercase`
+   - `ConfirmAssetDto` - uses `trimUppercase` and `trimString`
+   - `UpdateIsinDto` - uses `trimUppercase`
+   - `XRayAssetDto` - uses `trimUppercase`
+
+**Usage example:**
+```typescript
+import { Transform } from 'class-transformer';
+import { trimUppercase, trimString } from '../../common/transforms';
+
+@Transform(trimUppercase)
+isin!: string;
+
+@Transform(trimString)
+name!: string;
+```
+
+**Benefits:**
+- DRY principle: No code duplication
+- Single source of truth for transform logic
+- Easier to maintain and test
+- Type-safe with TransformFnParams

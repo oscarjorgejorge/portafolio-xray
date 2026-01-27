@@ -79,7 +79,7 @@ export interface IAssetsRepository {
    * @param isin - New ISIN value
    * @param isManual - Whether the ISIN was manually entered by user
    * @returns Updated asset
-   * @throws Error if asset not found
+   * @throws EntityNotFoundException if asset not found
    */
   updateIsinWithVerification(
     assetId: string,

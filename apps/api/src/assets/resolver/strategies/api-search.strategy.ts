@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { SearchResult, MorningstarApiItem } from '../resolver.types';
 import { SearchStrategy } from './search-strategy.interface';
 import {
@@ -10,6 +10,7 @@ import { buildApiSearchUrl, buildMorningstarUrl } from '../utils/url-builder';
 import { isValidIsin } from '../utils/id-extractor';
 import { safeJsonParse } from '../utils/error-handler';
 import { HttpClientService } from '../../../common/http';
+import { createContextLogger } from '../../../common/logger';
 
 /**
  * Strategy A: Morningstar.es API (Best source)
@@ -17,7 +18,7 @@ import { HttpClientService } from '../../../common/http';
  */
 @Injectable()
 export class ApiSearchStrategy implements SearchStrategy {
-  private readonly logger = new Logger(ApiSearchStrategy.name);
+  private readonly logger = createContextLogger(ApiSearchStrategy.name);
   readonly name = 'API';
 
   constructor(private readonly httpClient: HttpClientService) {}

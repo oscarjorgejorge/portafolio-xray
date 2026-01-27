@@ -1,4 +1,4 @@
-import { GenerateXRayDto, XRayAssetDto } from '../dto';
+import { GenerateXRayDto } from '../dto';
 import { GenerateXRayResponse } from '../types';
 
 /**
@@ -12,12 +12,6 @@ export interface IXRayService {
    * @throws BadRequestException if total weight doesn't equal 100%
    */
   generate(dto: GenerateXRayDto): Promise<GenerateXRayResponse>;
-
-  /**
-   * Parse shareable URL back to assets array
-   * @param assetsParam - Encoded assets parameter from URL
-   */
-  parseShareableUrl(assetsParam: string): XRayAssetDto[];
 }
 
 /**

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import * as cheerio from 'cheerio';
 import { VerificationResult } from '../resolver.types';
 import {
@@ -9,6 +9,7 @@ import {
 import { isValidIsin } from '../utils/id-extractor';
 import { buildMorningstarUrl } from '../utils/url-builder';
 import { HttpClientService } from '../../../common/http';
+import { createContextLogger } from '../../../common/logger';
 
 /**
  * Verification result with additional market/type information
@@ -25,7 +26,7 @@ export interface ExtendedVerificationResult {
  */
 @Injectable()
 export class PageVerifierService {
-  private readonly logger = new Logger(PageVerifierService.name);
+  private readonly logger = createContextLogger(PageVerifierService.name);
 
   constructor(private readonly httpClient: HttpClientService) {}
 

@@ -8,6 +8,7 @@ import {
   UpsertAssetByIsinData,
   UpsertAssetByMorningstarIdData,
 } from './interfaces';
+import { EntityNotFoundException } from '../common/exceptions';
 
 @Injectable()
 export class AssetsRepository implements IAssetsRepository {
@@ -213,7 +214,7 @@ export class AssetsRepository implements IAssetsRepository {
    * @param isin - New ISIN value
    * @param isManual - Whether the ISIN was manually entered by user (default: false)
    * @returns Updated asset
-   * @throws Error if asset not found
+   * @throws EntityNotFoundException if asset not found
    */
   async updateIsinWithVerification(
     assetId: string,
@@ -226,7 +227,7 @@ export class AssetsRepository implements IAssetsRepository {
       });
 
       if (!asset) {
-        throw new Error(`Asset with id "${assetId}" not found`);
+        throw new EntityNotFoundException('Asset', assetId);
       }
 
       return tx.asset.update({

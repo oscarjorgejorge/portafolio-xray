@@ -36,12 +36,26 @@ export const CONFIDENCE_THRESHOLDS = {
 export const INPUT_VALIDATION = {
   /** Maximum length for Morningstar ID */
   MAX_MORNINGSTAR_ID_LENGTH: 20,
-  /** Maximum length for generic input identifier */
+  /** Maximum length for generic input identifier (ISIN, ticker, etc.) */
   MAX_INPUT_LENGTH: 50,
+  /** Maximum length for asset name */
+  MAX_ASSET_NAME_LENGTH: 255,
+  /** Maximum length for ticker symbol */
+  MAX_TICKER_LENGTH: 20,
+  /** Maximum length for URL */
+  MAX_URL_LENGTH: 500,
   /** Maximum assets in batch resolve */
   MAX_BATCH_SIZE: 20,
   /** Minimum assets in a request */
   MIN_BATCH_SIZE: 1,
+} as const;
+
+/**
+ * Cache configuration constants
+ */
+export const CACHE_CONFIG = {
+  /** Prefix for asset resolution cache keys */
+  ASSET_KEY_PREFIX: 'asset:',
 } as const;
 
 /**

@@ -12,6 +12,7 @@ import {
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type, Transform } from 'class-transformer';
 import { trimUppercase } from '../../common/transforms';
+import { INPUT_VALIDATION } from '../../common/constants';
 import { AssetTypeDto } from './confirm-asset.dto';
 
 /**
@@ -21,12 +22,14 @@ export class BatchResolveAssetItemDto {
   @ApiProperty({
     description: 'Asset identifier - can be ISIN, Morningstar ID, or ticker',
     example: 'IE00B4L5Y983',
-    maxLength: 50,
+    maxLength: INPUT_VALIDATION.MAX_INPUT_LENGTH,
   })
   @Transform(trimUppercase)
   @IsString()
   @IsNotEmpty()
-  @MaxLength(50, { message: 'Input identifier must not exceed 50 characters' })
+  @MaxLength(INPUT_VALIDATION.MAX_INPUT_LENGTH, {
+    message: `Input identifier must not exceed ${INPUT_VALIDATION.MAX_INPUT_LENGTH} characters`,
+  })
   input!: string;
 
   @ApiPropertyOptional({
@@ -45,7 +48,7 @@ export class BatchResolveAssetItemDto {
  */
 export class BatchResolveAssetDto {
   @ApiProperty({
-    description: 'Array of asset identifiers to resolve (max 20)',
+    description: `Array of asset identifiers to resolve (max ${INPUT_VALIDATION.MAX_BATCH_SIZE})`,
     type: [BatchResolveAssetItemDto],
     example: [
       { input: 'IE00B4L5Y983', assetType: 'ETF' },
@@ -54,8 +57,8 @@ export class BatchResolveAssetDto {
     ],
   })
   @IsArray()
-  @ArrayMinSize(1)
-  @ArrayMaxSize(20)
+  @ArrayMinSize(INPUT_VALIDATION.MIN_BATCH_SIZE)
+  @ArrayMaxSize(INPUT_VALIDATION.MAX_BATCH_SIZE)
   @ValidateNested({ each: true })
   @Type(() => BatchResolveAssetItemDto)
   assets!: BatchResolveAssetItemDto[];

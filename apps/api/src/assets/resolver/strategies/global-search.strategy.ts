@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { SearchResult, GlobalMorningstarItem } from '../resolver.types';
 import { SearchStrategy } from './search-strategy.interface';
 import {
@@ -7,6 +7,7 @@ import {
 } from '../utils/url-builder';
 import { safeJsonParse } from '../utils/error-handler';
 import { HttpClientService } from '../../../common/http';
+import { createContextLogger } from '../../../common/logger';
 import { MS_ASSET_TYPES } from '../utils/constants';
 
 /**
@@ -15,7 +16,7 @@ import { MS_ASSET_TYPES } from '../utils/constants';
  */
 @Injectable()
 export class GlobalSearchStrategy implements SearchStrategy {
-  private readonly logger = new Logger(GlobalSearchStrategy.name);
+  private readonly logger = createContextLogger(GlobalSearchStrategy.name);
   readonly name = 'GLOBAL';
 
   constructor(private readonly httpClient: HttpClientService) {}

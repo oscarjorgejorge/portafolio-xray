@@ -3,9 +3,11 @@ import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { XRayService } from './xray.service';
 import { GenerateXRayDto } from './dto';
 import { GenerateXRayResponse } from './types';
+import { ApiCommonResponses } from '../common/decorators';
 
 @ApiTags('xray')
 @Controller('xray')
+@ApiCommonResponses()
 export class XRayController {
   constructor(private readonly xrayService: XRayService) {}
 
