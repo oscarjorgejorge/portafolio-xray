@@ -330,7 +330,9 @@ export class AssetsService implements IAssetsService {
 
   /**
    * Perform batch cache lookup for multiple inputs
-   * Optimizes database queries by batching ISINs and Morningstar IDs separately
+   * Strategy:
+   * 1. Check in-memory cache first (fastest)
+   * 2. For cache misses, batch query database by type (ISINs and Morningstar IDs)
    */
   private async batchCacheLookup(
     classifiedInputs: Array<{
@@ -341,12 +343,45 @@ export class AssetsService implements IAssetsService {
   ): Promise<Map<string, ResolveAssetResponse>> {
     const results = new Map<string, ResolveAssetResponse>();
 
-    // Separate inputs by type for batch queries
-    const isins = classifiedInputs
+    // Step 1: Check in-memory cache first (parallel lookups)
+    const memoryCachePromises = classifiedInputs.map(async (item) => {
+      const cacheKey = `${CACHE_KEY_PREFIX}${item.normalized}`;
+      const cached =
+        await this.cacheManager.get<ResolveAssetResponse>(cacheKey);
+      return { normalized: item.normalized, cached };
+    });
+
+    const memoryCacheResults = await Promise.all(memoryCachePromises);
+    const memoryHits = new Set<string>();
+
+    for (const { normalized, cached } of memoryCacheResults) {
+      if (cached) {
+        results.set(normalized, cached);
+        memoryHits.add(normalized);
+      }
+    }
+
+    if (memoryHits.size > 0) {
+      this.logger.debug(
+        `[BATCH] Memory cache hits: ${memoryHits.size}/${classifiedInputs.length}`,
+      );
+    }
+
+    // Step 2: Filter out memory cache hits for DB lookup
+    const uncachedInputs = classifiedInputs.filter(
+      (i) => !memoryHits.has(i.normalized),
+    );
+
+    if (uncachedInputs.length === 0) {
+      return results;
+    }
+
+    // Separate inputs by type for batch DB queries
+    const isins = uncachedInputs
       .filter((i) => i.type === IdentifierType.ISIN)
       .map((i) => i.normalized);
 
-    const morningstarIds = classifiedInputs
+    const morningstarIds = uncachedInputs
       .filter((i) => i.type === IdentifierType.MORNINGSTAR_ID)
       .map((i) => i.normalized);
 
@@ -358,12 +393,17 @@ export class AssetsService implements IAssetsService {
         // Skip if needs re-resolution (no ISIN and enrichment complete)
         if (!asset.isin && !asset.isinPending) continue;
 
-        results.set(asset.morningstarId.toUpperCase(), {
+        const response: ResolveAssetResponse = {
           success: true,
           source: ResolutionSource.CACHE,
           asset,
           isinPending: asset.isinPending,
-        });
+        };
+        results.set(asset.morningstarId.toUpperCase(), response);
+
+        // Also store in memory cache for future requests
+        const cacheKey = `${CACHE_KEY_PREFIX}${asset.morningstarId.toUpperCase()}`;
+        await this.cacheManager.set(cacheKey, response);
       }
     }
 
@@ -375,12 +415,17 @@ export class AssetsService implements IAssetsService {
         if (!asset.isin && !asset.isinPending) continue;
 
         if (asset.isin) {
-          results.set(asset.isin.toUpperCase(), {
+          const response: ResolveAssetResponse = {
             success: true,
             source: ResolutionSource.CACHE,
             asset,
             isinPending: asset.isinPending,
-          });
+          };
+          results.set(asset.isin.toUpperCase(), response);
+
+          // Also store in memory cache for future requests
+          const cacheKey = `${CACHE_KEY_PREFIX}${asset.isin.toUpperCase()}`;
+          await this.cacheManager.set(cacheKey, response);
         }
       }
     }
