@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, Suspense, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { PortfolioBuilder } from '@/components/portfolio/PortfolioBuilder';
 import { PageLoading } from '@/components/ui/PageLoading';
@@ -13,65 +13,99 @@ function HomePageContent() {
   const searchParams = useSearchParams();
   const [initialAssets, setInitialAssets] = useState<PortfolioAsset[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     // Parse shareable URL if assets param exists
     const assetsParam = searchParams.get('assets');
-    if (assetsParam) {
-      setIsLoading(true);
-      const parseAndResolveAssets = async () => {
-        try {
-          const decodedAssetsParam = decodeURIComponent(assetsParam);
-          const pairs = decodedAssetsParam.split(',');
-          const resolvedAssets: PortfolioAsset[] = [];
+    if (!assetsParam) return;
 
-          for (const pair of pairs) {
-            const [identifier, weightStr] = pair.split(':');
-            const weight = parseFloat(weightStr) || 0;
+    // Cancel any previous request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
 
-            if (identifier && !isNaN(weight)) {
-              try {
-                const result = await resolveAsset(identifier);
-                if (result.success && result.asset) {
-                  resolvedAssets.push({
-                    id: generateSimpleId(),
-                    identifier: identifier.toUpperCase(),
-                    asset: result.asset,
-                    weight,
-                    status: 'resolved',
-                  });
-                } else {
-                  // If resolution fails, add as pending
-                  resolvedAssets.push({
-                    id: generateSimpleId(),
-                    identifier: identifier.toUpperCase(),
-                    weight,
-                    status: 'error',
-                    error: result.error || 'Could not resolve asset',
-                  });
-                }
-              } catch (error) {
+    // Create new abort controller for this request
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
+    setIsLoading(true);
+
+    const parseAndResolveAssets = async () => {
+      try {
+        const decodedAssetsParam = decodeURIComponent(assetsParam);
+        const pairs = decodedAssetsParam.split(',');
+        const resolvedAssets: PortfolioAsset[] = [];
+
+        for (const pair of pairs) {
+          // Check if request was cancelled
+          if (abortController.signal.aborted) return;
+
+          const [identifier, weightStr] = pair.split(':');
+          const weight = parseFloat(weightStr) || 0;
+
+          if (identifier && !isNaN(weight)) {
+            try {
+              const result = await resolveAsset(identifier, undefined, {
+                signal: abortController.signal,
+              });
+
+              // Check again after async operation
+              if (abortController.signal.aborted) return;
+
+              if (result.success && result.asset) {
+                resolvedAssets.push({
+                  id: generateSimpleId(),
+                  identifier: identifier.toUpperCase(),
+                  asset: result.asset,
+                  weight,
+                  status: 'resolved',
+                });
+              } else {
                 resolvedAssets.push({
                   id: generateSimpleId(),
                   identifier: identifier.toUpperCase(),
                   weight,
                   status: 'error',
-                  error: 'Failed to resolve asset',
+                  error: result.error || 'Could not resolve asset',
                 });
               }
+            } catch (error) {
+              // Ignore abort errors
+              if (error instanceof Error && error.name === 'AbortError') return;
+
+              resolvedAssets.push({
+                id: generateSimpleId(),
+                identifier: identifier.toUpperCase(),
+                weight,
+                status: 'error',
+                error: 'Failed to resolve asset',
+              });
             }
           }
+        }
 
+        // Final check before setting state
+        if (!abortController.signal.aborted) {
           setInitialAssets(resolvedAssets);
-        } catch (error) {
-          console.error('Error parsing shareable URL:', error);
-        } finally {
+        }
+      } catch (error) {
+        // Ignore abort errors
+        if (error instanceof Error && error.name === 'AbortError') return;
+        console.error('Error parsing shareable URL:', error);
+      } finally {
+        if (!abortController.signal.aborted) {
           setIsLoading(false);
         }
-      };
+      }
+    };
 
-      parseAndResolveAssets();
-    }
+    parseAndResolveAssets();
+
+    // Cleanup function
+    return () => {
+      abortController.abort();
+    };
   }, [searchParams]);
 
   return (

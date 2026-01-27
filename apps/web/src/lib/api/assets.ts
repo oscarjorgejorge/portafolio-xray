@@ -20,18 +20,25 @@ export interface ConfirmAssetRequest {
   ticker?: string;
 }
 
+/** Options for API requests */
+export interface RequestOptions {
+  signal?: AbortSignal;
+}
+
 /**
  * Resolve an asset identifier (ISIN, Morningstar ID, or ticker) to asset details
  * Validates response against Zod schema
  */
 export async function resolveAsset(
   input: string,
-  assetType?: AssetType
+  assetType?: AssetType,
+  options?: RequestOptions
 ): Promise<ResolveAssetResponse> {
-  const response = await apiClient.post('/assets/resolve', {
-    input,
-    assetType,
-  });
+  const response = await apiClient.post(
+    '/assets/resolve',
+    { input, assetType },
+    { signal: options?.signal }
+  );
   return ResolveAssetResponseSchema.parse(response.data);
 }
 
