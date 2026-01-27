@@ -2,12 +2,22 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Asset } from '@prisma/client';
 
 /**
- * Source of the resolved asset
- * - cache: Found in local database cache
- * - resolved: Successfully resolved from external sources
- * - manual_required: Could not resolve automatically, needs manual input
+ * Source/status of the resolved asset
+ * Used as an enum for better type safety and IDE support
  */
-export type ResolveAssetSource = 'cache' | 'resolved' | 'manual_required';
+export enum ResolutionSource {
+  /** Found in local database cache */
+  CACHE = 'cache',
+  /** Successfully resolved from external sources */
+  RESOLVED = 'resolved',
+  /** Could not resolve automatically, needs manual input */
+  MANUAL_REQUIRED = 'manual_required',
+}
+
+/**
+ * @deprecated Use ResolutionSource enum instead
+ */
+export type ResolveAssetSource = `${ResolutionSource}`;
 
 /**
  * Alternative asset suggestion when resolution needs manual review
@@ -97,6 +107,10 @@ export class ResolvedAssetDto {
 
 /**
  * Response DTO for asset resolution operations
+ *
+ * Response patterns:
+ * - success=true, source=CACHE|RESOLVED: Asset found, check `asset` field
+ * - success=false, source=MANUAL_REQUIRED: Resolution failed, check `error` and `alternatives`
  */
 export class ResolveAssetResponse {
   @ApiProperty({
@@ -107,10 +121,11 @@ export class ResolveAssetResponse {
 
   @ApiProperty({
     description: 'Source of the resolution result',
-    enum: ['cache', 'resolved', 'manual_required'],
-    example: 'cache',
+    enum: ResolutionSource,
+    enumName: 'ResolutionSource',
+    example: ResolutionSource.CACHE,
   })
-  source!: ResolveAssetSource;
+  source!: ResolutionSource;
 
   @ApiPropertyOptional({
     description: 'The resolved asset (when successful)',

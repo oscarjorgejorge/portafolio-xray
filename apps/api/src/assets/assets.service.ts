@@ -20,6 +20,7 @@ import { createContextLogger } from '../common/logger';
 import { IAssetsService } from './interfaces';
 import {
   ResolveAssetResponse,
+  ResolutionSource,
   BatchResolveAssetResponse,
   BatchResolveResultItem,
 } from './types';
@@ -79,7 +80,7 @@ export class AssetsService implements IAssetsService {
         this.logger.log(`[DB CACHE] Hit for: ${input}`);
         const response: ResolveAssetResponse = {
           success: true,
-          source: 'cache',
+          source: ResolutionSource.CACHE,
           asset: cachedAsset,
           isinPending: cachedAsset.isinPending,
         };
@@ -179,7 +180,7 @@ export class AssetsService implements IAssetsService {
 
         const response: ResolveAssetResponse = {
           success: true,
-          source: 'resolved',
+          source: ResolutionSource.RESOLVED,
           asset: savedAsset,
           isinPending: needsIsinEnrichment,
         };
@@ -209,7 +210,7 @@ export class AssetsService implements IAssetsService {
 
         return {
           success: false,
-          source: 'manual_required',
+          source: ResolutionSource.MANUAL_REQUIRED,
           alternatives,
           error: `Asset "${input}" found but needs confirmation. Confidence: ${(resolution.confidence * 100).toFixed(1)}%`,
         };
@@ -218,14 +219,14 @@ export class AssetsService implements IAssetsService {
       // Not found
       return {
         success: false,
-        source: 'manual_required',
+        source: ResolutionSource.MANUAL_REQUIRED,
         error: `Asset with identifier "${input}" not found. Please provide Morningstar ID manually.`,
       };
     } catch (error) {
       this.logger.error(`Resolution error for ${input}: ${error}`);
       return {
         success: false,
-        source: 'manual_required',
+        source: ResolutionSource.MANUAL_REQUIRED,
         error: `Error resolving asset "${input}". Please try again or provide Morningstar ID manually.`,
       };
     }
@@ -296,7 +297,7 @@ export class AssetsService implements IAssetsService {
       const result = cachedResult ||
         resolvedResult || {
           success: false,
-          source: 'manual_required' as const,
+          source: ResolutionSource.MANUAL_REQUIRED,
           error: 'Resolution failed unexpectedly',
         };
 
@@ -309,7 +310,9 @@ export class AssetsService implements IAssetsService {
     // Step 6: Calculate statistics
     const resolved = results.filter((r) => r.result.success).length;
     const manualRequired = results.filter(
-      (r) => !r.result.success && r.result.source === 'manual_required',
+      (r) =>
+        !r.result.success &&
+        r.result.source === ResolutionSource.MANUAL_REQUIRED,
     ).length;
 
     const duration = Date.now() - startTime;
@@ -357,7 +360,7 @@ export class AssetsService implements IAssetsService {
 
         results.set(asset.morningstarId.toUpperCase(), {
           success: true,
-          source: 'cache',
+          source: ResolutionSource.CACHE,
           asset,
           isinPending: asset.isinPending,
         });
@@ -374,7 +377,7 @@ export class AssetsService implements IAssetsService {
         if (asset.isin) {
           results.set(asset.isin.toUpperCase(), {
             success: true,
-            source: 'cache',
+            source: ResolutionSource.CACHE,
             asset,
             isinPending: asset.isinPending,
           });
