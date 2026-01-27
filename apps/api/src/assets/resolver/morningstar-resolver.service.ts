@@ -19,13 +19,16 @@ import { DuckDuckGoStrategy } from './strategies/duckduckgo.strategy';
 import { ResultScorerService } from './scoring/result-scorer.service';
 import { PageVerifierService } from './verification/page-verifier.service';
 
+// Interface
+import { IMorningstarResolver } from '../interfaces';
+
 /**
  * MorningstarResolverService
  * Orchestrates resolution of ISIN/ticker/text to Morningstar IDs
  * using multiple search strategies, scoring, and page verification.
  */
 @Injectable()
-export class MorningstarResolverService {
+export class MorningstarResolverService implements IMorningstarResolver {
   private readonly logger = new Logger(MorningstarResolverService.name);
   private readonly config = DEFAULT_RESOLVER_CONFIG;
 

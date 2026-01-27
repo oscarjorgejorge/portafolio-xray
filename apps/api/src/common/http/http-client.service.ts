@@ -5,6 +5,7 @@ import {
   HttpClientConfig,
   ResponseType,
 } from './http-client.types';
+import { IHttpClient } from '../interfaces';
 
 const DEFAULT_CONFIG: HttpClientConfig = {
   defaultTimeout: 10000,
@@ -21,7 +22,7 @@ const DEFAULT_CONFIG: HttpClientConfig = {
  * Abstracts fetch calls for better testability and consistent error handling.
  */
 @Injectable()
-export class HttpClientService {
+export class HttpClientService implements IHttpClient {
   private readonly logger = new Logger(HttpClientService.name);
   private readonly config: HttpClientConfig = DEFAULT_CONFIG;
 

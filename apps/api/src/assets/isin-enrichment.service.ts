@@ -4,6 +4,7 @@ import * as cheerio from 'cheerio';
 import { HttpClientService } from '../common/http';
 import { getErrorMessage } from './resolver/utils/error-handler';
 import { VALID_ISIN_PREFIXES } from './resolver/utils/constants';
+import { IIsinEnrichmentService } from './interfaces';
 
 /**
  * IsinEnrichmentService
@@ -11,7 +12,7 @@ import { VALID_ISIN_PREFIXES } from './resolver/utils/constants';
  * Uses fire-and-forget pattern to not block the main response
  */
 @Injectable()
-export class IsinEnrichmentService {
+export class IsinEnrichmentService implements IIsinEnrichmentService {
   private readonly logger = new Logger(IsinEnrichmentService.name);
 
   constructor(

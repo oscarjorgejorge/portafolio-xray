@@ -8,23 +8,10 @@ import {
   IdentifierClassifier,
   IdentifierType,
 } from '../common/utils/identifier-classifier';
-
-export interface ResolveAssetResponse {
-  success: boolean;
-  source: 'cache' | 'resolved' | 'manual_required';
-  asset?: Asset;
-  isinPending?: boolean;
-  alternatives?: Array<{
-    morningstarId: string;
-    name: string;
-    url: string;
-    score: number;
-  }>;
-  error?: string;
-}
+import { IAssetsService, ResolveAssetResponse } from './interfaces';
 
 @Injectable()
-export class AssetsService {
+export class AssetsService implements IAssetsService {
   private readonly logger = new Logger(AssetsService.name);
 
   constructor(

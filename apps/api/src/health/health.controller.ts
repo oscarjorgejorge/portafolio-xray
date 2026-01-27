@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 import { HealthService } from './health.service';
 import { HealthResponseDto } from './dto/health-response.dto';
+import { LivenessResponse } from './interfaces';
 
 @ApiTags('health')
 @Controller('health')
@@ -63,7 +64,7 @@ export class HealthController {
       },
     },
   })
-  liveness(): { status: string; timestamp: string } {
+  liveness(): LivenessResponse {
     return this.healthService.liveness();
   }
 

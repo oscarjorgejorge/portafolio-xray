@@ -1,9 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Asset, AssetSource, AssetType, Prisma } from '@prisma/client';
+import { Asset, Prisma } from '@prisma/client';
+import {
+  IAssetsRepository,
+  CreateAssetData,
+  UpsertAssetByIsinData,
+  UpsertAssetByMorningstarIdData,
+} from './interfaces';
 
 @Injectable()
-export class AssetsRepository {
+export class AssetsRepository implements IAssetsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async findByIsin(isin: string): Promise<Asset | null> {
@@ -41,15 +47,7 @@ export class AssetsRepository {
     });
   }
 
-  async create(data: {
-    isin: string;
-    morningstarId: string;
-    name: string;
-    type: AssetType;
-    url: string;
-    source: AssetSource;
-    ticker?: string;
-  }): Promise<Asset> {
+  async create(data: CreateAssetData): Promise<Asset> {
     return this.prisma.asset.create({
       data: {
         isin: data.isin.toUpperCase(),
@@ -70,15 +68,7 @@ export class AssetsRepository {
     });
   }
 
-  async upsertByIsin(data: {
-    isin: string;
-    morningstarId: string;
-    name: string;
-    type: AssetType;
-    url: string;
-    source: AssetSource;
-    ticker?: string;
-  }): Promise<Asset> {
+  async upsertByIsin(data: UpsertAssetByIsinData): Promise<Asset> {
     const isin = data.isin.toUpperCase();
 
     // First try to find by ISIN
@@ -126,16 +116,9 @@ export class AssetsRepository {
   /**
    * Create or update asset by Morningstar ID (used when ISIN is not available)
    */
-  async upsertByMorningstarId(data: {
-    isin: string | null;
-    morningstarId: string;
-    name: string;
-    type: AssetType;
-    url: string;
-    source: AssetSource;
-    ticker?: string;
-    isinPending?: boolean;
-  }): Promise<Asset> {
+  async upsertByMorningstarId(
+    data: UpsertAssetByMorningstarIdData,
+  ): Promise<Asset> {
     return this.prisma.asset.upsert({
       where: { morningstarId: data.morningstarId },
       update: {
