@@ -1,10 +1,9 @@
-import React from 'react';
+import React, { forwardRef } from 'react';
 import { cn } from '@/lib/utils';
 
-interface AlertProps {
+interface AlertProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
   variant?: 'success' | 'error' | 'warning' | 'info';
-  className?: string;
 }
 
 const variantStyles = {
@@ -14,18 +13,20 @@ const variantStyles = {
   info: 'bg-blue-50 border-blue-200 text-blue-800',
 };
 
-export const Alert: React.FC<AlertProps> = ({
-  children,
-  variant = 'info',
-  className,
-}) => {
-  return (
-    <div
-      className={cn('border rounded-lg p-4', variantStyles[variant], className)}
-      role="alert"
-    >
-      {children}
-    </div>
-  );
-};
+export const Alert = forwardRef<HTMLDivElement, AlertProps>(
+  ({ children, variant = 'info', className, ...props }, ref) => {
+    return (
+      <div
+        ref={ref}
+        className={cn('border rounded-lg p-4', variantStyles[variant], className)}
+        role="alert"
+        {...props}
+      >
+        {children}
+      </div>
+    );
+  }
+);
+
+Alert.displayName = 'Alert';
 
