@@ -27,6 +27,7 @@ model Asset {
   @@index([isin]) // Index for lookups, but not unique (allows null)
   @@index([isin, isinPending]) // Composite index for polling queries
   @@index([morningstarId, type]) // Composite index for type filtering
+  @@index([ticker]) // Index for ticker-based lookups
   @@map("assets")
 }
 
