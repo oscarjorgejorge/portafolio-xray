@@ -1,13 +1,13 @@
-import { MorningstarAssetType } from '../resolver.types';
+import { MS_ASSET_TYPES, MorningstarAssetType } from './constants';
 
 /**
  * URL path segments for different asset types
  */
 const PATH_MAP: Record<MorningstarAssetType, { es: string; en: string }> = {
-  ETF: { es: 'etfs', en: 'etfs' },
-  Fondo: { es: 'fondos', en: 'funds' },
-  Accion: { es: 'acciones', en: 'stocks' },
-  Desconocido: { es: 'fondos', en: 'funds' }, // Default to funds for unknown
+  [MS_ASSET_TYPES.ETF]: { es: 'etfs', en: 'etfs' },
+  [MS_ASSET_TYPES.FUND]: { es: 'fondos', en: 'funds' },
+  [MS_ASSET_TYPES.STOCK]: { es: 'acciones', en: 'stocks' },
+  [MS_ASSET_TYPES.UNKNOWN]: { es: 'fondos', en: 'funds' }, // Default to funds for unknown
 };
 
 /**
@@ -18,10 +18,10 @@ const PATH_MAP: Record<MorningstarAssetType, { es: string; en: string }> = {
  */
 export function buildMorningstarUrl(
   id: string,
-  assetType: MorningstarAssetType = 'Fondo',
+  assetType: MorningstarAssetType = MS_ASSET_TYPES.FUND,
   marketId?: string,
 ): string {
-  const paths = PATH_MAP[assetType] || PATH_MAP.Fondo;
+  const paths = PATH_MAP[assetType] || PATH_MAP[MS_ASSET_TYPES.FUND];
 
   // If marketId is provided, use the en-eu format with marketID parameter
   if (marketId) {

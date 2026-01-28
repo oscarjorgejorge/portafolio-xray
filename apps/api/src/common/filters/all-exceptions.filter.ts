@@ -7,6 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Response, Request } from 'express';
+import { getRequestId } from '../context';
 
 /**
  * Response structure for error responses
@@ -18,6 +19,7 @@ interface ErrorResponse {
   message: string;
   path: string;
   timestamp: string;
+  requestId?: string;
 }
 
 /**
@@ -32,11 +34,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
+    const requestId = getRequestId();
 
     const { status, error, message } = this.getErrorDetails(exception);
 
-    // Log the error with appropriate level
-    this.logError(exception, request, status);
+    // Log the error with appropriate level (includes requestId)
+    this.logError(exception, request, status, requestId);
 
     const errorResponse: ErrorResponse = {
       success: false,
@@ -45,6 +48,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       message,
       path: request.url,
       timestamp: new Date().toISOString(),
+      ...(requestId && { requestId }),
     };
 
     response.status(status).json(errorResponse);
@@ -129,18 +133,24 @@ export class AllExceptionsFilter implements ExceptionFilter {
   /**
    * Log error with appropriate level based on status code
    */
-  private logError(exception: unknown, request: Request, status: number): void {
+  private logError(
+    exception: unknown,
+    request: Request,
+    status: number,
+    requestId?: string,
+  ): void {
     const errorMessage =
       exception instanceof Error ? exception.message : String(exception);
     const stack = exception instanceof Error ? exception.stack : undefined;
-    const context = `${request.method} ${request.url}`;
+    const reqIdStr = requestId ? `[${requestId}]` : '[-]';
+    const context = `${reqIdStr} ${request.method} ${request.url}`;
 
     // 5xx errors are logged as errors (unexpected issues)
     // 4xx errors are logged as warnings (client errors)
     if (status >= 500) {
-      this.logger.error(`[${context}] ${errorMessage}`, stack);
+      this.logger.error(`${context} ${errorMessage}`, stack);
     } else if (status >= 400) {
-      this.logger.warn(`[${context}] ${status} - ${errorMessage}`);
+      this.logger.warn(`${context} ${status} - ${errorMessage}`);
     }
   }
 }

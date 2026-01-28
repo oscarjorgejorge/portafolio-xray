@@ -761,3 +761,997 @@ lets address this problem: N+1 Query in XRayService.buildMorningstarUrl
 **Verification:**
 - ✅ Lint passed
 - ✅ Type-check passed
+
+### Prompt 70
+como senior backend developper analiza la api, y dime que mejoras y optmizaciones son necesarias teniendo en cuenta las buenas practicas (la parte de los test los implementaremos mas adelante)
+
+**Analysis Summary:**
+Comprehensive code review identifying 10 areas for improvement organized by priority:
+
+**High Priority:**
+1. Custom Exceptions - usar excepciones de dominio específicas
+2. Input Validation (UUID) - validar parámetros de ruta
+3. Cache Layer - añadir caché in-memory para búsquedas frecuentes
+
+**Medium Priority:**
+4. API Versioning - añadir prefijo `/api/v1`
+5. Connection Pooling Config - configurar pool de conexiones DB
+6. Structured Logging - logging con correlación
+
+**Low Priority:**
+7. Code Cleanup - eliminar código muerto
+8. Additional DB Indexes - índices para ticker y name
+
+### Prompt 71
+vamos a arreglar este problema: Añadir capa de Interfaces/Abstractions para los servicios luego haz el commit
+
+**Implementation - Interface Abstractions Layer:**
+
+1. **Created interface files for each module:**
+   - `src/common/interfaces/http-client.interface.ts` - IHttpClient
+   - `src/assets/interfaces/assets-repository.interface.ts` - IAssetsRepository with data types
+   - `src/assets/interfaces/assets-service.interface.ts` - IAssetsService with ResolveAssetResponse
+   - `src/assets/interfaces/morningstar-resolver.interface.ts` - IMorningstarResolver
+   - `src/assets/interfaces/isin-enrichment.interface.ts` - IIsinEnrichmentService
+   - `src/xray/interfaces/xray-service.interface.ts` - IXRayService with GenerateXRayResponse
+   - `src/health/interfaces/health-service.interface.ts` - IHealthService with LivenessResponse
+
+2. **Updated services to implement interfaces:**
+   - `HttpClientService implements IHttpClient`
+   - `AssetsRepository implements IAssetsRepository`
+   - `AssetsService implements IAssetsService`
+   - `MorningstarResolverService implements IMorningstarResolver`
+   - `IsinEnrichmentService implements IIsinEnrichmentService`
+   - `XRayService implements IXRayService`
+   - `HealthService implements IHealthService`
+
+3. **Added injection tokens for each interface:**
+   - `HTTP_CLIENT`, `ASSETS_REPOSITORY`, `ASSETS_SERVICE`
+   - `MORNINGSTAR_RESOLVER`, `ISIN_ENRICHMENT_SERVICE`
+   - `XRAY_SERVICE`, `HEALTH_SERVICE`
+
+4. **Updated exports:**
+   - Added `interfaces/index.ts` barrel exports in each module
+   - Updated module `index.ts` files to export interfaces
+
+5. **Benefits:**
+   - Easier mocking in unit tests
+   - Clear service contracts
+   - Better dependency injection patterns
+   - Improved code documentation
+   - Decoupled implementations from contracts
+
+**Verification:**
+- ✅ Lint passed
+- ✅ Type-check passed
+- ✅ Tests passed (1/1)
+
+**Commit:** `refactor(api): add interface abstractions for services`
+
+### Prompt 72
+ahora vamos a mejorar esto: Separar Response Types en archivos dedicados
+
+**Implementation - Separate Response Types into Dedicated Files:**
+
+1. **Created dedicated type files for each module:**
+
+   **Assets Module (`src/assets/types/`):**
+   - `resolve-asset-response.type.ts`:
+     - `AssetAlternative` - Alternative asset suggestion interface
+     - `ResolveAssetSource` - Union type for resolution sources
+     - `ResolveAssetResponse` - Full response with JSDoc documentation
+
+   **XRay Module (`src/xray/types/`):**
+   - `generate-xray-response.type.ts`:
+     - `GenerateXRayResponse` - X-Ray URL generation response
+
+   **Health Module (`src/health/types/`):**
+   - `liveness-response.type.ts`:
+     - `LivenessResponse` - Liveness health check response
+
+2. **Updated interface files:**
+   - Removed inline type definitions
+   - Import types from dedicated type files
+   - Interfaces now only define service contracts
+
+3. **Updated services and controllers:**
+   - Services import types from `./types` instead of `./interfaces`
+   - Controllers import response types from `./types`
+
+4. **Updated module exports:**
+   - Added `types/index.ts` barrel exports
+   - Main `index.ts` exports types alongside interfaces
+
+5. **Benefits:**
+   - Clear separation between contracts (interfaces) and data structures (types)
+   - Better code organization and discoverability
+   - Types can be reused without importing the entire interface module
+   - Improved documentation with JSDoc on type properties
+
+**Verification:**
+- ✅ Lint passed
+- ✅ Type-check passed
+- ✅ Tests passed (1/1)
+
+**Commit:** `refactor(api): separate response types into dedicated files`
+
+### Prompt 73
+como senior backend developper analiza la api, y dime que mejoras y optmizaciones son necesarias teniendo en cuenta las buenas practicas (la parte de los test los implementaremos mas adelante)
+
+**Analysis Summary:**
+Comprehensive code review identifying improvements organized by priority:
+
+**High Priority (Critical):**
+1. Falta de Transacciones en Operaciones de Base de Datos - `upsertByIsin` hace find + update sin transacción
+2. Race Conditions en IsinEnrichmentService - fire-and-forget sin control de concurrencia
+3. Validación de UUIDs Faltante en Controllers - endpoints con :id no validan formato UUID
+4. Manejo de Errores Silencioso en HttpClientService - retorna null sin propagar errores
+
+**Medium Priority:**
+5. Falta de Caching para Resoluciones Externas
+6. Configuración Hardcodeada en el Código
+7. Falta de Logging Estructurado
+8. Método parseShareableUrl No Utilizado
+9. Inyección de Dependencias Sin Interfaces (tokens)
+
+**Low Priority:**
+10. DTOs Duplicados (AssetType)
+11. Health Check Incompleto (solo DB)
+12. Helmet CSP Demasiado Permisivo
+13. Falta Compresión de Respuestas
+14. Timeout Inconsistente en Estrategias
+15. PrismaService Lee process.env Directamente
+
+### Prompt 74
+vamos a mejorar este problema: Falta de Transacciones en Operaciones de Base de Datos
+
+**Implementation - Database Transactions:**
+
+1. **Modified `upsertByIsin` in AssetsRepository:**
+   - Wrapped entire operation in `prisma.$transaction()`
+   - All operations (findFirst + update/upsert) now execute atomically
+   - Prevents race conditions when concurrent requests try to upsert the same ISIN
+
+2. **Added `updateIsinWithVerification` method:**
+   - New transactional method that verifies asset exists before updating
+   - Combines existence check + update in single transaction
+   - Throws Error if asset not found (repository layer)
+
+3. **Updated IAssetsRepository interface:**
+   - Added `updateIsinWithVerification` method signature
+   - Full JSDoc documentation
+
+4. **Updated AssetsService:**
+   - `updateIsin` now uses `updateIsinWithVerification`
+   - Converts repository Error to NestJS NotFoundException
+
+**Benefits:**
+- Atomicity: Operations complete fully or not at all
+- Consistency: No partial updates possible
+- Isolation: Concurrent requests don't interfere
+- No race conditions between find and update
+
+### Prompt 75
+vamos ahora con esta mejora: Race Conditions en IsinEnrichmentService
+
+**Implementation - Prevent Race Conditions in ISIN Enrichment:**
+
+1. **Added enrichment tracking Map:**
+   ```typescript
+   private readonly enrichmentQueue = new Map<string, Promise<void>>();
+   ```
+
+2. **Modified `enrichIsinInBackground`:**
+   - Checks if enrichment is already in progress for the asset
+   - If duplicate request, logs debug message and returns immediately
+   - Tracks active enrichment in Map with Promise
+   - Uses `.finally()` to clean up Map entry when done (success or failure)
+
+3. **Added monitoring methods:**
+   - `isEnrichmentInProgress(assetId)` - Check if enrichment is running
+   - `getActiveEnrichmentCount()` - Get number of active enrichments
+
+4. **Updated IIsinEnrichmentService interface:**
+   - Added new monitoring method signatures
+
+**Benefits:**
+- Prevents duplicate enrichments for same asset
+- No memory leaks (Map cleaned up via finally)
+- Observable: Can monitor active enrichments
+- Graceful: Concurrent requests handled without errors
+
+### Prompt 76
+y luego con esta: Validación de UUIDs Faltante en Controllers, update the prompts, commit all the changes and push
+
+**Implementation - UUID Validation in Controllers:**
+
+1. **Added ParseUUIDPipe to assets.controller.ts:**
+   - Import `ParseUUIDPipe` from `@nestjs/common`
+   - Applied to `GET /assets/:id` endpoint
+   - Applied to `PATCH /assets/:id/isin` endpoint
+
+2. **Updated Swagger documentation:**
+   - Added 400 response for "Invalid UUID format" on both endpoints
+
+**Benefits:**
+- Early validation: Invalid UUIDs rejected before hitting service/database
+- Consistent error messages: NestJS provides standard 400 response
+- Security: Prevents injection attempts via malformed IDs
+- Performance: Avoids unnecessary database queries
+
+### Prompt 77
+como senior backend developper analiza la api, y dime que mejoras y optmizaciones son necesarias teniendo en cuenta las buenas practicas (la parte de los test los implementaremos mas adelante)
+
+**Analysis Summary:**
+Comprehensive code review identifying improvements organized by priority:
+
+**High Priority:**
+1. Inyección de Dependencias Incompleta - interfaces defined but not used for injection
+2. Request ID en logs - no correlation between logs in same request
+3. Manejo de Errores del PrismaService - no retry/circuit breaker
+4. Falta de Validación de ISIN en ConfirmAssetDto
+5. Fire-and-Forget Sin Control - ISIN enrichment without job queue
+
+**Medium Priority:**
+6. Falta API Versioning
+7. Response DTOs Inconsistentes
+8. Timeouts Hardcodeados
+9. Falta Caching Layer
+10. Health Check Incompleto
+11. Falta Graceful Shutdown
+12. Método mapMorningstarType debería ser utility
+
+**Low Priority:**
+13. Consultas N+1 Potenciales
+14. Índices de Base de Datos
+15. Compresión de Respuestas
+16. Métricas y Observabilidad
+17. DTOs con Class-transformer/validator Mixtos
+
+### Prompt 78
+lets go with this improvement: Request ID en logs
+
+**Implementation - Request ID Correlation in Logs:**
+
+1. **Created `src/common/context/` module:**
+   - `request-context.ts` - AsyncLocalStorage for request context
+   - Exports: `RequestContext`, `getRequestId()`, `getRequestContext()`, `REQUEST_ID_HEADER`
+   - Request context includes: `requestId`, `startTime`, `method`, `path`
+
+2. **Created `src/common/interceptors/` module:**
+   - `request-id.interceptor.ts` - NestJS interceptor for request ID management
+   - Generates UUID if not provided in `x-request-id` header
+   - Propagates existing request ID from client
+   - Adds request ID to response headers
+   - Logs request start/end with duration
+   - Stores context in AsyncLocalStorage for entire request lifecycle
+
+3. **Created `src/common/logger/` module:**
+   - `context-logger.service.ts` - Transient logger service with request ID
+   - `logger.module.ts` - Global module for ContextLoggerService
+   - Log format: `timestamp [LEVEL] [requestId] [Context] message`
+   - Automatically includes request ID from AsyncLocalStorage
+
+4. **Updated `src/common/filters/all-exceptions.filter.ts`:**
+   - Added `requestId` to error response
+   - Logs errors with request ID for correlation
+   - Response includes `requestId` field for client debugging
+
+5. **Updated `src/app.module.ts`:**
+   - Added `LoggerModule` to imports
+   - Registered `RequestIdInterceptor` globally via `APP_INTERCEPTOR`
+
+**Log Output Example:**
+```
+[abc-123-def] --> GET /assets/resolve
+2026-01-27T10:30:00.000Z LOG     [abc-123-def] [AssetsService] Resolving asset: IE00B4L5Y983
+[abc-123-def] <-- GET /assets/resolve 200 150ms
+```
+
+**Benefits:**
+- All logs from a single request share the same ID
+- Clients receive `x-request-id` header to reference in support tickets
+- Distributed tracing ready - can pass request ID to downstream services
+- Error responses include request ID for debugging
+- Performance tracking with request duration
+
+### Prompt 79
+yes, and later Consultas N+1 Potenciales, lets go with this one
+
+**Implementation - Batch Resolve Endpoint (N+1 API Fix):**
+
+1. **Analysis:**
+   - Database queries were already optimized (XRayService uses batch lookup)
+   - PageVerifierService uses parallel batch processing
+   - **Real issue:** Frontend makes N individual `/assets/resolve` calls
+   - Solution: Add batch resolve endpoint to reduce HTTP round trips
+
+2. **Created `src/assets/dto/batch-resolve-asset.dto.ts`:**
+   - `BatchResolveAssetItemDto` - Single asset request in batch
+   - `BatchResolveAssetDto` - Array of up to 20 assets
+   - Validation with `@ArrayMinSize(1)`, `@ArrayMaxSize(20)`
+
+3. **Created `src/assets/types/batch-resolve-response.type.ts`:**
+   - `BatchResolveResultItem` - Individual result with original input
+   - `BatchResolveAssetResponse` - Total counts and results array
+
+4. **Added `resolveBatch` method to AssetsService:**
+   - **Step 1:** Classify all inputs (ISIN, Morningstar ID, UNKNOWN)
+   - **Step 2:** Batch cache lookup for ISINs and Morningstar IDs
+   - **Step 3:** Process uncached items in parallel with concurrency limit (5)
+   - **Step 4:** Combine results in original order
+   - **Step 5:** Return statistics (total, resolved, manualRequired)
+
+5. **Added `batchCacheLookup` private method:**
+   - Uses `findManyByMorningstarIds` for batch DB query
+   - Parallel ISIN lookups (findFirst doesn't support batch)
+   - Returns Map for O(1) result lookup
+
+6. **Added `POST /assets/resolve/batch` endpoint:**
+   - Accepts array of assets (max 20)
+   - Returns batch results with statistics
+   - Full Swagger documentation
+
+7. **Updated interfaces:**
+   - Added `resolveBatch` to `IAssetsService`
+
+**API Endpoint:**
+```
+POST /assets/resolve/batch
+Body: {
+  "assets": [
+    { "input": "IE00B4L5Y983", "assetType": "ETF" },
+    { "input": "LU0996182563" },
+    { "input": "0P0000YXJO" }
+  ]
+}
+
+Response: {
+  "total": 3,
+  "resolved": 2,
+  "manualRequired": 1,
+  "results": [
+    { "input": "IE00B4L5Y983", "result": { "success": true, "source": "cache", ... } },
+    ...
+  ]
+}
+```
+
+**Performance Impact:**
+| Scenario | Before | After |
+|----------|--------|-------|
+| 5 assets | 5 HTTP calls, 5+ DB queries | 1 HTTP call, 1 batch query + parallel processing |
+| 10 assets | 10 HTTP calls, 10+ DB queries | 1 HTTP call, 1 batch query + parallel processing |
+| 20 assets | 20 HTTP calls, 20+ DB queries | 1 HTTP call, 1 batch query + parallel processing |
+
+**Benefits:**
+- Reduces frontend HTTP calls from N to 1
+- Batch cache lookup minimizes DB queries
+- Parallel processing with concurrency control (5)
+- Maintains individual error handling per asset
+- Statistics for UI feedback
+
+### Prompt 80
+can you explain me more about this? (Screenshot showing recommendations: Database Indexes, Response Compression, Metrics/Observability)
+
+**Explanation provided for:**
+1. **Database Indexes** - Only `isin` index exists, recommended adding composite indexes
+2. **Response Compression** - No gzip/brotli compression enabled
+3. **Metrics and Observability** - No instrumentation for Prometheus/OpenTelemetry
+
+### Prompt 81
+regarding to Response Compression, there is some change required on the front?
+
+**Answer:** No changes required on frontend. Axios automatically:
+- Sends `Accept-Encoding: gzip, deflate, br` header
+- Decompresses responses when server returns `Content-Encoding: gzip`
+
+### Prompt 82
+apply this change, and the database changes
+
+**Implementation - Response Compression:**
+
+1. **Installed packages:**
+   - `compression` - Express middleware for gzip/brotli compression
+   - `@types/compression` - TypeScript definitions
+
+2. **Updated `src/main.ts`:**
+   - Added `import compression from 'compression'`
+   - Added `app.use(compression())` before Helmet middleware
+   - Added startup log: "Response compression enabled"
+
+**Implementation - Database Composite Indexes:**
+
+1. **Updated `prisma/schema.prisma`:**
+   - Added `@@index([isin, isinPending])` - For polling queries
+   - Added `@@index([morningstarId, type])` - For type filtering
+
+2. **Created migration:**
+   - `prisma/migrations/20260127000000_add_composite_indexes/migration.sql`
+   - SQL:
+     ```sql
+     CREATE INDEX "assets_isin_isin_pending_idx" ON "assets"("isin", "isin_pending");
+     CREATE INDEX "assets_morningstar_id_type_idx" ON "assets"("morningstar_id", "type");
+     ```
+
+**Note:** Migration was created manually since database was not running. Apply with:
+```bash
+npx prisma migrate deploy
+```
+
+### Prompt 83
+como senior backend developper analiza la api, y dime que mejoras y optmizaciones son necesarias teniendo en cuenta las buenas practicas (la parte de los test los implementaremos mas adelante)
+
+**Analysis Summary:**
+11 improvement areas identified covering code duplication, missing indexes, batch processing, magic strings, connection pool configuration, and graceful shutdown.
+
+### Prompt 84
+vamos a solucionar estas cosas una por una, ve haciendo un commit despues de cada solucion: Código Duplicado y Refactoring, Falta índice para búsquedas por ticker, Batch lookup de ISINs es secuencial, Magic strings dispersos, Connection pool no configurado, Graceful Shutdown
+
+**Implementations:**
+
+1. **Código Duplicado y Refactoring** (`6035ac2`):
+   - Centralized `IdentifierClassifier` to support all input types (ISIN, MORNINGSTAR_ID, TICKER, FREE_TEXT)
+   - Added `normalizeInput` static method to `IdentifierClassifier`
+   - Deprecated `input-normalizer.ts` functions, re-exported from centralized classifier
+
+2. **Falta índice para búsquedas por ticker** (`3e7bfb4`):
+   - Added `@@index([ticker])` to Asset model in Prisma schema
+   - Created migration `20260127100000_add_ticker_index`
+
+3. **Batch lookup de ISINs es secuencial** (`b63e871`):
+   - Added `findManyByIsins` method to AssetsRepository
+   - Uses `WHERE isin IN (...)` for single batch query
+   - Updated `batchCacheLookup` to use batch query instead of N individual queries
+
+4. **Magic strings dispersos** (`4cd712e`):
+   - Created `MS_ASSET_TYPES` constant object with FUND, ETF, STOCK, UNKNOWN
+   - Updated all files to use constants instead of string literals ('Fondo', 'ETF', 'Accion', 'Desconocido')
+   - Files updated: api-search.strategy, global-search.strategy, url-builder, page-verifier.service, morningstar-resolver.service, result-scorer.service
+
+5. **Connection pool no configurado** (`cb820ce`):
+   - Added environment variables: `DB_POOL_MAX`, `DB_POOL_IDLE_TIMEOUT_MS`, `DB_POOL_CONNECTION_TIMEOUT_MS`
+   - Added `DbPoolConfig` interface to configuration
+   - Updated PrismaService to configure pool with validated settings
+   - Pool configuration logged at startup
+
+6. **Graceful Shutdown** (`e37a3d9`):
+   - Added `app.enableShutdownHooks()` in main.ts
+   - Added SIGTERM/SIGINT handlers for logging
+   - NestJS lifecycle hooks handle actual cleanup (OnModuleDestroy in PrismaService)
+
+### Prompt 85
+y luego Cache en memoria para assets frecuentes, HttpClient error handling silencioso (haz un commit despues de cada mejora)
+
+**Implementations:**
+
+1. **Cache en memoria para assets frecuentes** (`c109e4d`):
+   - Installed `@nestjs/cache-manager` and `cache-manager`
+   - Added `CacheModule.registerAsync()` to AppModule with config from environment
+   - Added cache configuration: `CACHE_TTL_MS` (default 5 minutes), `CACHE_MAX_ITEMS` (default 1000)
+   - Updated AssetsService:
+     - Injected `CACHE_MANAGER` for in-memory cache
+     - Added memory cache check before DB lookup (fastest path)
+     - Cache successful resolutions after DB hits
+     - Cache invalidation on asset confirm/update
+   - Cache key format: `asset:{INPUT}`
+
+2. **HttpClient error handling silencioso** (`2fccd19`):
+   - Added `HttpErrorType` enum: NETWORK, TIMEOUT, ABORT, PARSE, HTTP_ERROR, UNKNOWN
+   - Added `HttpError` interface with type, message, and optional cause
+   - Updated `HttpResponse` to include `error?: HttpError` field
+   - Updated HttpClientService:
+     - Non-2xx responses now include error details
+     - Parse errors captured with detailed messages
+     - `categorizeError()` method classifies errors appropriately
+     - Network, timeout, and abort errors properly categorized
+     - All retries exhausted returns last error details
+
+### Prompt 86
+como senior backend developper analiza la api, y dime que mejoras y optmizaciones son necesarias teniendo en cuenta las buenas practicas (la parte de los test los implementaremos mas adelante), pero tampoco quiero algo overkill / complejo sin necesitad
+
+**Analysis Summary:**
+Comprehensive code review identifying practical improvements (not overkill):
+
+**Already Well Implemented:**
+- Proper separation of concerns (Controller → Service → Repository)
+- NestJS best practices with dependency injection
+- Validation with class-validator and DTOs
+- Environment validation with Zod at startup
+- Global exception filter with consistent error format
+- Rate limiting with multiple tiers
+- Security middlewares (Helmet, CORS)
+- Swagger documentation
+- Request ID correlation for tracing
+- Graceful shutdown hooks
+- Health checks (liveness + readiness)
+- Compression middleware
+- In-memory cache layer on top of DB cache
+- Connection pooling for PostgreSQL
+- Interfaces for services (IoC ready)
+- Batch operations to reduce N+1 calls
+- Deduplication in background enrichment
+
+**Recommended Improvements:**
+1. Logging inconsistency - services use standard Logger instead of ContextLoggerService
+2. Missing response interceptor for standardized success responses
+3. API versioning (simple `/v1/` prefix)
+4. Hardcoded values in XRayService should be constants
+5. No timeouts on database transactions
+6. Fixed retry delay in HTTP client (could use exponential backoff)
+7. Manual input normalization in services (should be in DTOs with @Transform)
+8. Magic numbers (concurrency limits, timeouts) should be configurable
+
+### Prompt 87
+vamos a realizar estas mejoras: Completar el Barrel Export de Config, Normalización Automática en DTOs, Estandarizar Respuestas de Éxito, Estandarizar Logging con Request ID - crea un commit despues de cada mejora
+
+**Implementations:**
+
+1. **Completar el Barrel Export de Config** (`85a617e`):
+   - Added `DbPoolConfig` and `CacheConfig` type exports to `config/index.ts`
+   - All configuration types now accessible from single import
+
+2. **Normalización Automática en DTOs** (`52b41be`):
+   - Added `@Transform` decorators to all DTOs for automatic normalization
+   - String inputs are trimmed and uppercased where appropriate
+   - Type-safe transforms with `{ value: unknown }` parameter typing
+   - Removed manual normalization from AssetsService
+   - Affected DTOs: ResolveAssetDto, BatchResolveAssetItemDto, ConfirmAssetDto, UpdateIsinDto, XRayAssetDto
+
+3. **Estandarizar Respuestas de Éxito** (`58d446e`):
+   - Created `TransformResponseInterceptor` in `common/interceptors/`
+   - Wraps all success responses in standard format:
+     ```json
+     {
+       "success": true,
+       "data": { ... },
+       "timestamp": "2026-01-27T10:30:00.000Z",
+       "requestId": "abc-123"
+     }
+     ```
+   - Registered globally in AppModule
+   - Consistent with error responses from AllExceptionsFilter
+
+4. **Estandarizar Logging con Request ID** (`1cd13e8`):
+   - Created `ContextLogger` class extending NestJS Logger
+   - Added `createContextLogger(context)` factory function
+   - Automatically includes request ID from AsyncLocalStorage in all logs
+   - Updated services to use ContextLogger:
+     - AssetsService
+     - MorningstarResolverService
+     - IsinEnrichmentService
+     - HttpClientService
+   - Log format: `[LOG] [abc-123] [ServiceName] Message`
+
+### Prompt 88
+no seria buena idea unificar este transform para no repetir el codigo? en un transform propio?
+
+**Implementation - Centralized Transform Functions** (`b77f26e`):
+
+1. **Created `src/common/transforms/` module:**
+   - `string.transforms.ts` - Reusable transform functions
+   - `index.ts` - Barrel exports
+
+2. **Transform functions:**
+   - `trimUppercase` - Trims whitespace and converts to uppercase (for ISIN, tickers, IDs)
+   - `trimString` - Trims whitespace only (for names, URLs)
+
+3. **Updated all DTOs to use centralized transforms:**
+   - `ResolveAssetDto` - uses `trimUppercase`
+   - `BatchResolveAssetItemDto` - uses `trimUppercase`
+   - `ConfirmAssetDto` - uses `trimUppercase` and `trimString`
+   - `UpdateIsinDto` - uses `trimUppercase`
+   - `XRayAssetDto` - uses `trimUppercase`
+
+**Usage example:**
+```typescript
+import { Transform } from 'class-transformer';
+import { trimUppercase, trimString } from '../../common/transforms';
+
+@Transform(trimUppercase)
+isin!: string;
+
+@Transform(trimString)
+name!: string;
+```
+
+**Benefits:**
+- DRY principle: No code duplication
+- Single source of truth for transform logic
+- Easier to maintain and test
+- Type-safe with TransformFnParams
+
+### Prompt 89
+como senior frontend developper analiza la web, y dime que mejoras y optmizaciones que son necesarias teniendo en cuenta las buenas practicas (la parte de los test los implementaremos mas adelante), pero tampoco quiero algo overkill / complejo sin necesitad
+
+**Analysis Summary:**
+Comprehensive frontend code review with recommendations organized by priority:
+
+**Good practices already in place:**
+- Next.js 16 with Turbopack configured
+- React Query for server state management
+- TypeScript strict mode enabled
+- Tailwind CSS for styling
+- Good folder structure
+- Custom hooks (useIsinPolling)
+- Basic accessibility with aria-labels
+
+**Recommended Improvements:**
+1. Extract PortfolioBuilder logic into custom hook
+2. Remove duplicated shareable URL code
+3. Unify Asset types with re-exports from @/types
+4. Create .env.example files
+5. Fix dependency array in xray/page.tsx
+6. Add forwardRef to Button and Input components
+7. Add barrel exports for components and hooks
+8. Improve Toast accessibility with aria-live and dismiss button
+
+### Prompt 90
+Vamos con estas mejoras, haz un comit despues de cada una: Extraer lógica del PortfolioBuilder a un custom hook, Eliminar código duplicado - Shareable URL, Mejorar tipo de Asset - Unificar definición, Crear archivo .env.example, Dependency array en xray/page.tsx, Mejorar componentes UI con forwardRef, Añadir barrel exports para componentes, Mejorar accesibilidad del Toast
+
+**Implementations:**
+
+1. **Extract PortfolioBuilder logic into usePortfolioBuilder hook** (`d95f92e`):
+   - Created `usePortfolioBuilder.ts` hook with all state management
+   - Hook handles: assets, allocationMode, modals, URLs, toast, validation
+   - All handlers wrapped in useCallback for performance
+   - PortfolioBuilder component now purely presentational
+
+2. **Extract shareable URL logic into useShareableUrl hook** (`a4b7c2c`):
+   - Created `useShareableUrl.ts` hook for URL state management
+   - Centralizes: shareableUrl, fullShareableUrl, morningstarUrl, copied state
+   - Provides: copyToClipboard, openMorningstarPdf, clearUrls methods
+   - Updated xray/page.tsx and usePortfolioBuilder to use hook
+
+3. **Unify Asset types by re-exporting from @/types** (`3237270`):
+   - Added `export type { Asset, AssetType, AlternativeAsset }` to types/index.ts
+   - Updated 8 files to import types from `@/types` instead of `@/lib/api/assets`
+   - Single source of truth for type imports
+
+4. **Add .env.example files for web and api apps** (`c5bba93`):
+   - Created `apps/web/.env.example` with NEXT_PUBLIC_API_URL
+   - Updated `apps/api/.env.example` with all environment variables documented
+
+5. **Fix dependency array in xray/page.tsx** (`cf1a33b`):
+   - Extracted `mutate` from `generateMutation` object
+   - Added `mutate` to useEffect dependency array
+   - Removed eslint-disable comment
+
+6. **Add forwardRef to Button and Input components** (`23df139`):
+   - Updated Button component with `forwardRef<HTMLButtonElement, ButtonProps>`
+   - Updated Input component with `forwardRef<HTMLInputElement, InputProps>`
+   - Added displayName for DevTools debugging
+
+7. **Add barrel exports for ui, portfolio components and hooks** (`585ab21`):
+   - Created `components/ui/index.ts` - exports all UI components and icons
+   - Created `components/portfolio/index.ts` - exports all portfolio components
+   - Created `lib/hooks/index.ts` - exports all hooks
+
+8. **Improve Toast accessibility with aria-live and dismiss button** (`e42d5e3`):
+   - Added `role="status"` and `aria-live` (polite/assertive based on variant)
+   - Added `aria-atomic="true"` for screen reader announcements
+   - Added visible dismiss button with close icon
+   - Added `showCloseButton` prop (default: true)
+
+### Prompt 91
+como senior frontend developper analiza la web, y dime que mejoras y optmizaciones que son necesarias teniendo en cuenta las buenas practicas (la parte de los test los implementaremos mas adelante), pero tampoco quiero algo overkill / complejo sin necesidad
+
+**Analysis Summary:**
+12 improvements identified based on code review:
+
+1. **tailwind-merge for CSS class merging** - Prevent class conflicts when passing className props
+2. **API Client timeout not configured** - TIMEOUT_MS constant exists but not used
+3. **WeightInput allows invalid values** - No max validation, negative values possible
+4. **React.memo missing in list components** - AssetRow re-renders unnecessarily
+5. **Modal without createPortal** - Z-index issues in nested components
+6. **usePortfolioBuilder too large** - 318 lines, multiple responsibilities
+7. **Missing clipboard error feedback** - Silent console.error on failures
+8. **Basic ESLint config** - Only extends next/core-web-vitals
+9. **No skeleton loaders** - Only spinner for loading states
+10. **forwardRef missing in Card/Alert** - Better component composition
+11. **Dedicated InputNumber component** - Reusable with built-in validation
+12. **Loading state for individual AssetRow** - More granular feedback
+
+### Prompt 92
+vamos con estas mejoras y ve haciendo commits con cada mejora
+
+**Implementations:**
+
+1. **Add tailwind-merge for safe CSS class merging** (`544e182`):
+   - Installed `tailwind-merge` package
+   - Created `cn()` utility function in `lib/utils/cn.ts`
+   - Updated UI components (Button, Input, Card, Alert, Spinner, Modal) to use cn()
+   - Prevents class conflicts when passing custom className props
+
+2. **Configure API client timeout** (`1c9fa56`):
+   - Added `timeout: API.TIMEOUT_MS` to axios config
+   - Added specific error handling for timeout errors
+   - Improved error messages for better user feedback
+
+3. **Add InputNumber component with validation** (`4c76b4a`):
+   - Created dedicated InputNumber component
+   - Built-in min/max validation
+   - Prevents negative values and enforces bounds automatically
+   - Updated AssetRow to use InputNumber for weight inputs
+   - Support percentage mode with max=100 limit
+
+4. **Add React.memo to list components** (`3827641`):
+   - Wrapped AssetRow, WeightInput, RemoveButton, ErrorMessage with React.memo
+   - Memoized event handlers with useCallback
+   - Improves performance with large portfolios
+
+5. **Use createPortal for Modal** (`1d94af2`):
+   - Render Modal at document.body level using React createPortal
+   - Add mounted state to ensure client-side only rendering (SSR safe)
+   - Prevents z-index stacking context issues in nested components
+
+6. **Split usePortfolioBuilder into smaller hooks** (`8e98688`):
+   - Created `useAssetManagement` for CRUD operations on assets
+   - Created `usePortfolioValidation` for weight and validity calculations
+   - Created `useXRayGeneration` for report generation and URL management
+   - Compose hooks in usePortfolioBuilder for better maintainability
+
+7. **Add error feedback for clipboard operations** (`0e63182`):
+   - Added `copyError` state to useShareableUrl hook
+   - Added fallback mechanism using deprecated execCommand for wider compatibility
+   - Added `onCopyError` callback option for custom error handling
+   - Return boolean from copyToClipboard to indicate success
+
+8. **Improve ESLint configuration** (`726b196`):
+   - Add react-hooks/rules-of-hooks and exhaustive-deps rules
+   - Add no-console warning (allow error/warn)
+   - Add prefer-const and react self-closing rules
+   - Auto-fix self-closing components
+
+9. **Add Skeleton components for loading states** (`1e2ed84`):
+   - Create base Skeleton component with height/rounded presets
+   - Create AssetRowSkeleton for asset list loading
+   - Create CardSkeleton and PageSkeleton for larger loading states
+   - Better UX than simple spinner for content loading
+
+10. **Add forwardRef to Card and Alert components** (`adf2fc0`):
+    - Enables ref forwarding for better component composition
+    - Extend HTMLDivElement attributes for native props support
+    - Add displayName for better debugging
+
+11. **Add loading state support to AssetRow** (`dc13590`):
+    - Add isLoading prop to show skeleton loader
+    - Improve resolving state with spinner and message
+    - Better visual feedback during asset resolution
+
+### Prompt 93
+como senior frontend developper analiza la web, y dime que mejoras y optmizaciones que son necesarias teniendo en cuenta las buenas practicas (la parte de los test los implementaremos mas adelante), pero tampoco quiero algo overkill / complejo sin necesidad
+
+**Implementations (9 commits):**
+
+1. **Improve cn() utility with clsx for better class composition** (`6e2f92b`):
+   - Add clsx library for flexible class composition
+   - Support object syntax: `cn({ 'active': isActive })`
+   - Support array syntax: `cn(['flex', 'items-center'])`
+   - Better handling of conditional classes
+
+2. **Add PortfolioBuilderSkeleton for better loading UX** (`a562cca`):
+   - Create dedicated skeleton for PortfolioBuilder component
+   - Replace basic "Loading portfolio..." text with visual skeleton
+   - Better user feedback when loading from shareable URL
+
+3. **Add consistent disabled styles to Input components** (`72e2f2c`):
+   - Add disabled:bg-slate-100, disabled:text-slate-500, disabled:cursor-not-allowed
+   - Apply to both Input and InputNumber components
+   - Consistent visual feedback for disabled state
+
+4. **Use Portal for Toast components to fix z-index issues** (`2115a8a`):
+   - Render Toast and ToastContainer at document body level
+   - Use createPortal (same pattern as Modal)
+   - Prevents z-index stacking issues with overflow:hidden parents
+
+5. **Simplify unnecessary useCallback wrappers** (`da37f72`):
+   - Remove redundant wrappers that only delegate to other hooks
+   - Expose functions directly from composed hooks
+   - Reduce code complexity without affecting performance
+
+6. **Add centralized query keys and cache invalidation** (`4bd55af`):
+   - Create queryKeys utility for consistent React Query cache management
+   - Invalidate asset cache when ISIN is manually updated
+   - Prepare for future cache management needs
+
+7. **Add complete focus trap to Modal component** (`6b4cdcc`):
+   - Implement keyboard navigation trap with Tab/Shift+Tab
+   - Restore focus to previously focused element on close
+   - Improves accessibility for keyboard-only users
+
+8. **Add centralized error reporting service** (`fd899f8`):
+   - Create extensible error reporting service
+   - Prepare for future Sentry/LogRocket integration
+   - Update ErrorBoundary to use centralized service
+
+9. **Replace axios with native fetch for smaller bundle** (`d699e8f`):
+   - Create lightweight fetch-based API client
+   - Remove axios dependency (~13KB gzipped savings)
+   - Maintain same interface with proper timeout/error handling
+
+### Prompt 94
+como senior frontend developper analiza la web, y dime que mejoras y optmizaciones que son necesarias teniendo en cuenta las buenas practicas (la parte de los test los implementaremos mas adelante), pero tampoco quiero algo overkill / complejo sin necesidad
+
+**Implementations (7 commits):**
+
+1. **fix(web): add abort controller to prevent race conditions on URL parsing** (`3effbf7`):
+   - Added AbortController to cancel pending requests on component unmount
+   - Updated resolveAsset API to support abort signal parameter
+   - Prevents state updates on unmounted components when loading from shared URL
+
+2. **feat(web): add Next.js loading components for route segments** (`c84addb`):
+   - Created loading.tsx for [locale] route with PortfolioBuilderSkeleton
+   - Created loading.tsx for xray route with spinner
+   - Better UX during page transitions
+
+3. **perf(web): lazy load modal components to reduce initial bundle size** (`b87948e`):
+   - Used next/dynamic for AssetAlternatives, ManualAssetInput, ClearAllConfirmation
+   - Components only loaded when needed (ssr: false)
+   - Reduces initial JavaScript bundle
+
+4. **refactor(web): add barrel exports for API module** (`1642c9d`):
+   - Created lib/api/index.ts with centralized exports
+   - Exports: apiClient, ApiError, all API functions, queryKeys, schemas, types
+   - Cleaner imports: `import { resolveAsset, queryKeys } from '@/lib/api'`
+
+5. **style(web): add semantic CSS variables and design tokens to Tailwind config** (`7712c4e`):
+   - Added CSS variables: --primary, --muted, --card, --border
+   - Extended Tailwind theme with semantic color tokens
+   - Moved slide-in animation to Tailwind config
+   - Better design system foundation
+
+6. **chore(web): enhance ESLint config with stricter rules and fix violations** (`e02ef53`):
+   - Added rules: jsx-boolean-value, jsx-no-useless-fragment, eqeqeq, no-nested-ternary
+   - Added import organization rules: first, newline-after-import, no-duplicates
+   - Fixed duplicate imports in loading.tsx
+   - Fixed useless fragments in layout components
+
+7. **feat(web): add typed environment configuration with Zod validation** (`4d81491`):
+   - Created lib/env.ts with Zod schema for environment variables
+   - Validates NEXT_PUBLIC_API_URL and NODE_ENV
+   - Type-safe access: `env.NEXT_PUBLIC_API_URL`
+   - Throws in development if invalid, uses defaults in production
+
+### Prompt 95
+como senior frontend developper analiza la web, y dime que mejoras y optmizaciones que son necesarias teniendo en cuenta las buenas practicas (la parte de los test los implementaremos mas adelante), pero tampoco quiero algo overkill / complejo sin necesidad
+
+### Prompt 96
+vamos con todas las mejoras una a una y haciendo commits
+
+**Results:**
+
+1. **fix(web): sync initialAssets state when prop changes** (`d155d09`):
+   - Added useEffect to synchronize internal state when initialAssets prop changes
+   - Fixes issue where assets from URL parsing were not reflected in portfolio builder state
+
+2. **perf(web): memoize actions in usePortfolioBuilder to prevent re-renders** (`c80d20e`):
+   - Wrapped action handlers in useMemo for stable references
+   - Prevents unnecessary re-renders in child components
+
+3. **refactor(web): replace console.error with centralized error reporting** (`fa26028`):
+   - Use captureException from errorReporting service instead of console.error
+   - Better error tracking in production
+   - Affected: hooks (useXRayGeneration, useShareableUrl, useIsinPolling), components (EditableIsin), pages
+
+4. **feat(web): add user feedback for URL parsing errors** (`b034570`):
+   - Display Alert component when portfolio URL parsing fails
+   - Users are informed to add assets manually
+
+5. **perf(web): optimize getAssetById with Map for O(1) lookups** (`311b0ce`):
+   - Replace Array.find() with Map.get() for constant-time asset lookups
+   - Improves performance for portfolios with many assets
+
+6. **chore(web): add displayName to memoized components in AssetRow** (`0552694`):
+   - Added displayName to WeightInput, RemoveButton, ErrorMessage, AssetRow
+   - Improves React DevTools debugging
+
+7. **refactor(web): improve env.ts typing with explicit return type and control flow** (`caa868d`):
+   - Added explicit Env return type to getEnv function
+   - Fixed control flow to clearly return defaults in production when validation fails
+
+8. **refactor(web): use React useId() for accessibility IDs and improve id.ts docs** (`3ad6f6e`):
+   - Replaced hardcoded modal-title ID with useId() for proper multi-modal support
+   - Added comprehensive documentation to id.ts explaining when to use useId() vs generateSimpleId()
+
+### Prompt 97
+como senior frontend developper analiza la web, y dime que mejoras y optmizaciones que son necesarias teniendo en cuenta las buenas practicas (la parte de los test los implementaremos mas adelante), pero tampoco quiero algo overkill / complejo sin necesidad
+
+### Prompt 98
+vamos con todas las mejoras una a una, y vamos haciendo commits
+
+**Results:**
+
+1. **feat(web): add React Query DevTools for development** (`e0482ee`):
+   - Added @tanstack/react-query-devtools for better debugging experience
+   - DevTools only load in development mode, positioned at bottom-left
+
+2. **refactor(web): fix type imports in types/index.ts to use standard imports** (`69ee0f2`):
+   - Replaced inline `import()` syntax with proper type imports
+   - Asset and AlternativeAsset now use standard import type syntax
+
+3. **refactor(web): extract PortfolioSummary and ShareableUrlSection components** (`53fa4a9`):
+   - Created PortfolioSummary component for weight display and action buttons
+   - Created ShareableUrlSection component for shareable link UI
+   - Reduced PortfolioBuilder from 258 to 200 lines
+   - Both components are memoized for performance
+
+4. **refactor(web): use CSS design tokens in UI components for consistency** (`e8ae1c4`):
+   - Updated Button, Card, Input, InputNumber to use design tokens
+   - Uses bg-primary, text-foreground, border-border, bg-muted, etc.
+   - Better theme consistency across components
+
+5. **feat(web): improve copy button UX with error state feedback** (`6443efa`):
+   - Added CopyState type ('idle' | 'copied' | 'error')
+   - Copy button now shows "Failed" with danger variant on error
+   - Added aria-live for accessibility announcements
+
+6. **refactor(web): silence env validation logs on client-side** (`fe88e02`):
+   - Environment validation errors only logged on server
+   - Prevents console noise in browser DevTools
+
+### Prompt 99
+como experto en testing, analizame que test harian falta (test que tengan sentido, no quiero la aplicacion llena de test innecesarios), de momento centrate en el front
+
+**Implementation - Frontend Testing Strategy:**
+
+1. **Vitest + Testing Library Setup:**
+   - Added devDependencies: vitest, @testing-library/react, @testing-library/jest-dom, @testing-library/user-event, @vitejs/plugin-react, jsdom
+   - Created `vitest.config.ts` with jsdom environment and path aliases
+   - Created `src/test/setup.ts` with cleanup, matchMedia mock, ResizeObserver mock
+
+2. **Extracted validateIsin to testable utility:**
+   - Created `lib/utils/validation.ts` with validateIsin and normalizeIsin functions
+   - Updated EditableIsin component to use centralized validation
+   - Added barrel export in `lib/utils/index.ts`
+
+3. **Unit Tests for Pure Functions (17 tests):**
+   - `validation.spec.ts`: ISIN format validation, empty input, length validation, normalization
+   - `id.spec.ts`: generateSimpleId uniqueness, format verification
+
+4. **Hook Tests with renderHook (57 tests):**
+   - `useDuplicateCheck.spec.ts` (13 tests): Identifier matching, ISIN matching, Morningstar ID matching
+   - `usePortfolioValidation.spec.ts` (20 tests): Empty portfolio, unresolved assets, percentage/amount mode validation, tolerance
+   - `useAssetManagement.spec.ts` (24 tests): addAsset, removeAsset, updateWeight, clearAll, getAssetById, resolveAssetManually
+
+5. **Component Integration Tests (31 tests):**
+   - `AssetInput.spec.tsx` (12 tests): Empty input validation, duplicate detection, successful resolution, alternatives response, API error handling, loading state
+   - `PortfolioSummary.spec.tsx` (19 tests): Percentage/amount mode display, validation colors, Generate button states, Clear All functionality
+
+6. **Test Utilities:**
+   - Created `test/fixtures.ts` with factory functions for mock data
+   - Created `test/mocks/api.ts` for API response mocks
+   - Created `test/test-utils.tsx` with QueryClientProvider wrapper
+
+**Test Summary:**
+- 7 test files, 111 tests passing
+- Coverage of critical business logic without testing presentational components
+- No tests for: UI components (Button, Input, etc.), useShareableUrl (clipboard), useIsinPolling (timers), schemas (Zod validates at runtime)
+
+### Prompt 100
+I want this behaviour: Fix pre-commit to run related tests only (faster commits)
+Keep full test suite in CI (catches all issues)
+
+**Implementation - Faster Pre-commit with Related Tests Only:**
+
+1. **Updated `.husky/pre-commit`:**
+   - API: Uses `jest --findRelatedTests <files>` to run only tests related to changed files
+   - Web: Uses `vitest run --related <files>` to run only tests related to changed files
+   - Both commands include `--passWithNoTests` to avoid failures when no related tests exist
+   - Extracts staged files relative to each app directory
+
+2. **Updated `.github/workflows/ci.yml`:**
+   - Split `test` job into `test-api` and `test-web` (parallel execution)
+   - CI runs full test suite: `npm run test` (API) and `npm run test:run` (Web)
+   - Build job now depends on both: `needs: [lint, type-check, test-api, test-web]`
+
+**Performance Impact:**
+| Scenario | Pre-commit (before) | Pre-commit (after) |
+|----------|---------------------|-------------------|
+| Edit 1 file | All tests (~30s) | Related tests only (~5s) |
+| Edit utility used everywhere | All tests (~30s) | Related tests (~15s) |
+
+**Benefits:**
+- Faster commits during development (only related tests run)
+- Full test coverage maintained in CI (catches all issues)
+- Parallel test jobs in CI for faster feedback

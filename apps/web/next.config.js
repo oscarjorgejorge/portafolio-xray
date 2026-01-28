@@ -103,7 +103,7 @@ const nextConfig = {
   // Enable experimental features for better performance
   experimental: {
     // Optimize package imports
-    optimizePackageImports: ['@tanstack/react-query', 'axios'],
+    optimizePackageImports: ['@tanstack/react-query'],
     // Faster server components
     serverActions: {
       bodySizeLimit: '2mb',

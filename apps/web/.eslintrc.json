@@ -1,4 +1,23 @@
 {
-  "extends": "next/core-web-vitals"
+  "extends": ["next/core-web-vitals"],
+  "rules": {
+    "react-hooks/rules-of-hooks": "error",
+    "react-hooks/exhaustive-deps": "warn",
+
+    "react/self-closing-comp": "warn",
+    "react/jsx-curly-brace-presence": ["warn", { "props": "never", "children": "never" }],
+    "react/jsx-boolean-value": ["warn", "never"],
+    "react/jsx-no-useless-fragment": "warn",
+
+    "no-console": ["warn", { "allow": ["warn", "error"] }],
+    "prefer-const": "error",
+    "no-var": "error",
+    "eqeqeq": ["error", "always", { "null": "ignore" }],
+    "no-nested-ternary": "warn",
+
+    "import/first": "warn",
+    "import/newline-after-import": "warn",
+    "import/no-duplicates": "error"
+  }
 }
 

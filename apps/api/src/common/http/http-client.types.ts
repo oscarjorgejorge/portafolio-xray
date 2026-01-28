@@ -17,11 +17,36 @@ export interface HttpRequestOptions {
   retryDelay?: number;
 }
 
+/**
+ * HTTP Error types for categorizing failures
+ */
+export enum HttpErrorType {
+  NETWORK = 'NETWORK',
+  TIMEOUT = 'TIMEOUT',
+  ABORT = 'ABORT',
+  PARSE = 'PARSE',
+  HTTP_ERROR = 'HTTP_ERROR',
+  CIRCUIT_OPEN = 'CIRCUIT_OPEN',
+  UNKNOWN = 'UNKNOWN',
+}
+
+/**
+ * HTTP Error details for debugging
+ */
+export interface HttpError {
+  type: HttpErrorType;
+  message: string;
+  /** Original error if available */
+  cause?: Error;
+}
+
 export interface HttpResponse<T> {
   data: T | null;
   status: number;
   ok: boolean;
   headers?: Headers;
+  /** Error details when ok=false */
+  error?: HttpError;
 }
 
 export interface HttpClientConfig {
@@ -31,4 +56,39 @@ export interface HttpClientConfig {
   defaultHeaders: Record<string, string>;
   /** Enable request logging */
   enableLogging: boolean;
+}
+
+/**
+ * Circuit Breaker states
+ */
+export enum CircuitState {
+  /** Normal operation - requests pass through */
+  CLOSED = 'CLOSED',
+  /** Circuit is tripped - requests fail immediately */
+  OPEN = 'OPEN',
+  /** Testing if service recovered - allows limited requests */
+  HALF_OPEN = 'HALF_OPEN',
+}
+
+/**
+ * Circuit Breaker configuration
+ */
+export interface CircuitBreakerConfig {
+  /** Number of failures before opening circuit (default: 5) */
+  failureThreshold: number;
+  /** Time in ms to wait before trying half-open (default: 30000) */
+  resetTimeoutMs: number;
+  /** Number of successful requests in half-open to close circuit (default: 2) */
+  successThreshold: number;
+}
+
+/**
+ * Circuit Breaker state per domain
+ */
+export interface CircuitBreakerState {
+  state: CircuitState;
+  failureCount: number;
+  successCount: number;
+  lastFailureTime: number;
+  lastStateChange: number;
 }

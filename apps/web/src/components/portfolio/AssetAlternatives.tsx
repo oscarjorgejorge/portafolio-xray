@@ -2,9 +2,9 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
-import type { AlternativeAsset } from '@/lib/api/assets';
-import { confirmAsset, type AssetType } from '@/lib/api/assets';
+import { Modal } from '@/components/ui/Modal';
+import { confirmAsset } from '@/lib/api/assets';
+import type { AlternativeAsset, AssetType } from '@/types';
 import { useMutation } from '@tanstack/react-query';
 
 interface AssetAlternativesProps {
@@ -45,52 +45,48 @@ export const AssetAlternatives: React.FC<AssetAlternativesProps> = ({
   });
 
   const isSingleAlternative = alternatives.length === 1;
+  const title = isSingleAlternative
+    ? `Match found for "${identifier}"`
+    : `Multiple matches found for "${identifier}"`;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <Card className="max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-        <h3 className="text-lg font-semibold mb-4 text-slate-900">
-          {isSingleAlternative
-            ? `Match found for "${identifier}"`
-            : `Multiple matches found for "${identifier}"`}
-        </h3>
-        <p className="text-sm text-slate-700 mb-4">
-          {isSingleAlternative
-            ? 'Please confirm this is the correct asset:'
-            : 'Please select the correct asset from the list below:'}
-        </p>
-        <div className="space-y-2">
-          {alternatives.map((alt, index) => (
-            <div
-              key={alt.morningstarId}
-              className="border border-slate-200 rounded-lg p-4 hover:bg-slate-50 transition-colors bg-white"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h4 className="font-medium text-slate-900">{alt.name}</h4>
-                  <p className="text-sm text-slate-600 mt-1">
-                    Morningstar ID: {alt.morningstarId}
-                  </p>
-                </div>
-                <Button
-                  onClick={() => confirmMutation.mutate(alt)}
-                  isLoading={confirmMutation.isPending}
-                  size="sm"
-                  className="ml-4"
-                >
-                  Select
-                </Button>
+    <Modal isOpen onClose={onCancel} title={title} maxWidth="2xl">
+      <p className="text-sm text-slate-700 mb-4">
+        {isSingleAlternative
+          ? 'Please confirm this is the correct asset:'
+          : 'Please select the correct asset from the list below:'}
+      </p>
+      <div className="space-y-2">
+        {alternatives.map((alt) => (
+          <div
+            key={alt.morningstarId}
+            className="border border-slate-200 rounded-lg p-4 hover:bg-slate-50 transition-colors bg-white"
+          >
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <h4 className="font-medium text-slate-900">{alt.name}</h4>
+                <p className="text-sm text-slate-600 mt-1">
+                  Morningstar ID: {alt.morningstarId}
+                </p>
               </div>
+              <Button
+                onClick={() => confirmMutation.mutate(alt)}
+                isLoading={confirmMutation.isPending}
+                size="sm"
+                className="ml-4"
+              >
+                Select
+              </Button>
             </div>
-          ))}
-        </div>
-        <div className="mt-6 flex justify-end">
-          <Button variant="secondary" onClick={onCancel}>
-            Cancel
-          </Button>
-        </div>
-      </Card>
-    </div>
+          </div>
+        ))}
+      </div>
+      <div className="mt-6 flex justify-end">
+        <Button variant="secondary" onClick={onCancel}>
+          Cancel
+        </Button>
+      </div>
+    </Modal>
   );
 };
 

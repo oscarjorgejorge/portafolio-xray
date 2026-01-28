@@ -1,7 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useCallback } from 'react';
-import { getAssetById, Asset } from '@/lib/api/assets';
+import { getAssetById } from '@/lib/api/assets';
+import { POLLING } from '@/lib/constants';
+import { captureException } from '@/lib/services/errorReporting';
+import type { Asset } from '@/types';
 
 interface UseIsinPollingOptions {
   /** Asset ID to poll */
@@ -10,9 +13,9 @@ interface UseIsinPollingOptions {
   isinPending: boolean;
   /** Callback when asset is updated with ISIN */
   onIsinResolved: (asset: Asset) => void;
-  /** Polling interval in ms (default: 5000) */
+  /** Polling interval in ms */
   interval?: number;
-  /** Maximum number of polling attempts (default: 6 = 30s) */
+  /** Maximum number of polling attempts */
   maxAttempts?: number;
 }
 
@@ -24,8 +27,8 @@ export function useIsinPolling({
   assetId,
   isinPending,
   onIsinResolved,
-  interval = 5000,
-  maxAttempts = 6,
+  interval = POLLING.INTERVAL_MS,
+  maxAttempts = POLLING.MAX_ATTEMPTS,
 }: UseIsinPollingOptions): { isPolling: boolean } {
   const attemptCountRef = useRef(0);
   const intervalIdRef = useRef<NodeJS.Timeout | null>(null);
@@ -62,7 +65,10 @@ export function useIsinPolling({
         onIsinResolved(updatedAsset);
       }
     } catch (error) {
-      console.error('Error polling for ISIN:', error);
+      captureException(error instanceof Error ? error : new Error('ISIN polling failed'), {
+        tags: { action: 'isin-polling' },
+        extra: { assetId },
+      });
       // Stop polling on error
       stopPolling();
     }
@@ -78,7 +84,7 @@ export function useIsinPolling({
       intervalIdRef.current = setInterval(pollForIsin, interval);
 
       // Also do an immediate first poll after a short delay
-      const timeoutId = setTimeout(pollForIsin, 1000);
+      const timeoutId = setTimeout(pollForIsin, POLLING.INITIAL_DELAY_MS);
 
       return () => {
         clearTimeout(timeoutId);

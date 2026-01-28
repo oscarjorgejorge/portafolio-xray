@@ -7,15 +7,26 @@ import {
   Param,
   HttpCode,
   HttpStatus,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { AssetsService } from './assets.service';
-import type { ResolveAssetResponse } from './assets.service';
-import { ResolveAssetDto, ConfirmAssetDto, UpdateIsinDto } from './dto';
-import type { Asset } from '@prisma/client';
+import {
+  ResolveAssetDto,
+  ConfirmAssetDto,
+  UpdateIsinDto,
+  BatchResolveAssetDto,
+} from './dto';
+import {
+  ResolveAssetResponse,
+  BatchResolveAssetResponse,
+  ResolvedAssetDto,
+} from './types';
+import { ApiCommonResponses } from '../common/decorators';
 
 @ApiTags('assets')
 @Controller('assets')
+@ApiCommonResponses()
 export class AssetsController {
   constructor(private readonly assetsService: AssetsService) {}
 
@@ -29,33 +40,37 @@ export class AssetsController {
   @ApiResponse({
     status: 200,
     description: 'Asset resolved successfully',
-    schema: {
-      type: 'object',
-      properties: {
-        success: { type: 'boolean', example: true },
-        source: {
-          type: 'string',
-          enum: ['cache', 'resolved', 'manual_required'],
-          example: 'cache',
-        },
-        asset: {
-          type: 'object',
-          properties: {
-            id: { type: 'string', example: 'uuid' },
-            isin: { type: 'string', example: 'IE00B4L5Y983' },
-            morningstarId: { type: 'string', example: '0P0000YXJO' },
-            name: {
-              type: 'string',
-              example: 'iShares Core MSCI World UCITS ETF',
-            },
-            type: { type: 'string', enum: ['ETF', 'FUND', 'STOCK', 'ETC'] },
-          },
-        },
-      },
-    },
+    type: ResolveAssetResponse,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid input data',
   })
   async resolve(@Body() dto: ResolveAssetDto): Promise<ResolveAssetResponse> {
     return this.assetsService.resolve(dto);
+  }
+
+  @Post('resolve/batch')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Batch resolve multiple asset identifiers',
+    description:
+      'Resolves multiple assets in a single request to reduce N+1 API calls. ' +
+      'Optimized with batch cache lookups and parallel processing. Maximum 20 assets per request.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Batch resolution completed',
+    type: BatchResolveAssetResponse,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid input data',
+  })
+  async resolveBatch(
+    @Body() dto: BatchResolveAssetDto,
+  ): Promise<BatchResolveAssetResponse> {
+    return this.assetsService.resolveBatch(dto);
   }
 
   @Get(':id')
@@ -71,12 +86,19 @@ export class AssetsController {
   @ApiResponse({
     status: 200,
     description: 'Asset found',
+    type: ResolvedAssetDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid UUID format',
   })
   @ApiResponse({
     status: 404,
     description: 'Asset not found',
   })
-  async getById(@Param('id') id: string): Promise<Asset> {
+  async getById(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<ResolvedAssetDto> {
     return this.assetsService.getById(id);
   }
 
@@ -90,12 +112,13 @@ export class AssetsController {
   @ApiResponse({
     status: 201,
     description: 'Asset confirmed and saved',
+    type: ResolvedAssetDto,
   })
   @ApiResponse({
     status: 400,
     description: 'Invalid input data',
   })
-  async confirm(@Body() dto: ConfirmAssetDto): Promise<Asset> {
+  async confirm(@Body() dto: ConfirmAssetDto): Promise<ResolvedAssetDto> {
     return this.assetsService.confirm(dto);
   }
 
@@ -114,19 +137,20 @@ export class AssetsController {
   @ApiResponse({
     status: 200,
     description: 'ISIN updated successfully',
+    type: ResolvedAssetDto,
   })
   @ApiResponse({
     status: 400,
-    description: 'Invalid ISIN format',
+    description: 'Invalid UUID format or invalid ISIN format',
   })
   @ApiResponse({
     status: 404,
     description: 'Asset not found',
   })
   async updateIsin(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateIsinDto,
-  ): Promise<Asset> {
+  ): Promise<ResolvedAssetDto> {
     return this.assetsService.updateIsin(id, dto.isin);
   }
 }

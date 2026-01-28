@@ -1,17 +1,19 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GenerateXRayDto, XRayAssetDto } from './dto';
 import { AssetsRepository } from '../assets/assets.repository';
 import type { AppConfig } from '../config';
 import type { Asset } from '@prisma/client';
-
-export interface GenerateXRayResponse {
-  morningstarUrl: string;
-  shareableUrl: string;
-}
+import { IXRayService } from './interfaces';
+import { GenerateXRayResponse } from './types';
+import {
+  getMorningstarTypeCode,
+  getMorningstarExchangeCode,
+} from './constants';
+import { MORNINGSTAR_URL } from '../common/constants';
 
 @Injectable()
-export class XRayService {
+export class XRayService implements IXRayService {
   private readonly morningstarBaseUrl: string;
 
   constructor(
@@ -25,19 +27,9 @@ export class XRayService {
 
   /**
    * Generate Morningstar X-Ray URL from portfolio assets
+   * Note: Total weight validation is now handled by @HasTotalWeight100 decorator in DTO
    */
   async generate(dto: GenerateXRayDto): Promise<GenerateXRayResponse> {
-    // Validate total weight equals 100%
-    const totalWeight = dto.assets.reduce(
-      (sum, asset) => sum + asset.weight,
-      0,
-    );
-    if (Math.abs(totalWeight - 100) > 0.01) {
-      throw new BadRequestException(
-        `Total weight must equal 100%. Current total: ${totalWeight.toFixed(2)}%`,
-      );
-    }
-
     // Build Morningstar X-Ray URL
     const morningstarUrl = await this.buildMorningstarUrl(dto.assets);
 
@@ -55,7 +47,7 @@ export class XRayService {
    * Format: https://lt.morningstar.com/j2uwuwirpv/xraypdf/default.aspx?LanguageId=es-ES&PortfolioType=2&SecurityTokenList=...&values=...
    */
   private async buildMorningstarUrl(assets: XRayAssetDto[]): Promise<string> {
-    const baseUrl = `${this.morningstarBaseUrl}/j2uwuwirpv/xraypdf/default.aspx`;
+    const baseUrl = `${this.morningstarBaseUrl}${MORNINGSTAR_URL.XRAY_PATH}`;
 
     // Batch lookup: single query instead of N queries
     const morningstarIds = assets.map((a) => a.morningstarId);
@@ -75,42 +67,39 @@ export class XRayService {
       const { typeCode, exchangeCode } = this.getAssetCodes(dbAsset);
 
       // Generate security token: {ID}]typeCode]0]{EXCHANGE}$$ALL_1340
-      const securityToken = `${asset.morningstarId}]${typeCode}]0]${exchangeCode}$$ALL_1340`;
-      securityTokens.push(encodeURIComponent(securityToken));
+      // Note: Do NOT pre-encode tokens - URLSearchParams handles encoding automatically
+      const securityToken = `${asset.morningstarId}]${typeCode}]0]${exchangeCode}${MORNINGSTAR_URL.SECURITY_TOKEN_SUFFIX}`;
+      securityTokens.push(securityToken);
 
-      // Convert weight percentage to absolute value (multiply by 100)
-      values.push(Math.round(asset.weight * 100));
+      // Convert weight percentage to basis points (multiply by 100)
+      values.push(Math.round(asset.weight * MORNINGSTAR_URL.WEIGHT_MULTIPLIER));
     }
 
     // Build URL with all parameters
+    // URLSearchParams automatically encodes values, so use raw | separator
     const url = new URL(baseUrl);
-    url.searchParams.set('LanguageId', 'es-ES');
-    url.searchParams.set('PortfolioType', '2');
-    url.searchParams.set('SecurityTokenList', securityTokens.join('%7C')); // %7C is |
-    url.searchParams.set('values', values.join('%7C'));
+    url.searchParams.set('LanguageId', MORNINGSTAR_URL.LANGUAGE_ID);
+    url.searchParams.set('PortfolioType', MORNINGSTAR_URL.PORTFOLIO_TYPE);
+    url.searchParams.set('SecurityTokenList', securityTokens.join('|'));
+    url.searchParams.set('values', values.join('|'));
 
     return url.toString();
   }
 
   /**
    * Get type code and exchange code for an asset
+   * Uses centralized constants for Morningstar codes
    * @param dbAsset - Asset from database (if found)
    */
   private getAssetCodes(dbAsset: Asset | undefined): {
     typeCode: string;
     exchangeCode: string;
   } {
-    if (dbAsset) {
-      // Use type from database
-      if (dbAsset.type === 'STOCK') {
-        return { typeCode: '3', exchangeCode: 'E0WWE' };
-      }
-      // FUND, ETF, ETC all use type code 2
-      return { typeCode: '2', exchangeCode: 'FOESP' };
-    }
-
-    // Default to fund for unknown types
-    return { typeCode: '2', exchangeCode: 'FOESP' };
+    const assetType = dbAsset?.type ?? null;
+    return {
+      typeCode: getMorningstarTypeCode(assetType),
+      exchangeCode: getMorningstarExchangeCode(assetType),
+    };
   }
 
   /**
@@ -126,24 +115,5 @@ export class XRayService {
 
     // Return relative URL - frontend will handle full URL
     return `/xray?assets=${encodeURIComponent(assetsParam)}`;
-  }
-
-  /**
-   * Parse shareable URL back to assets array
-   */
-  parseShareableUrl(assetsParam: string): XRayAssetDto[] {
-    const assets: XRayAssetDto[] = [];
-
-    const pairs = decodeURIComponent(assetsParam).split(',');
-    for (const pair of pairs) {
-      const [morningstarId, weightStr] = pair.split(':');
-      const weight = parseFloat(weightStr);
-
-      if (morningstarId && !isNaN(weight)) {
-        assets.push({ morningstarId, weight });
-      }
-    }
-
-    return assets;
   }
 }

@@ -1,10 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import * as cheerio from 'cheerio';
 import { SearchResult } from '../resolver.types';
 import { SearchStrategy } from './search-strategy.interface';
 import { buildHtmlSearchUrl } from '../utils/url-builder';
 import { extractMorningstarId, extractDomain } from '../utils/id-extractor';
 import { HttpClientService } from '../../../common/http';
+import { createContextLogger } from '../../../common/logger';
 
 /**
  * Strategy B: HTML scraping from morningstar.es search page
@@ -12,7 +13,7 @@ import { HttpClientService } from '../../../common/http';
  */
 @Injectable()
 export class HtmlScrapeStrategy implements SearchStrategy {
-  private readonly logger = new Logger(HtmlScrapeStrategy.name);
+  private readonly logger = createContextLogger(HtmlScrapeStrategy.name);
   readonly name = 'HTML';
 
   constructor(private readonly httpClient: HttpClientService) {}

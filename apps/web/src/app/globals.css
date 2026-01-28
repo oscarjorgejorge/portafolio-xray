@@ -2,35 +2,44 @@
 @tailwind components;
 @tailwind utilities;
 
+/**
+ * Design tokens as CSS variables
+ * Maps to Tailwind's slate palette for consistency
+ *
+ * Usage in Tailwind: bg-background, text-foreground, bg-primary, etc.
+ * Usage in CSS: var(--background), var(--foreground), etc.
+ */
 :root {
-  --background: #f1f5f9;
-  --foreground: #0f172a;
+  /* Page backgrounds */
+  --background: #f1f5f9; /* slate-100 */
+  --foreground: #0f172a; /* slate-900 */
+
+  /* Primary brand color (blue) */
+  --primary: #2563eb; /* blue-600 */
+  --primary-foreground: #ffffff;
+
+  /* Muted/secondary */
+  --muted: #e2e8f0; /* slate-200 */
+  --muted-foreground: #475569; /* slate-600 */
+
+  /* Card surfaces */
+  --card: #ffffff;
+  --card-foreground: #0f172a; /* slate-900 */
+
+  /* Borders */
+  --border: #e2e8f0; /* slate-200 */
 }
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+@layer base {
+  body {
+    color: var(--foreground);
+    background: var(--background);
+  }
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
   }
-}
-
-@keyframes slide-in {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-.animate-slide-in {
-  animation: slide-in 0.3s ease-out;
 }
 

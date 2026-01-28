@@ -1,25 +1,27 @@
 'use client';
 
 import React from 'react';
+import { cn } from '@/lib/utils';
 
 interface SpinnerProps {
   size?: 'sm' | 'md' | 'lg';
   className?: string;
 }
 
-export const Spinner: React.FC<SpinnerProps> = ({ size = 'sm', className = '' }) => {
-  const sizeClasses = {
-    sm: 'h-3 w-3',
-    md: 'h-4 w-4',
-    lg: 'h-6 w-6',
-  };
+const sizeClasses = {
+  sm: 'h-3 w-3',
+  md: 'h-4 w-4',
+  lg: 'h-6 w-6',
+};
 
+export const Spinner: React.FC<SpinnerProps> = ({ size = 'sm', className }) => {
   return (
     <svg
-      className={`animate-spin ${sizeClasses[size]} ${className}`}
+      className={cn('animate-spin', sizeClasses[size], className)}
       xmlns="http://www.w3.org/2000/svg"
       fill="none"
       viewBox="0 0 24 24"
+      aria-hidden="true"
     >
       <circle
         className="opacity-25"

@@ -1,13 +1,21 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import {
   SearchResult,
   ScoredResult,
   ResolutionResult,
-  MorningstarAssetType,
   VerificationResult,
 } from './resolver.types';
-import { normalizeInput, classifyInput } from './utils/input-normalizer';
-import { DEFAULT_RESOLVER_CONFIG, SCORE_WEIGHTS } from './utils/constants';
+import {
+  IdentifierClassifier,
+  IdentifierType,
+} from '../../common/utils/identifier-classifier';
+import { createContextLogger } from '../../common/logger';
+import {
+  DEFAULT_RESOLVER_CONFIG,
+  SCORE_WEIGHTS,
+  MS_ASSET_TYPES,
+  MorningstarAssetType,
+} from './utils/constants';
 
 // Search strategies
 import { ApiSearchStrategy } from './strategies/api-search.strategy';
@@ -19,14 +27,19 @@ import { DuckDuckGoStrategy } from './strategies/duckduckgo.strategy';
 import { ResultScorerService } from './scoring/result-scorer.service';
 import { PageVerifierService } from './verification/page-verifier.service';
 
+// Interface
+import { IMorningstarResolver } from '../interfaces';
+
 /**
  * MorningstarResolverService
  * Orchestrates resolution of ISIN/ticker/text to Morningstar IDs
  * using multiple search strategies, scoring, and page verification.
  */
 @Injectable()
-export class MorningstarResolverService {
-  private readonly logger = new Logger(MorningstarResolverService.name);
+export class MorningstarResolverService implements IMorningstarResolver {
+  private readonly logger = createContextLogger(
+    MorningstarResolverService.name,
+  );
   private readonly config = DEFAULT_RESOLVER_CONFIG;
 
   constructor(
@@ -82,8 +95,8 @@ export class MorningstarResolverService {
    * @returns Resolution result with confidence score
    */
   async resolve(input: string): Promise<ResolutionResult> {
-    const normalizedInput = normalizeInput(input);
-    const inputType = classifyInput(normalizedInput);
+    const normalizedInput = IdentifierClassifier.normalizeInput(input);
+    const inputType = IdentifierClassifier.classify(normalizedInput);
 
     this.logger.log(`Resolving: ${input} (type: ${inputType})`);
 
@@ -107,7 +120,10 @@ export class MorningstarResolverService {
     let verification: VerificationResult | undefined = undefined;
 
     // Handle different input types
-    if (inputType === 'MORNINGSTAR_ID' && bestMatch?.morningstarId) {
+    if (
+      inputType === IdentifierType.MORNINGSTAR_ID &&
+      bestMatch?.morningstarId
+    ) {
       const result = await this.handleMorningstarIdInput(
         normalizedInput,
         bestMatch,
@@ -118,7 +134,7 @@ export class MorningstarResolverService {
       confidence = result.confidence;
       verification = result.verification;
       scoredResults = result.scoredResults;
-    } else if (inputType === 'MORNINGSTAR_ID' && !bestMatch) {
+    } else if (inputType === IdentifierType.MORNINGSTAR_ID && !bestMatch) {
       const result =
         await this.handleDirectMorningstarIdResolution(normalizedInput);
       if (result) {
@@ -128,7 +144,7 @@ export class MorningstarResolverService {
         verification = result.verification;
         scoredResults = [result.bestMatch];
       }
-    } else if (bestMatch?.morningstarId && inputType === 'ISIN') {
+    } else if (bestMatch?.morningstarId && inputType === IdentifierType.ISIN) {
       const result = await this.handleIsinInput(
         normalizedInput,
         bestMatch,
@@ -140,7 +156,8 @@ export class MorningstarResolverService {
     } else if (
       bestMatch?.morningstarId &&
       !bestMatch.isin &&
-      (inputType === 'FREE_TEXT' || inputType === 'TICKER')
+      (inputType === IdentifierType.FREE_TEXT ||
+        inputType === IdentifierType.TICKER)
     ) {
       const result = await this.handleFreeTextOrTickerInput(bestMatch);
       bestMatch = result.bestMatch;
@@ -215,7 +232,7 @@ export class MorningstarResolverService {
       await this.verifier.verifyFundPageWithFallback(
         bestMatch.morningstarId,
         '',
-        bestMatch.assetType || 'Fondo',
+        bestMatch.assetType || MS_ASSET_TYPES.FUND,
       );
 
     // Update the URL if we found a working market
@@ -268,8 +285,12 @@ export class MorningstarResolverService {
       `[DIRECT] No search results for Morningstar ID ${normalizedInput}, trying direct verification...`,
     );
 
-    const assetTypesToTry: MorningstarAssetType[] = ['Fondo', 'ETF', 'Accion'];
-    let foundAssetType: MorningstarAssetType = 'Fondo';
+    const assetTypesToTry: MorningstarAssetType[] = [
+      MS_ASSET_TYPES.FUND,
+      MS_ASSET_TYPES.ETF,
+      MS_ASSET_TYPES.STOCK,
+    ];
+    let foundAssetType: MorningstarAssetType = MS_ASSET_TYPES.FUND;
     let verResultFound: VerificationResult | null = null;
     let workingUrlFound = '';
     let marketIdFound: string | undefined;
@@ -300,7 +321,7 @@ export class MorningstarResolverService {
       : await this.verifier.verifyFundPageWithFallback(
           normalizedInput,
           '',
-          'Fondo',
+          MS_ASSET_TYPES.FUND,
         );
 
     // If we found the fund in any market
@@ -355,7 +376,7 @@ export class MorningstarResolverService {
       await this.verifier.verifyFundPageWithFallback(
         bestMatch.morningstarId!,
         normalizedInput,
-        bestMatch.assetType || 'Fondo',
+        bestMatch.assetType || MS_ASSET_TYPES.FUND,
       );
 
     // Update the URL if we found a working market
@@ -400,7 +421,7 @@ export class MorningstarResolverService {
       await this.verifier.verifyFundPageWithFallback(
         bestMatch.morningstarId!,
         '',
-        bestMatch.assetType || 'Fondo',
+        bestMatch.assetType || MS_ASSET_TYPES.FUND,
       );
 
     // Update the URL if we found a working market
@@ -445,13 +466,14 @@ export class MorningstarResolverService {
   ): 'resolved' | 'needs_review' | 'not_found' {
     // Check if this is a fund with "F" ID that we prioritized
     const isPrioritizedFund =
-      bestMatch.assetType === 'Fondo' &&
+      bestMatch.assetType === MS_ASSET_TYPES.FUND &&
       bestMatch.morningstarId?.toUpperCase().startsWith('F') &&
       scoredResults.some(
         (r) =>
           r !== bestMatch &&
           r.title &&
-          normalizeInput(r.title) === normalizeInput(bestMatch.title || ''),
+          IdentifierClassifier.normalizeInput(r.title) ===
+            IdentifierClassifier.normalizeInput(bestMatch.title || ''),
       );
 
     if (verified) {
