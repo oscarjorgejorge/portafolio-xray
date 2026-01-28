@@ -71,6 +71,13 @@ export class AssetAlternativeDto {
     example: 'OPTT',
   })
   ticker?: string;
+
+  @ApiPropertyOptional({
+    description: 'Detected asset type (ETF, FUND, STOCK, ETC)',
+    enum: ['ETF', 'FUND', 'STOCK', 'ETC'],
+    example: 'STOCK',
+  })
+  assetType?: string;
 }
 
 /**

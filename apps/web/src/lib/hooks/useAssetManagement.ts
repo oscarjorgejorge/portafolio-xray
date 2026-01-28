@@ -18,7 +18,9 @@ interface UseAssetManagementReturn {
     assetId: string,
     morningstarId: string,
     name: string,
-    url: string
+    url: string,
+    type?: AssetType,
+    ticker?: string
   ) => void;
   clearAll: () => void;
   getAssetById: (id: string) => PortfolioAsset | undefined;
@@ -82,7 +84,7 @@ export function useAssetManagement({
   }, []);
 
   const resolveAssetManually = useCallback(
-    (assetId: string, morningstarId: string, name: string, url: string) => {
+    (assetId: string, morningstarId: string, name: string, url: string, type: AssetType = 'FUND', ticker?: string) => {
       setAssets((prev) =>
         prev.map((asset) =>
           asset.id === assetId
@@ -93,9 +95,10 @@ export function useAssetManagement({
                   id: '',
                   isin: asset.identifier,
                   morningstarId,
+                  ticker: ticker || null,
                   name,
                   url,
-                  type: 'FUND' as AssetType,
+                  type,
                   source: 'manual',
                   createdAt: new Date().toISOString(),
                   updatedAt: new Date().toISOString(),

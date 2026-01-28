@@ -161,6 +161,8 @@ export class AssetsRepository implements IAssetsRepository {
 
   /**
    * Create or update asset by Morningstar ID (used when ISIN is not available)
+   * Note: Only updates ticker if explicitly provided (not undefined)
+   * This prevents overwriting existing ticker data during manual confirmation
    */
   async upsertByMorningstarId(
     data: UpsertAssetByMorningstarIdData,
@@ -173,7 +175,8 @@ export class AssetsRepository implements IAssetsRepository {
         type: data.type,
         url: data.url,
         source: data.source,
-        ticker: data.ticker,
+        // Only update ticker if explicitly provided (preserves existing ticker)
+        ...(data.ticker !== undefined && { ticker: data.ticker }),
         isinPending: data.isinPending ?? false,
       },
       create: {
@@ -183,7 +186,7 @@ export class AssetsRepository implements IAssetsRepository {
         type: data.type,
         url: data.url,
         source: data.source,
-        ticker: data.ticker,
+        ticker: data.ticker ?? null,
         isinPending: data.isinPending ?? false,
       },
     });

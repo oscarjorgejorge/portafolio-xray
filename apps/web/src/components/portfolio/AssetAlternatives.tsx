@@ -1,17 +1,51 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { confirmAsset } from '@/lib/api/assets';
 import type { AlternativeAsset, AssetType } from '@/types';
 import { useMutation } from '@tanstack/react-query';
+import { ASSET_TYPES } from '@/lib/constants';
 
 interface AssetAlternativesProps {
   identifier: string;
   alternatives: AlternativeAsset[];
-  onSelected: (morningstarId: string, name: string, url: string) => void;
+  onSelected: (asset: { morningstarId: string; name: string; url: string; type: AssetType; ticker?: string }) => void;
   onCancel: () => void;
+}
+
+/**
+ * Extract asset type from Morningstar URL
+ * URLs contain: /fondos/ (FUND), /acciones/ (STOCK), /etfs/ (ETF)
+ */
+function extractTypeFromUrl(url: string): AssetType | undefined {
+  const urlLower = url.toLowerCase();
+  if (urlLower.includes('/etf') || urlLower.includes('/etfs/')) return 'ETF';
+  if (urlLower.includes('/acciones/') || urlLower.includes('/stocks/')) return 'STOCK';
+  if (urlLower.includes('/fondos/') || urlLower.includes('/funds/')) return 'FUND';
+  return undefined;
+}
+
+/**
+ * Determine the best asset type from available sources
+ * Priority: 1) Backend assetType, 2) URL extraction, 3) Name heuristic, 4) Default FUND
+ */
+function determineAssetType(alt: AlternativeAsset): AssetType {
+  // 1. Use backend-detected type if available
+  if (alt.assetType) return alt.assetType;
+
+  // 2. Try to extract from URL
+  const urlType = extractTypeFromUrl(alt.url);
+  if (urlType) return urlType;
+
+  // 3. Fallback to name heuristic
+  const nameUpper = alt.name.toUpperCase();
+  if (nameUpper.includes('ETF')) return 'ETF';
+  if (nameUpper.includes('STOCK') || nameUpper.includes('SHARE')) return 'STOCK';
+
+  // 4. Default to FUND
+  return 'FUND';
 }
 
 export const AssetAlternatives: React.FC<AssetAlternativesProps> = ({
@@ -20,16 +54,26 @@ export const AssetAlternatives: React.FC<AssetAlternativesProps> = ({
   onSelected,
   onCancel,
 }) => {
+  // Track selected asset type per alternative (for user override)
+  const [selectedTypes, setSelectedTypes] = useState<Record<string, AssetType>>(() => {
+    const initial: Record<string, AssetType> = {};
+    alternatives.forEach((alt) => {
+      initial[alt.morningstarId] = determineAssetType(alt);
+    });
+    return initial;
+  });
+
+  const handleTypeChange = (morningstarId: string, type: AssetType) => {
+    setSelectedTypes((prev) => ({ ...prev, [morningstarId]: type }));
+  };
+
   const confirmMutation = useMutation({
     mutationFn: async (alt: AlternativeAsset) => {
       // Only include ISIN if identifier is valid ISIN format (12 chars)
       const isin = identifier.length === 12 ? identifier : undefined;
 
-      // Try to determine asset type from name (simple heuristic)
-      let assetType: AssetType = 'FUND';
-      const nameUpper = alt.name.toUpperCase();
-      if (nameUpper.includes('ETF')) assetType = 'ETF';
-      else if (nameUpper.includes('STOCK') || nameUpper.includes('SHARE')) assetType = 'STOCK';
+      // Use the user-selected type (or auto-detected)
+      const assetType = selectedTypes[alt.morningstarId] || determineAssetType(alt);
 
       return confirmAsset({
         ...(isin && { isin }),
@@ -41,7 +85,16 @@ export const AssetAlternatives: React.FC<AssetAlternativesProps> = ({
       });
     },
     onSuccess: (asset, alt) => {
-      onSelected(alt.morningstarId, alt.name, alt.url);
+      // Pass the confirmed asset with the correct type and ticker
+      // Use asset from backend (has ticker) over alt (may not have it)
+      const assetType = asset.type || selectedTypes[alt.morningstarId] || determineAssetType(alt);
+      onSelected({
+        morningstarId: asset.morningstarId,
+        name: asset.name,
+        url: asset.url,
+        type: assetType,
+        ticker: asset.ticker || alt.ticker,
+      });
     },
   });
 
@@ -58,29 +111,51 @@ export const AssetAlternatives: React.FC<AssetAlternativesProps> = ({
           : 'Please select the correct asset from the list below:'}
       </p>
       <div className="space-y-2">
-        {alternatives.map((alt) => (
-          <div
-            key={alt.morningstarId}
-            className="border border-slate-200 rounded-lg p-4 hover:bg-slate-50 transition-colors bg-white"
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <h4 className="font-medium text-slate-900">{alt.name}</h4>
-                <p className="text-sm text-slate-600 mt-1">
-                  Morningstar ID: {alt.morningstarId}
-                </p>
+        {alternatives.map((alt) => {
+          const currentType = selectedTypes[alt.morningstarId] || determineAssetType(alt);
+
+          return (
+            <div
+              key={alt.morningstarId}
+              className="border border-slate-200 rounded-lg p-4 hover:bg-slate-50 transition-colors bg-white"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-medium text-slate-900">{alt.name}</h4>
+                  <p className="text-sm text-slate-600 mt-1">
+                    Morningstar ID: {alt.morningstarId}
+                  </p>
+                  {alt.ticker && (
+                    <p className="text-sm text-slate-500">Ticker: {alt.ticker}</p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <select
+                    value={currentType}
+                    onChange={(e) =>
+                      handleTypeChange(alt.morningstarId, e.target.value as AssetType)
+                    }
+                    className="text-sm border border-slate-300 rounded-md px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    title="Asset type"
+                  >
+                    {ASSET_TYPES.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </select>
+                  <Button
+                    onClick={() => confirmMutation.mutate(alt)}
+                    isLoading={confirmMutation.isPending}
+                    size="sm"
+                  >
+                    Select
+                  </Button>
+                </div>
               </div>
-              <Button
-                onClick={() => confirmMutation.mutate(alt)}
-                isLoading={confirmMutation.isPending}
-                size="sm"
-                className="ml-4"
-              >
-                Select
-              </Button>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
       <div className="mt-6 flex justify-end">
         <Button variant="secondary" onClick={onCancel}>

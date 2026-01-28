@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
-import type { PortfolioAsset, AllocationMode, Asset } from '@/types';
+import type { PortfolioAsset, AllocationMode, Asset, AssetType } from '@/types';
 import { useAssetManagement } from './useAssetManagement';
 import { usePortfolioValidation } from './usePortfolioValidation';
 import { useXRayGeneration } from './useXRayGeneration';
@@ -38,7 +38,9 @@ interface UsePortfolioBuilderReturn {
     assetId: string,
     morningstarId: string,
     name: string,
-    url: string
+    url: string,
+    type: AssetType,
+    ticker?: string
   ) => void;
   handleManualConfirmed: (
     assetId: string,
@@ -135,8 +137,8 @@ export function usePortfolioBuilder({
 
   // Handler: Alternative selected
   const handleAlternativeSelected = useCallback(
-    (assetId: string, morningstarId: string, name: string, url: string) => {
-      assetManagement.resolveAssetManually(assetId, morningstarId, name, url);
+    (assetId: string, morningstarId: string, name: string, url: string, type: AssetType, ticker?: string) => {
+      assetManagement.resolveAssetManually(assetId, morningstarId, name, url, type, ticker);
       setSelectedAssetForAlternatives(null);
     },
     [assetManagement]
