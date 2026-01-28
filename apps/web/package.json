@@ -10,7 +10,10 @@
         "lint": "eslint src --ext .js,.jsx,.ts,.tsx --max-warnings 0",
         "type-check": "tsc --noEmit",
         "type-check:watch": "tsc --noEmit --watch",
-        "clean": "rm -rf .next tsconfig.tsbuildinfo node_modules/.cache .next/cache"
+        "clean": "rm -rf .next tsconfig.tsbuildinfo node_modules/.cache .next/cache",
+        "test": "vitest",
+        "test:run": "vitest run",
+        "test:coverage": "vitest run --coverage"
     },
     "dependencies": {
         "@tanstack/react-query": "^5.56.0",
@@ -24,14 +27,20 @@
     },
     "devDependencies": {
         "@eslint/eslintrc": "^3.3.3",
+        "@testing-library/jest-dom": "^6.6.3",
+        "@testing-library/react": "^16.1.0",
+        "@testing-library/user-event": "^14.6.1",
         "@types/node": "^22.10.0",
         "@types/react": "^19.2.3",
         "@types/react-dom": "^19.2.3",
+        "@vitejs/plugin-react": "^4.3.4",
         "autoprefixer": "^10.4.20",
         "eslint": "^8.57.0",
         "eslint-config-next": "^15.1.0",
+        "jsdom": "^25.0.1",
         "postcss": "^8.4.47",
         "tailwindcss": "^3.4.17",
-        "typescript": "^5.7.3"
+        "typescript": "^5.7.3",
+        "vitest": "^2.1.8"
     }
 }

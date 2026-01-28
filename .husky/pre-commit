@@ -22,10 +22,16 @@ if [ -n "$STAGED_TS_API" ]; then
   echo "Type checking API..."
   npm run type-check --prefix apps/api
   
-  # Only run tests if script exists
+  # Run only related tests for faster commits (full suite runs in CI)
   if npm run --prefix apps/api 2>/dev/null | grep -q "test"; then
-    echo "Running API tests..."
-    npm test --prefix apps/api
+    # Get staged API files as space-separated list (relative to apps/api)
+    API_FILES=$(echo "$STAGED_TS_API" | sed 's|^apps/api/||' | tr '\n' ' ')
+    
+    if [ -n "$API_FILES" ]; then
+      echo "Running related API tests for changed files..."
+      # Jest --findRelatedTests runs only tests that cover the changed files
+      cd apps/api && npx jest --findRelatedTests $API_FILES --passWithNoTests && cd ../..
+    fi
   fi
 fi
 
@@ -33,9 +39,15 @@ if [ -n "$STAGED_TS_WEB" ]; then
   echo "Type checking Web..."
   npm run type-check --prefix apps/web
   
-  # Only run tests if script exists
+  # Run only related tests for faster commits (full suite runs in CI)
   if npm run --prefix apps/web 2>/dev/null | grep -q "test"; then
-    echo "Running Web tests..."
-    npm test --prefix apps/web
+    # Get staged Web files as space-separated list (relative to apps/web)
+    WEB_FILES=$(echo "$STAGED_TS_WEB" | sed 's|^apps/web/||' | tr '\n' ' ')
+    
+    if [ -n "$WEB_FILES" ]; then
+      echo "Running related Web tests for changed files..."
+      # Vitest 'related' subcommand runs only tests related to the changed files
+      cd apps/web && npx vitest related $WEB_FILES --run --passWithNoTests && cd ../..
+    fi
   fi
 fi

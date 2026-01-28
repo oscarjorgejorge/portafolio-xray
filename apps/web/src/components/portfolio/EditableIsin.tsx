@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { updateAssetIsin } from '@/lib/api/assets';
 import { queryKeys } from '@/lib/api/queryKeys';
 import { captureException } from '@/lib/services/errorReporting';
+import { validateIsin, normalizeIsin } from '@/lib/utils/validation';
 import type { Asset } from '@/types';
 import { EditIcon, CheckIcon, CloseIcon, SpinnerIcon } from '@/components/ui/Icons';
 
@@ -14,9 +15,6 @@ interface EditableIsinProps {
   isinManual?: boolean; // True if ISIN was manually entered
   onIsinUpdated: (updatedAsset: Asset) => void;
 }
-
-// ISIN validation: 2 uppercase letters + 10 alphanumeric characters
-const ISIN_REGEX = /^[A-Z]{2}[A-Z0-9]{10}$/;
 
 export const EditableIsin: React.FC<EditableIsinProps> = ({
   assetId,
@@ -52,27 +50,9 @@ export const EditableIsin: React.FC<EditableIsinProps> = ({
     setError(null);
   };
 
-  const validateIsin = (value: string): string | null => {
-    const normalized = value.trim().toUpperCase();
-    
-    if (!normalized) {
-      return 'ISIN is required';
-    }
-    
-    if (normalized.length !== 12) {
-      return 'ISIN must be exactly 12 characters';
-    }
-    
-    if (!ISIN_REGEX.test(normalized)) {
-      return 'Invalid ISIN format (e.g., LU2485535293)';
-    }
-    
-    return null;
-  };
-
   const handleSave = async () => {
-    const normalized = inputValue.trim().toUpperCase();
-    const validationError = validateIsin(normalized);
+    const normalized = normalizeIsin(inputValue);
+    const validationError = validateIsin(inputValue);
     
     if (validationError) {
       setError(validationError);
