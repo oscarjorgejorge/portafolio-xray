@@ -22,6 +22,23 @@ export interface ExtendedVerificationResult {
 }
 
 /**
+ * URL path patterns for detecting asset types
+ */
+const ASSET_TYPE_URL_PATTERNS: Record<string, MorningstarAssetType> = {
+  '/etfs/': MS_ASSET_TYPES.ETF,
+  '/inversiones/etfs/': MS_ASSET_TYPES.ETF,
+  '/investments/etfs/': MS_ASSET_TYPES.ETF,
+  '/fondos/': MS_ASSET_TYPES.FUND,
+  '/funds/': MS_ASSET_TYPES.FUND,
+  '/inversiones/fondos/': MS_ASSET_TYPES.FUND,
+  '/investments/funds/': MS_ASSET_TYPES.FUND,
+  '/acciones/': MS_ASSET_TYPES.STOCK,
+  '/stocks/': MS_ASSET_TYPES.STOCK,
+  '/inversiones/acciones/': MS_ASSET_TYPES.STOCK,
+  '/investments/stocks/': MS_ASSET_TYPES.STOCK,
+};
+
+/**
  * Service responsible for verifying Morningstar pages and extracting data
  */
 @Injectable()
@@ -205,6 +222,64 @@ export class PageVerifierService {
   }
 
   /**
+   * Detect asset type from URL by checking path patterns
+   */
+  private detectAssetTypeFromUrl(url: string): MorningstarAssetType | null {
+    const normalizedUrl = url.toLowerCase();
+
+    for (const [pattern, assetType] of Object.entries(
+      ASSET_TYPE_URL_PATTERNS,
+    )) {
+      if (normalizedUrl.includes(pattern)) {
+        return assetType;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Extract canonical URL from page and detect correct asset type
+   * This is crucial for fixing mismatches between requested URL type and actual asset type
+   */
+  private extractCanonicalAssetType(
+    $: cheerio.CheerioAPI,
+    requestedUrl: string,
+  ): {
+    canonicalUrl: string | null;
+    detectedType: MorningstarAssetType | null;
+  } {
+    // Strategy 1: Check canonical link tag (most reliable)
+    const canonicalUrl = $('link[rel="canonical"]').attr('href') || null;
+
+    if (canonicalUrl) {
+      const detectedType = this.detectAssetTypeFromUrl(canonicalUrl);
+      if (detectedType) {
+        this.logger.debug(
+          `[VERIFY] Detected asset type from canonical URL: ${detectedType} (${canonicalUrl})`,
+        );
+        return { canonicalUrl, detectedType };
+      }
+    }
+
+    // Strategy 2: Check og:url meta tag
+    const ogUrl = $('meta[property="og:url"]').attr('content') || null;
+    if (ogUrl) {
+      const detectedType = this.detectAssetTypeFromUrl(ogUrl);
+      if (detectedType) {
+        this.logger.debug(
+          `[VERIFY] Detected asset type from og:url: ${detectedType} (${ogUrl})`,
+        );
+        return { canonicalUrl: ogUrl, detectedType };
+      }
+    }
+
+    // Strategy 3: Fallback to current URL
+    const detectedType = this.detectAssetTypeFromUrl(requestedUrl);
+    return { canonicalUrl: null, detectedType };
+  }
+
+  /**
    * Extract additional info (ticker, category, currency)
    */
   private extractAdditionalInfo(
@@ -215,6 +290,18 @@ export class PageVerifierService {
     const pageText = $('body').text();
     const pageTitle = $('title').text() || '';
     const metaKeywords = $('meta[name="keywords"]').attr('content') || '';
+
+    // Extract canonical asset type - this is critical for correct type detection
+    const { canonicalUrl, detectedType } = this.extractCanonicalAssetType(
+      $,
+      url,
+    );
+    if (canonicalUrl) {
+      result.additionalInfo.canonicalUrl = canonicalUrl;
+    }
+    if (detectedType) {
+      result.additionalInfo.detectedAssetType = detectedType;
+    }
 
     // Ticker extraction with multiple fallback strategies
     // 1. From URL path for stocks (most reliable for stocks): /stocks/{exchange}/{ticker}/quote
@@ -360,6 +447,7 @@ export class PageVerifierService {
 
   /**
    * Try default Spanish market with all asset types
+   * Uses canonical URL detection to determine the correct asset type
    */
   private async tryDefaultMarket(
     morningstarId: string,
@@ -371,6 +459,29 @@ export class PageVerifierService {
       const verification = await this.verifyFundPage(defaultUrl, expectedIsin);
 
       if (this.isValidResult(verification)) {
+        // Check if the canonical URL indicates a different asset type
+        const canonicalDetectedType = verification.additionalInfo
+          ?.detectedAssetType as MorningstarAssetType | undefined;
+
+        // If canonical URL shows a different type, use that and rebuild the URL
+        if (canonicalDetectedType && canonicalDetectedType !== tryAssetType) {
+          this.logger.log(
+            `[FALLBACK] Type mismatch detected: requested ${tryAssetType} but canonical shows ${canonicalDetectedType}`,
+          );
+          const correctedUrl = buildMorningstarUrl(
+            morningstarId,
+            canonicalDetectedType,
+          );
+          this.logger.log(
+            `[FALLBACK] Found ${morningstarId} as ${canonicalDetectedType} in ES market (ISIN: ${verification.isinFound})`,
+          );
+          return {
+            verification,
+            workingUrl: correctedUrl,
+            detectedAssetType: canonicalDetectedType,
+          };
+        }
+
         this.logger.log(
           `[FALLBACK] Found ${morningstarId} as ${tryAssetType} in ES market (ISIN: ${verification.isinFound})`,
         );
@@ -387,6 +498,7 @@ export class PageVerifierService {
   /**
    * Try European markets in parallel batches for better performance
    * Processes BATCH_SIZE markets concurrently, stopping at first success
+   * Uses canonical URL detection to determine the correct asset type
    */
   private async tryMarketsInParallel(
     morningstarId: string,
@@ -426,14 +538,38 @@ export class PageVerifierService {
         this.isValidResult(r.verification),
       );
       if (successResult) {
+        // Check if the canonical URL indicates a different asset type
+        const canonicalDetectedType = successResult.verification.additionalInfo
+          ?.detectedAssetType as MorningstarAssetType | undefined;
+
+        // Determine the final asset type (prefer canonical detection)
+        const finalAssetType =
+          canonicalDetectedType || successResult.tryAssetType;
+
+        // Rebuild URL if canonical type differs from requested type
+        let finalUrl = successResult.marketUrl;
+        if (
+          canonicalDetectedType &&
+          canonicalDetectedType !== successResult.tryAssetType
+        ) {
+          this.logger.log(
+            `[FALLBACK] Type mismatch in ${successResult.marketId.toUpperCase()}: requested ${successResult.tryAssetType} but canonical shows ${canonicalDetectedType}`,
+          );
+          finalUrl = buildMorningstarUrl(
+            morningstarId,
+            canonicalDetectedType,
+            successResult.marketId,
+          );
+        }
+
         this.logger.log(
-          `[FALLBACK] Found ${morningstarId} as ${successResult.tryAssetType} in ${successResult.marketId.toUpperCase()} market (ISIN: ${successResult.verification.isinFound})`,
+          `[FALLBACK] Found ${morningstarId} as ${finalAssetType} in ${successResult.marketId.toUpperCase()} market (ISIN: ${successResult.verification.isinFound})`,
         );
         return {
           verification: successResult.verification,
-          workingUrl: successResult.marketUrl,
+          workingUrl: finalUrl,
           marketId: successResult.marketId,
-          detectedAssetType: successResult.tryAssetType,
+          detectedAssetType: finalAssetType,
         };
       }
     }

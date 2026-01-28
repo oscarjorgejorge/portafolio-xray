@@ -34,6 +34,17 @@ interface ApiResponse<T> {
 }
 
 /**
+ * Standard API response wrapper from the backend
+ * All successful responses are wrapped in this format by TransformResponseInterceptor
+ */
+interface ApiResponseWrapper<T> {
+  success: boolean;
+  data: T;
+  timestamp: string;
+  requestId?: string;
+}
+
+/**
  * Lightweight fetch-based API client
  * Replaces axios for smaller bundle size (~13KB savings)
  */
@@ -95,20 +106,35 @@ class FetchApiClient {
       clearTimeout(timeoutId);
 
       // Parse response data
-      let responseData: T;
+      let rawData: unknown;
       const contentType = response.headers.get('content-type');
       if (contentType?.includes('application/json')) {
-        responseData = await response.json();
+        rawData = await response.json();
       } else {
-        responseData = (await response.text()) as T;
+        rawData = await response.text();
       }
 
       // Handle error responses
       if (!response.ok) {
         const message =
-          (responseData as { message?: string })?.message ||
+          (rawData as { message?: string })?.message ||
           `Request failed with status ${response.status}`;
-        throw new ApiError(message, response.status, responseData);
+        throw new ApiError(message, response.status, rawData);
+      }
+
+      // Unwrap the standard API response envelope { success, data, timestamp, requestId }
+      // The backend wraps all successful responses in this format via TransformResponseInterceptor
+      let responseData: T;
+      if (
+        typeof rawData === 'object' &&
+        rawData !== null &&
+        'success' in rawData &&
+        'data' in rawData
+      ) {
+        const wrapper = rawData as ApiResponseWrapper<T>;
+        responseData = wrapper.data;
+      } else {
+        responseData = rawData as T;
       }
 
       return {

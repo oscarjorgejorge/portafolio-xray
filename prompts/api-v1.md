@@ -1755,3 +1755,97 @@ Keep full test suite in CI (catches all issues)
 - Faster commits during development (only related tests run)
 - Full test coverage maintained in CI (catches all issues)
 - Parallel test jobs in CI for faster feedback
+
+### Prompt 101
+para un stock, deberia poner, ticker not available, e introducir el ticker que se guardaria en base de datos
+
+**Implementation - Editable Ticker for Stocks:**
+
+1. **Backend - Prisma Schema:**
+   - Added `tickerManual Boolean @default(false) @map("ticker_manual")` to Asset model
+   - Tracks when ticker was manually entered by user
+
+2. **Backend - DTO:**
+   - Created `UpdateTickerDto` with validation (1-10 chars, uppercase alphanumeric + dots)
+   - Uses centralized `trimUppercase` transform
+
+3. **Backend - Repository:**
+   - Added `updateTickerWithVerification` method with transaction
+   - Ensures atomicity between existence check and update
+
+4. **Backend - Service:**
+   - Added `updateTicker` method similar to `updateIsin`
+   - Invalidates cache for all asset identifiers
+
+5. **Backend - Controller:**
+   - Added `PATCH /assets/:id/ticker` endpoint
+   - Full Swagger documentation
+
+6. **Backend - Types:**
+   - Added `tickerManual` to `ResolvedAssetDto`
+   - Updated mapper to include `isinPending`, `isinManual`, `tickerManual`
+
+7. **Frontend - API Client:**
+   - Added `updateAssetTicker` function
+
+8. **Frontend - Schemas:**
+   - Added `tickerManual` to `AssetSchema`
+
+9. **Frontend - Validation:**
+   - Added `validateTicker` and `normalizeTicker` functions
+
+10. **Frontend - EditableTicker Component:**
+    - Created component similar to `EditableIsin`
+    - Shows "Ticker not available" with edit button for stocks without ticker
+    - Inline editing with save/cancel buttons
+    - Keyboard support (Enter/Escape)
+
+11. **Frontend - AssetRow:**
+    - For STOCK type: Shows `EditableTicker` component
+    - For other types: Shows ticker (if available) and `EditableIsin`
+    - Different UX based on asset type
+
+**API Endpoint:**
+```
+PATCH /assets/:id/ticker
+Body: { "ticker": "AAPL" }
+Response: Updated Asset object with tickerManual: true
+```
+
+**Validation:**
+- Ticker must be 1-10 characters
+- Must contain only uppercase letters, numbers, and dots (e.g., AAPL, BRK.B)
+- Returns 400 for invalid format, 404 if asset not found
+
+### Prompt 102
+este es el ticker the nike, porque no lo encontraste? NKE
+
+**Root Cause Analysis:**
+- The ticker extraction logic was not handling stock URLs correctly
+- Nike's URL is `morningstar.com/stocks/xnys/nke/quote` where the ticker is in the path, not as a parameter
+- Previous extraction strategies only looked for:
+  1. URL parameter `?ticker=`
+  2. Title starting with ticker
+  3. "Ticker:" label in page text
+
+**Implementation - Improved Ticker Extraction:**
+
+Updated `page-verifier.service.ts` with 5 extraction strategies (in priority order):
+
+1. **URL path for stocks** (new): Extracts ticker from `/stocks/{exchange}/{ticker}/` path
+   - Example: `morningstar.com/stocks/xnys/nke/quote` → `NKE`
+
+2. **URL parameter**: `?ticker=CELH`
+
+3. **Meta keywords** (new): Extracts first keyword that looks like a ticker
+   - Example: "NKE, Nike Stock, NKE Stock Price..." → `NKE`
+
+4. **Page title** (improved): Now checks both end and start of title
+   - End pattern: "Nike Inc Class B **NKE**"
+   - Start pattern: "**CELH** Precio de las acciones..."
+
+5. **Page text**: Looks for "Ticker: XYZ" in body text
+
+**Result:**
+- Future stock resolutions will automatically extract the ticker
+- Existing stocks without ticker can be manually updated using the EditableTicker component

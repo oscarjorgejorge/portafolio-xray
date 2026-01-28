@@ -21,6 +21,7 @@ model Asset {
   source        AssetSource
   isinPending   Boolean     @default(false) @map("isin_pending") // True when ISIN enrichment is in progress
   isinManual    Boolean     @default(false) @map("isin_manual")  // True when ISIN was manually entered by user
+  tickerManual  Boolean     @default(false) @map("ticker_manual") // True when ticker was manually entered by user
   createdAt     DateTime    @default(now()) @map("created_at")
   updatedAt     DateTime    @updatedAt @map("updated_at")
 

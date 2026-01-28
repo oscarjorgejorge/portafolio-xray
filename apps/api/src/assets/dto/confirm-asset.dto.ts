@@ -19,17 +19,18 @@ export enum AssetTypeDto {
 }
 
 export class ConfirmAssetDto {
-  @ApiProperty({
-    description: 'International Securities Identification Number',
+  @ApiPropertyOptional({
+    description:
+      'International Securities Identification Number (optional when asset found by ticker)',
     example: 'IE00B4L5Y983',
     minLength: 12,
     maxLength: 12,
   })
   @Transform(trimUppercase)
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   @IsValidIsin()
-  isin!: string;
+  isin?: string;
 
   @ApiProperty({
     description: 'Morningstar unique identifier',

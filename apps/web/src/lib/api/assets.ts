@@ -12,7 +12,7 @@ import {
 export type { Asset, AssetType, AlternativeAsset, ResolveAssetResponse };
 
 export interface ConfirmAssetRequest {
-  isin: string;
+  isin?: string;
   morningstarId: string;
   name: string;
   type: AssetType;
@@ -68,6 +68,16 @@ export async function getAssetById(id: string): Promise<Asset> {
  */
 export async function updateAssetIsin(id: string, isin: string): Promise<Asset> {
   const response = await apiClient.patch(`/assets/${id}/isin`, { isin });
+  return AssetSchema.parse(response.data);
+}
+
+/**
+ * Update ticker for an existing asset
+ * Primarily used for stocks where ticker is not automatically resolved
+ * Validates response against Zod schema
+ */
+export async function updateAssetTicker(id: string, ticker: string): Promise<Asset> {
+  const response = await apiClient.patch(`/assets/${id}/ticker`, { ticker });
   return AssetSchema.parse(response.data);
 }
 

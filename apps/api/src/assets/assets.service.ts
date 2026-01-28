@@ -208,6 +208,7 @@ export class AssetsService implements IAssetsService {
             name: r.title,
             url: r.url,
             score: r.score,
+            ticker: r.ticker,
           }));
 
         return {
@@ -468,14 +469,16 @@ export class AssetsService implements IAssetsService {
 
   async confirm(dto: ConfirmAssetDto): Promise<ResolvedAssetDto> {
     // Create or update asset with manual source
-    const asset = await this.assetsRepository.upsertByIsin({
-      isin: dto.isin,
+    // Use upsertByMorningstarId since ISIN may be undefined (e.g., when found by ticker)
+    const asset = await this.assetsRepository.upsertByMorningstarId({
+      isin: dto.isin ?? null,
       morningstarId: dto.morningstarId,
       name: dto.name,
       type: dto.type as AssetType,
       url: dto.url,
       source: AssetSource.manual,
       ticker: dto.ticker,
+      isinPending: !dto.isin, // Mark as pending if no ISIN provided
     });
 
     // Invalidate cache for all identifiers (ISIN, Morningstar ID, and ticker)
@@ -511,6 +514,35 @@ export class AssetsService implements IAssetsService {
       isin,
       morningstarId: asset.morningstarId,
       ticker: asset.ticker,
+    });
+
+    return toResolvedAssetDto(asset);
+  }
+
+  /**
+   * Update ticker for an existing asset (manual entry by user)
+   * Primarily used for stocks where ticker is not automatically resolved
+   * Uses transactional method to ensure atomicity between existence check and update
+   * @param id - Asset UUID
+   * @param ticker - New ticker value
+   * @throws EntityNotFoundException if asset not found (returns 404 automatically)
+   */
+  async updateTicker(id: string, ticker: string): Promise<ResolvedAssetDto> {
+    this.logger.log(`Manually updating ticker for asset ${id}: ${ticker}`);
+
+    // Repository throws EntityNotFoundException (extends NotFoundException)
+    // which is automatically handled by NestJS and returns 404
+    const asset = await this.assetsRepository.updateTickerWithVerification(
+      id,
+      ticker,
+      true, // Mark as manually entered
+    );
+
+    // Invalidate cache for all identifiers
+    await this.invalidateAssetCache({
+      isin: asset.isin,
+      morningstarId: asset.morningstarId,
+      ticker,
     });
 
     return toResolvedAssetDto(asset);

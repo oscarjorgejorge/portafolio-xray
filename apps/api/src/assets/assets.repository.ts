@@ -100,6 +100,9 @@ export class AssetsRepository implements IAssetsRepository {
           isinPending: data.isinPending,
         }),
         ...(data.isinManual !== undefined && { isinManual: data.isinManual }),
+        ...(data.tickerManual !== undefined && {
+          tickerManual: data.tickerManual,
+        }),
       },
     });
   }
@@ -250,6 +253,39 @@ export class AssetsRepository implements IAssetsRepository {
       data: {
         isinPending: false,
       },
+    });
+  }
+
+  /**
+   * Verify asset exists and update ticker atomically using a transaction
+   * This method ensures no race conditions between checking existence and updating
+   * @param assetId - Asset UUID
+   * @param ticker - New ticker value
+   * @param isManual - Whether the ticker was manually entered by user (default: false)
+   * @returns Updated asset
+   * @throws EntityNotFoundException if asset not found
+   */
+  async updateTickerWithVerification(
+    assetId: string,
+    ticker: string,
+    isManual = false,
+  ): Promise<Asset> {
+    return this.prisma.$transaction(async (tx) => {
+      const asset = await tx.asset.findUnique({
+        where: { id: assetId },
+      });
+
+      if (!asset) {
+        throw new EntityNotFoundException('Asset', assetId);
+      }
+
+      return tx.asset.update({
+        where: { id: assetId },
+        data: {
+          ticker: ticker.toUpperCase(),
+          tickerManual: isManual,
+        },
+      });
     });
   }
 }

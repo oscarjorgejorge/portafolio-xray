@@ -13,6 +13,10 @@ import { IdentifierClassifier } from '../utils/identifier-classifier';
 @ValidatorConstraint({ name: 'isValidIsin', async: false })
 export class IsValidIsinConstraint implements ValidatorConstraintInterface {
   validate(value: unknown): boolean {
+    // Allow undefined/null for optional fields (handled by @IsOptional)
+    if (value === undefined || value === null) {
+      return true;
+    }
     if (typeof value !== 'string') {
       return false;
     }

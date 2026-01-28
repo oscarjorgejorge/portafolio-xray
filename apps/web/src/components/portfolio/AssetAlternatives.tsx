@@ -22,21 +22,22 @@ export const AssetAlternatives: React.FC<AssetAlternativesProps> = ({
 }) => {
   const confirmMutation = useMutation({
     mutationFn: async (alt: AlternativeAsset) => {
-      // Extract ISIN from identifier if it's an ISIN format
-      const isin = identifier.length === 12 ? identifier : '';
-      
+      // Only include ISIN if identifier is valid ISIN format (12 chars)
+      const isin = identifier.length === 12 ? identifier : undefined;
+
       // Try to determine asset type from name (simple heuristic)
       let assetType: AssetType = 'FUND';
       const nameUpper = alt.name.toUpperCase();
       if (nameUpper.includes('ETF')) assetType = 'ETF';
       else if (nameUpper.includes('STOCK') || nameUpper.includes('SHARE')) assetType = 'STOCK';
-      
+
       return confirmAsset({
-        isin: isin || identifier,
+        ...(isin && { isin }),
         morningstarId: alt.morningstarId,
         name: alt.name,
         type: assetType,
         url: alt.url,
+        ticker: alt.ticker,
       });
     },
     onSuccess: (asset, alt) => {
