@@ -16,10 +16,23 @@ describe('AppController (e2e)', () => {
     await app.init();
   });
 
-  it('/ (GET)', () => {
+  afterEach(async () => {
+    await app.close();
+  });
+
+  it('/ (GET) should return API welcome message with version', () => {
     return request(app.getHttpServer())
       .get('/')
       .expect(200)
-      .expect('Hello World!');
+      .expect((res) => {
+        // The response is wrapped by the transform interceptor
+        // Check if it's a wrapped response or plain text
+        const body = res.body as { data?: string } | null;
+        if (body && body.data) {
+          expect(body.data).toMatch(/^Portfolio X-Ray API v\d+\.\d+\.\d+$/);
+        } else {
+          expect(res.text).toMatch(/^Portfolio X-Ray API v\d+\.\d+\.\d+$/);
+        }
+      });
   });
 });

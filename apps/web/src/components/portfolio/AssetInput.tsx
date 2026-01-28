@@ -4,8 +4,9 @@ import React, { useState } from 'react';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { useMutation } from '@tanstack/react-query';
-import { resolveAsset, type AssetType } from '@/lib/api/assets';
-import type { PortfolioAsset } from '@/types';
+import { resolveAsset } from '@/lib/api/assets';
+import { useDuplicateCheck } from '@/lib/hooks/useDuplicateCheck';
+import type { PortfolioAsset, AssetType } from '@/types';
 import { generateSimpleId } from '@/lib/utils/id';
 
 interface AssetInputProps {
@@ -21,38 +22,7 @@ export const AssetInput: React.FC<AssetInputProps> = ({
 }) => {
   const [input, setInput] = useState('');
   const [error, setError] = useState<string | null>(null);
-
-  const checkDuplicate = (
-    identifier: string,
-    resolvedAsset?: { isin?: string | null; morningstarId?: string }
-  ): boolean => {
-    return existingAssets.some((existingAsset) => {
-      // Check by identifier (ISIN, ticker, etc.)
-      if (
-        existingAsset.identifier.toUpperCase() === identifier.toUpperCase()
-      ) {
-        return true;
-      }
-      // Check by ISIN if both have resolved assets
-      if (
-        existingAsset.asset?.isin &&
-        resolvedAsset?.isin &&
-        existingAsset.asset.isin.toUpperCase() ===
-          resolvedAsset.isin.toUpperCase()
-      ) {
-        return true;
-      }
-      // Check by Morningstar ID if both have resolved assets
-      if (
-        existingAsset.asset?.morningstarId &&
-        resolvedAsset?.morningstarId &&
-        existingAsset.asset.morningstarId === resolvedAsset.morningstarId
-      ) {
-        return true;
-      }
-      return false;
-    });
-  };
+  const { checkDuplicate } = useDuplicateCheck(existingAssets);
 
   const resolveMutation = useMutation({
     mutationFn: (identifier: string) =>
@@ -142,7 +112,12 @@ export const AssetInput: React.FC<AssetInputProps> = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2">
+    <form
+      onSubmit={handleSubmit}
+      className="flex gap-2"
+      aria-label="Add asset to portfolio"
+      aria-busy={resolveMutation.isPending}
+    >
       <div className="flex-1">
         <Input
           placeholder="Enter ISIN, Morningstar ID, or ticker (e.g., IE00B4L5Y983)"
@@ -150,6 +125,7 @@ export const AssetInput: React.FC<AssetInputProps> = ({
           onChange={(e) => setInput(e.target.value)}
           error={error || undefined}
           disabled={resolveMutation.isPending}
+          aria-label="Asset identifier input"
         />
       </div>
       <Button
