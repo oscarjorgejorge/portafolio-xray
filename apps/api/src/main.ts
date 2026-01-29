@@ -96,7 +96,17 @@ async function bootstrap(): Promise<void> {
           'API for generating Morningstar X-Ray reports. Resolves ISINs to Morningstar IDs and generates portfolio analysis URLs.',
         )
         .setVersion('1.0')
+        .addBearerAuth(
+          {
+            type: 'http',
+            scheme: 'bearer',
+            bearerFormat: 'JWT',
+            description: 'Enter your JWT access token',
+          },
+          'bearer',
+        )
         .addTag('health', 'Health check endpoints for monitoring')
+        .addTag('auth', 'Authentication endpoints')
         .addTag('assets', 'Asset resolution and cache management')
         .addTag('xray', 'X-Ray URL generation')
         .build();
