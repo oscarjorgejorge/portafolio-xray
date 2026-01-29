@@ -19,6 +19,7 @@ import {
 import { Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
+import { MailService } from '../mail/mail.service';
 import {
   RegisterDto,
   LoginDto,
@@ -40,6 +41,7 @@ import { AppConfig } from '../config';
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
+    private readonly mailService: MailService,
     private readonly configService: ConfigService<AppConfig, true>,
   ) {}
 
@@ -55,8 +57,11 @@ export class AuthController {
 
     const result = await this.authService.register(dto, ipAddress, userAgent);
 
-    // TODO: Send verification email using mail service
-    // await this.mailService.sendVerificationEmail(result.user.email, result.verificationToken);
+    // Send verification email (don't await to not block response)
+    void this.mailService.sendVerificationEmail(
+      result.user.email,
+      result.verificationToken,
+    );
 
     return {
       message:
@@ -194,10 +199,10 @@ export class AuthController {
   })
   async resendVerification(@Body() dto: ResendVerificationDto) {
     try {
-      await this.authService.resendVerificationEmail(dto.email);
+      const token = await this.authService.resendVerificationEmail(dto.email);
 
-      // TODO: Send verification email using mail service
-      // The token is returned but will be used when mail service is implemented
+      // Send verification email (don't await to not block response)
+      void this.mailService.sendVerificationEmail(dto.email, token);
 
       return {
         message:
@@ -224,8 +229,8 @@ export class AuthController {
     const token = await this.authService.forgotPassword(dto.email);
 
     if (token) {
-      // TODO: Send password reset email using mail service
-      // await this.mailService.sendPasswordResetEmail(dto.email, token);
+      // Send password reset email (don't await to not block response)
+      void this.mailService.sendPasswordResetEmail(dto.email, token);
     }
 
     // Always return success to prevent email enumeration
