@@ -25,6 +25,7 @@ const createMockAsset = (overrides = {}) => ({
   source: AssetSource.web_search,
   isinPending: false,
   isinManual: false,
+  tickerManual: false,
   createdAt: new Date(),
   updatedAt: new Date(),
   ...overrides,

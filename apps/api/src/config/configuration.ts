@@ -63,6 +63,23 @@ export const configuration = (): AppConfig => ({
   corsOrigins: (process.env.CORS_ORIGINS || 'http://localhost:3000')
     .split(',')
     .map((origin) => origin.trim()),
+
+  // Authentication (V2)
+  jwt: {
+    secret: process.env.JWT_SECRET as string,
+    accessExpiration: process.env.JWT_ACCESS_EXPIRATION || '15m',
+    refreshExpiration: process.env.JWT_REFRESH_EXPIRATION || '7d',
+  },
+  google: {
+    clientId: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    callbackUrl: process.env.GOOGLE_CALLBACK_URL,
+  },
+  email: {
+    resendApiKey: process.env.RESEND_API_KEY,
+    from: process.env.EMAIL_FROM || 'noreply@example.com',
+  },
+  frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
 });
 
 /**
@@ -118,6 +135,37 @@ export interface CircuitBreakerConfig {
 }
 
 /**
+ * JWT configuration for authentication
+ */
+export interface JwtConfig {
+  /** Secret key for signing tokens (min 32 chars) */
+  secret: string;
+  /** Access token expiration (e.g., '15m', '1h') */
+  accessExpiration: string;
+  /** Refresh token expiration (e.g., '7d', '30d') */
+  refreshExpiration: string;
+}
+
+/**
+ * Google OAuth configuration
+ */
+export interface GoogleConfig {
+  clientId?: string;
+  clientSecret?: string;
+  callbackUrl?: string;
+}
+
+/**
+ * Email service configuration
+ */
+export interface EmailConfig {
+  /** Resend API key for sending emails */
+  resendApiKey?: string;
+  /** Email address to send from */
+  from: string;
+}
+
+/**
  * Type-safe application configuration interface
  * Flat structure for easier ConfigService access
  */
@@ -135,6 +183,11 @@ export interface AppConfig {
   circuitBreaker: CircuitBreakerConfig;
   morningstarBaseUrl: string;
   corsOrigins: string[];
+  // Authentication (V2)
+  jwt: JwtConfig;
+  google: GoogleConfig;
+  email: EmailConfig;
+  frontendUrl: string;
 }
 
 /**
@@ -152,4 +205,9 @@ export const CONFIG_KEYS = {
   RESOLUTION: 'resolution',
   MORNINGSTAR_BASE_URL: 'morningstarBaseUrl',
   CORS_ORIGINS: 'corsOrigins',
+  // Authentication (V2)
+  JWT: 'jwt',
+  GOOGLE: 'google',
+  EMAIL: 'email',
+  FRONTEND_URL: 'frontendUrl',
 } as const satisfies Record<string, keyof AppConfig>;

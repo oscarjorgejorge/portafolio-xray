@@ -13,6 +13,7 @@ describe('asset.mapper', () => {
     source: AssetSource.web_search,
     isinPending: false,
     isinManual: false,
+    tickerManual: false,
     createdAt: new Date('2024-01-15T10:00:00Z'),
     updatedAt: new Date('2024-01-16T12:00:00Z'),
     ...overrides,
