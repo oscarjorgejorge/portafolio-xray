@@ -17,8 +17,9 @@ export const AssetSchema = z.object({
   source: z.enum(['manual', 'web_search', 'imported']),
   isinPending: z.boolean().optional(),
   isinManual: z.boolean().optional(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
+  // createdAt and updatedAt are optional as the backend DTO doesn't include them
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
 });
 
 export const AlternativeAssetSchema = z.object({
@@ -26,6 +27,7 @@ export const AlternativeAssetSchema = z.object({
   name: z.string(),
   url: z.string(),
   score: z.number(),
+  market: z.string().optional(),
 });
 
 // ============================================

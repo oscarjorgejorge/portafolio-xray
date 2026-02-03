@@ -27,8 +27,10 @@ export const AssetAlternatives: React.FC<AssetAlternativesProps> = ({
   
   const confirmMutation = useMutation({
     mutationFn: async (alt: AlternativeAsset) => {
-      // Extract ISIN from identifier if it's an ISIN format
-      const isin = identifier.length === 12 ? identifier : '';
+      // Check if identifier is a valid ISIN format (12 characters: 2 letters + 10 alphanumeric)
+      // Only use it as ISIN if it matches the format, otherwise send null
+      const isIsinFormat = /^[A-Z]{2}[A-Z0-9]{10}$/.test(identifier.toUpperCase());
+      const isin = isIsinFormat ? identifier.toUpperCase() : null;
       
       // Try to determine asset type from name (simple heuristic)
       let assetType: AssetType = 'FUND';
@@ -37,15 +39,16 @@ export const AssetAlternatives: React.FC<AssetAlternativesProps> = ({
       else if (nameUpper.includes('STOCK') || nameUpper.includes('SHARE')) assetType = 'STOCK';
       
       return confirmAsset({
-        isin: isin || identifier,
+        isin,
         morningstarId: alt.morningstarId,
         name: alt.name,
         type: assetType,
         url: alt.url,
       });
     },
-    onSuccess: (asset, alt) => {
-      onSelected(alt.morningstarId, alt.name, alt.url);
+    onError: (error) => {
+      // Log error for debugging - in production you might want to show a toast
+      console.error('Failed to confirm asset:', error);
     },
   });
 
@@ -69,13 +72,29 @@ export const AssetAlternatives: React.FC<AssetAlternativesProps> = ({
           >
             <div className="flex items-start justify-between">
               <div className="flex-1">
-                <h4 className="font-medium text-slate-900">{alt.name}</h4>
+                <div className="flex items-center gap-2">
+                  <h4 className="font-medium text-slate-900">{alt.name}</h4>
+                  {alt.market && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                      {alt.market}
+                    </span>
+                  )}
+                </div>
                 <p className="text-sm text-slate-600 mt-1">
                   {tAssetRow('morningstarId')} {alt.morningstarId}
                 </p>
               </div>
               <Button
-                onClick={() => confirmMutation.mutate(alt)}
+                onClick={async () => {
+                  try {
+                    const asset = await confirmMutation.mutateAsync(alt);
+                    // Call onSelected which will close the modal via handleAlternativeSelected
+                    onSelected(asset.morningstarId, asset.name, asset.url);
+                  } catch (error) {
+                    // Error is already handled by onError callback
+                    console.error('Failed to confirm asset:', error);
+                  }
+                }}
                 isLoading={confirmMutation.isPending}
                 size="sm"
                 className="ml-4"

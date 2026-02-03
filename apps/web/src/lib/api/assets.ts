@@ -12,7 +12,7 @@ import {
 export type { Asset, AssetType, AlternativeAsset, ResolveAssetResponse };
 
 export interface ConfirmAssetRequest {
-  isin: string;
+  isin?: string | null;
   morningstarId: string;
   name: string;
   type: AssetType;

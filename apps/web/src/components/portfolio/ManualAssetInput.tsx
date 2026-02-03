@@ -28,14 +28,20 @@ export const ManualAssetInput: React.FC<ManualAssetInputProps> = ({
   const [assetType, setAssetType] = useState<AssetType>('FUND');
 
   const confirmMutation = useMutation({
-    mutationFn: () =>
-      confirmAsset({
-        isin: identifier.length === 12 ? identifier : identifier,
+    mutationFn: () => {
+      // Check if identifier is a valid ISIN format (12 characters: 2 letters + 10 alphanumeric)
+      // Only use it as ISIN if it matches the format, otherwise send null
+      const isIsinFormat = /^[A-Z]{2}[A-Z0-9]{10}$/.test(identifier.toUpperCase());
+      const isin = isIsinFormat ? identifier.toUpperCase() : null;
+      
+      return confirmAsset({
+        isin,
         morningstarId,
         name,
         type: assetType,
         url,
-      }),
+      });
+    },
     onSuccess: (asset) => {
       onConfirmed(asset.morningstarId, asset.name, asset.url);
     },

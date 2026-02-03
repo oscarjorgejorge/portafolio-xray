@@ -208,6 +208,7 @@ export class AssetsService implements IAssetsService {
             name: r.title,
             url: r.url,
             score: r.score,
+            market: this.detectMarketFromUrl(r.url),
           }));
 
         return {
@@ -468,19 +469,33 @@ export class AssetsService implements IAssetsService {
 
   async confirm(dto: ConfirmAssetDto): Promise<ResolvedAssetDto> {
     // Create or update asset with manual source
-    const asset = await this.assetsRepository.upsertByIsin({
-      isin: dto.isin,
-      morningstarId: dto.morningstarId,
-      name: dto.name,
-      type: dto.type as AssetType,
-      url: dto.url,
-      source: AssetSource.manual,
-      ticker: dto.ticker,
-    });
+    // Use upsertByMorningstarId when ISIN is not available (e.g., ticker-only assets)
+    const isin = dto.isin && dto.isin.trim() !== '' ? dto.isin : null;
+
+    const asset = isin
+      ? await this.assetsRepository.upsertByIsin({
+          isin,
+          morningstarId: dto.morningstarId,
+          name: dto.name,
+          type: dto.type as AssetType,
+          url: dto.url,
+          source: AssetSource.manual,
+          ticker: dto.ticker,
+        })
+      : await this.assetsRepository.upsertByMorningstarId({
+          isin: null,
+          morningstarId: dto.morningstarId,
+          name: dto.name,
+          type: dto.type as AssetType,
+          url: dto.url,
+          source: AssetSource.manual,
+          ticker: dto.ticker,
+          isinPending: false,
+        });
 
     // Invalidate cache for all identifiers (ISIN, Morningstar ID, and ticker)
     await this.invalidateAssetCache({
-      isin: dto.isin,
+      isin: isin ?? undefined,
       morningstarId: dto.morningstarId,
       ticker: dto.ticker,
     });
@@ -581,6 +596,60 @@ export class AssetsService implements IAssetsService {
    * @param input - The input that was being resolved
    * @returns Error code and user-friendly message
    */
+  /**
+   * Detect market/exchange from Morningstar URL
+   * Extracts market ID from URL patterns like:
+   * - /es/inversiones/... (Spanish market)
+   * - /en-eu/investments/...?marketID=us (EU market with marketID param)
+   * - /en/investments/... (English market, likely US)
+   */
+  private detectMarketFromUrl(url: string): string | undefined {
+    try {
+      const urlObj = new URL(url);
+
+      // Check for marketID parameter (e.g., ?marketID=us)
+      const marketIdParam = urlObj.searchParams.get('marketID');
+      if (marketIdParam) {
+        return marketIdParam.toUpperCase();
+      }
+
+      // Check URL path for market indicators
+      const path = urlObj.pathname.toLowerCase();
+
+      // Spanish market: /es/inversiones/...
+      if (path.includes('/es/inversiones/')) {
+        return 'ES';
+      }
+
+      // EU market: /en-eu/investments/...
+      if (path.includes('/en-eu/investments/')) {
+        // Try to infer from domain or default to EU
+        return 'EU';
+      }
+
+      // English market: /en/investments/... (often US)
+      if (path.includes('/en/investments/')) {
+        // Check if it's a US domain
+        if (
+          urlObj.hostname.includes('morningstar.com') &&
+          !urlObj.hostname.includes('morningstar.es')
+        ) {
+          return 'US';
+        }
+        return 'GB'; // Default to UK for English
+      }
+
+      // Check domain for market hints
+      if (urlObj.hostname.includes('morningstar.es')) {
+        return 'ES';
+      }
+
+      return undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
   private categorizeResolutionError(
     error: unknown,
     input: string,
