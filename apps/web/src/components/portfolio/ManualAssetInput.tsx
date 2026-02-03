@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
@@ -19,6 +20,8 @@ export const ManualAssetInput: React.FC<ManualAssetInputProps> = ({
   onConfirmed,
   onCancel,
 }) => {
+  const t = useTranslations('manualInput');
+  const tCommon = useTranslations('common');
   const [morningstarId, setMorningstarId] = useState('');
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
@@ -50,12 +53,11 @@ export const ManualAssetInput: React.FC<ManualAssetInputProps> = ({
     <Modal
       isOpen
       onClose={onCancel}
-      title={`Manual Asset Entry for "${identifier}"`}
+      title={t('title', { identifier })}
       maxWidth="lg"
     >
       <p className="text-sm text-slate-700 mb-4">
-        The asset could not be resolved automatically. Please enter the
-        Morningstar details manually.
+        {t('description')}
       </p>
       <form
         onSubmit={handleSubmit}
@@ -63,24 +65,24 @@ export const ManualAssetInput: React.FC<ManualAssetInputProps> = ({
         aria-busy={confirmMutation.isPending}
       >
         <Input
-          label="Morningstar ID"
+          label={t('morningstarId')}
           value={morningstarId}
           onChange={(e) => setMorningstarId(e.target.value.toUpperCase())}
-          placeholder="e.g., 0P0000YXJO"
+          placeholder={t('morningstarIdPlaceholder')}
           required
         />
         <Input
-          label="Asset Name"
+          label={t('assetName')}
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="e.g., iShares Core MSCI World UCITS ETF"
+          placeholder={t('assetNamePlaceholder')}
           required
         />
         <Input
-          label="Morningstar URL"
+          label={t('morningstarUrl')}
           value={url}
           onChange={(e) => setUrl(e.target.value)}
-          placeholder="https://global.morningstar.com/..."
+          placeholder={t('morningstarUrlPlaceholder')}
           type="url"
           required
         />
@@ -89,7 +91,7 @@ export const ManualAssetInput: React.FC<ManualAssetInputProps> = ({
             htmlFor="asset-type-select"
             className="block text-sm font-medium text-slate-700 mb-1"
           >
-            Asset Type
+            {t('assetType')}
           </label>
           <select
             id="asset-type-select"
@@ -105,14 +107,14 @@ export const ManualAssetInput: React.FC<ManualAssetInputProps> = ({
         </div>
         <div className="flex gap-2 justify-end">
           <Button type="button" variant="secondary" onClick={onCancel}>
-            Cancel
+            {tCommon('cancel')}
           </Button>
           <Button
             type="submit"
             isLoading={confirmMutation.isPending}
             disabled={!morningstarId || !name || !url}
           >
-            Confirm
+            {tCommon('confirm')}
           </Button>
         </div>
       </form>

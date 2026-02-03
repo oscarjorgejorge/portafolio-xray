@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { useQueryClient } from '@tanstack/react-query';
 import { updateAssetIsin } from '@/lib/api/assets';
 import { queryKeys } from '@/lib/api/queryKeys';
@@ -22,6 +23,8 @@ export const EditableIsin: React.FC<EditableIsinProps> = ({
   isinManual = false,
   onIsinUpdated,
 }) => {
+  const t = useTranslations('editableIsin');
+  const tCommon = useTranslations('common');
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
   const [inputValue, setInputValue] = useState('');
@@ -78,7 +81,7 @@ export const EditableIsin: React.FC<EditableIsinProps> = ({
         tags: { action: 'isin-update' },
         extra: { assetId },
       });
-      setError('Failed to save ISIN. Please try again.');
+      setError(t('saveError'));
     } finally {
       setIsSaving(false);
     }
@@ -111,9 +114,9 @@ export const EditableIsin: React.FC<EditableIsinProps> = ({
           {isinManual && (
             <span
               className="text-xs text-amber-600 font-medium"
-              title="ISIN entered manually"
+              title={t('enterManually')}
             >
-              (manual)
+              {t('manual')}
             </span>
           )}
         </span>
@@ -122,19 +125,19 @@ export const EditableIsin: React.FC<EditableIsinProps> = ({
 
     return (
       <div className="relative inline-flex items-center">
-        <span className="text-slate-400 italic">ISIN not available</span>
+        <span className="text-slate-400 italic">{t('notAvailable')}</span>
         <button
           onClick={handleStartEdit}
           onMouseEnter={() => setShowTooltip(true)}
           onMouseLeave={() => setShowTooltip(false)}
           className="ml-1.5 p-1 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
-          aria-label="Enter ISIN manually"
+          aria-label={t('enterManually')}
         >
           <EditIcon />
         </button>
         {showTooltip && (
           <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 px-2 py-1 bg-slate-900 text-white text-xs rounded shadow-lg z-10 whitespace-nowrap">
-            Enter ISIN manually
+            {t('enterManually')}
             <div className="absolute top-1/2 -left-1 -translate-y-1/2 h-2 w-2 bg-slate-900 rotate-45" />
           </div>
         )}
@@ -152,7 +155,7 @@ export const EditableIsin: React.FC<EditableIsinProps> = ({
           value={inputValue}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
-          placeholder="e.g., LU2485535293"
+          placeholder={t('placeholder')}
           maxLength={12}
           disabled={isSaving}
           aria-label="ISIN code"
@@ -169,8 +172,8 @@ export const EditableIsin: React.FC<EditableIsinProps> = ({
           onClick={handleSave}
           disabled={isSaving}
           className="p-1 text-green-600 hover:text-green-700 hover:bg-green-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          title="Save"
-          aria-label="Save ISIN"
+          title={tCommon('save')}
+          aria-label={tCommon('save')}
         >
           {isSaving ? <SpinnerIcon /> : <CheckIcon />}
         </button>
@@ -179,8 +182,8 @@ export const EditableIsin: React.FC<EditableIsinProps> = ({
           onClick={handleCancel}
           disabled={isSaving}
           className="p-1 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          title="Cancel"
-          aria-label="Cancel editing"
+          title={tCommon('cancel')}
+          aria-label={tCommon('cancel')}
         >
           <CloseIcon />
         </button>

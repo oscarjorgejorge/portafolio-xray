@@ -1,3 +1,7 @@
+const createNextIntlPlugin = require('next-intl/plugin');
+
+const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -114,12 +118,8 @@ const nextConfig = {
   // Empty config to silence warning - webpack config is for fallback only
   turbopack: {},
 
-  // Enable i18n routing if needed (currently using [locale] folder structure)
-  // i18n: {
-  //   locales: ['en', 'es'],
-  //   defaultLocale: 'en',
-  // },
+  // i18n is now handled by next-intl via the [locale] folder structure
 };
 
-module.exports = nextConfig;
+module.exports = withNextIntl(nextConfig);
 
