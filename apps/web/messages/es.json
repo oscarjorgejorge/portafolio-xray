@@ -1,0 +1,111 @@
+{
+  "common": {
+    "loading": "Cargando...",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar",
+    "copy": "Copiar",
+    "copied": "¡Copiado!",
+    "failed": "Error",
+    "save": "Guardar",
+    "remove": "Eliminar",
+    "select": "Seleccionar"
+  },
+  "home": {
+    "title": "Generador de X-Ray de Cartera",
+    "subtitle": "Genera informes X-Ray de Morningstar para tu cartera. Introduce ISINs o IDs de Morningstar y obtén análisis instantáneo.",
+    "urlParseError": "No se pudo cargar la cartera desde la URL. Por favor, añade activos manualmente."
+  },
+  "xray": {
+    "title": "X-Ray Generado",
+    "subtitle": "Tu informe X-Ray de Morningstar está listo. Abre el PDF o comparte el enlace con otros.",
+    "generating": "Generando URL de X-Ray...",
+    "error": "Error al generar X-Ray",
+    "unexpectedError": "Ocurrió un error inesperado",
+    "noPortfolioData": "No se encontraron datos de cartera en la URL.",
+    "backToBuilder": "Volver al Constructor de Cartera",
+    "createNew": "Crear Nueva Cartera",
+    "pdfCard": {
+      "title": "PDF X-Ray de Morningstar",
+      "urlLabel": "URL de Morningstar",
+      "openPdf": "Abrir PDF de X-Ray"
+    },
+    "shareCard": {
+      "title": "Enlace Compartible",
+      "description": "Comparte este enlace para recrear la cartera"
+    }
+  },
+  "portfolio": {
+    "builder": "Constructor de Cartera",
+    "noAssets": "No hay activos añadidos aún.",
+    "noAssetsHint": "Introduce un ISIN, ID de Morningstar o ticker arriba para comenzar.",
+    "successToast": "¡X-Ray generado exitosamente!"
+  },
+  "assetInput": {
+    "placeholder": "Introduce ISIN, ID de Morningstar o ticker (ej., IE00B4L5Y983)",
+    "addAsset": "Añadir Activo",
+    "duplicateError": "Este activo ya está en tu cartera",
+    "emptyError": "Por favor, introduce un ISIN, ID de Morningstar o ticker"
+  },
+  "assetRow": {
+    "weightPercent": "Peso (%)",
+    "amount": "Importe",
+    "ticker": "Ticker:",
+    "morningstarId": "ID Morningstar:",
+    "fetchingIsin": "Obteniendo ISIN...",
+    "resolving": "Resolviendo activo...",
+    "enterManually": "Introducir ID de Morningstar manualmente"
+  },
+  "summary": {
+    "total": "Total:",
+    "remaining": "Restante:",
+    "validationError": "El total debe ser igual a 100%.",
+    "clearAll": "Limpiar Todo",
+    "generateXray": "Generar X-Ray"
+  },
+  "shareable": {
+    "title": "Enlace Compartible",
+    "description": "Comparte este enlace para recrear la cartera",
+    "viewReport": "Ver Informe X-Ray"
+  },
+  "allocation": {
+    "modeLabel": "Modo de Asignación:",
+    "percentage": "Porcentaje",
+    "amount": "Importe"
+  },
+  "clearConfirm": {
+    "title": "Limpiar Todos los Activos",
+    "message": "¿Estás seguro de que quieres eliminar todos los activos? Esta acción no se puede deshacer.",
+    "confirm": "Limpiar Todo"
+  },
+  "manualInput": {
+    "title": "Entrada Manual de Activo para \"{identifier}\"",
+    "description": "El activo no se pudo resolver automáticamente. Por favor, introduce los detalles de Morningstar manualmente.",
+    "morningstarId": "ID de Morningstar",
+    "morningstarIdPlaceholder": "ej., 0P0000YXJO",
+    "assetName": "Nombre del Activo",
+    "assetNamePlaceholder": "ej., iShares Core MSCI World UCITS ETF",
+    "morningstarUrl": "URL de Morningstar",
+    "morningstarUrlPlaceholder": "https://global.morningstar.com/...",
+    "assetType": "Tipo de Activo"
+  },
+  "alternatives": {
+    "singleMatch": "Coincidencia encontrada para \"{identifier}\"",
+    "multipleMatches": "Múltiples coincidencias encontradas para \"{identifier}\"",
+    "confirmSingle": "Por favor, confirma que este es el activo correcto:",
+    "selectFromList": "Por favor, selecciona el activo correcto de la lista:"
+  },
+  "editableIsin": {
+    "manual": "(manual)",
+    "notAvailable": "ISIN no disponible",
+    "enterManually": "Introducir ISIN manualmente",
+    "saveError": "Error al guardar el ISIN. Por favor, inténtalo de nuevo.",
+    "placeholder": "ej., LU2485535293"
+  },
+  "metadata": {
+    "title": "Generador de X-Ray de Cartera",
+    "description": "Genera informes X-Ray de Morningstar para tu cartera de inversión. Introduce ISINs, tickers o IDs de Morningstar y obtén análisis instantáneo de tu cartera."
+  },
+  "language": {
+    "switchLanguage": "Cambiar idioma"
+  }
+}

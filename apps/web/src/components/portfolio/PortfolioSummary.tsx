@@ -1,6 +1,7 @@
 'use client';
 
 import React, { memo } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import type { AllocationMode } from '@/types';
@@ -26,6 +27,7 @@ export const PortfolioSummary = memo<PortfolioSummaryProps>(function PortfolioSu
   onClearAll,
   onGenerate,
 }) {
+  const t = useTranslations('summary');
   const isPercentageValid = Math.abs(totalWeight - 100) < 0.01;
   const remaining = 100 - totalWeight;
 
@@ -33,7 +35,7 @@ export const PortfolioSummary = memo<PortfolioSummaryProps>(function PortfolioSu
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-4 border-t border-slate-200">
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
         <div className="text-sm text-slate-700">
-          <span className="font-medium">Total:</span>{' '}
+          <span className="font-medium">{t('total')}</span>{' '}
           {allocationMode === 'percentage' ? (
             <span className={isPercentageValid ? 'text-green-600' : 'text-red-600'}>
               {totalWeight.toFixed(2)}%
@@ -44,20 +46,20 @@ export const PortfolioSummary = memo<PortfolioSummaryProps>(function PortfolioSu
         </div>
         {allocationMode === 'percentage' && !isPercentageValid && (
           <Alert variant="warning" className="py-2 px-3 text-sm">
-            Total must equal 100%. Remaining: {remaining.toFixed(2)}%
+            {t('validationError')} {t('remaining')} {remaining.toFixed(2)}%
           </Alert>
         )}
       </div>
       <div className="flex gap-2">
         <Button variant="secondary" onClick={onClearAll}>
-          Clear All
+          {t('clearAll')}
         </Button>
         <Button
           onClick={onGenerate}
           disabled={!isValid}
           isLoading={isGenerating}
         >
-          Generate X-Ray
+          {t('generateXray')}
         </Button>
       </div>
     </div>

@@ -1,0 +1,111 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "copy": "Copy",
+    "copied": "Copied!",
+    "failed": "Failed",
+    "save": "Save",
+    "remove": "Remove",
+    "select": "Select"
+  },
+  "home": {
+    "title": "Portfolio X-Ray Generator",
+    "subtitle": "Generate Morningstar X-Ray reports for your portfolio. Enter ISINs or Morningstar IDs and get instant analysis.",
+    "urlParseError": "Could not load portfolio from URL. Please add assets manually."
+  },
+  "xray": {
+    "title": "X-Ray Generated",
+    "subtitle": "Your Morningstar X-Ray report is ready. Open the PDF or share the link with others.",
+    "generating": "Generating X-Ray URL...",
+    "error": "Error generating X-Ray",
+    "unexpectedError": "An unexpected error occurred",
+    "noPortfolioData": "No portfolio data found in URL.",
+    "backToBuilder": "Back to Portfolio Builder",
+    "createNew": "Create New Portfolio",
+    "pdfCard": {
+      "title": "Morningstar X-Ray PDF",
+      "urlLabel": "Morningstar URL",
+      "openPdf": "Open X-Ray PDF"
+    },
+    "shareCard": {
+      "title": "Shareable Link",
+      "description": "Share this link to recreate the portfolio"
+    }
+  },
+  "portfolio": {
+    "builder": "Portfolio Builder",
+    "noAssets": "No assets added yet.",
+    "noAssetsHint": "Enter an ISIN, Morningstar ID, or ticker above to get started.",
+    "successToast": "X-Ray generated successfully!"
+  },
+  "assetInput": {
+    "placeholder": "Enter ISIN, Morningstar ID, or ticker (e.g., IE00B4L5Y983)",
+    "addAsset": "Add Asset",
+    "duplicateError": "This asset is already in your portfolio",
+    "emptyError": "Please enter an ISIN, Morningstar ID, or ticker"
+  },
+  "assetRow": {
+    "weightPercent": "Weight (%)",
+    "amount": "Amount",
+    "ticker": "Ticker:",
+    "morningstarId": "Morningstar ID:",
+    "fetchingIsin": "Fetching ISIN...",
+    "resolving": "Resolving asset...",
+    "enterManually": "Enter Morningstar ID manually"
+  },
+  "summary": {
+    "total": "Total:",
+    "remaining": "Remaining:",
+    "validationError": "Total must equal 100%.",
+    "clearAll": "Clear All",
+    "generateXray": "Generate X-Ray"
+  },
+  "shareable": {
+    "title": "Shareable Link",
+    "description": "Share this link to recreate the portfolio",
+    "viewReport": "View X-Ray Report"
+  },
+  "allocation": {
+    "modeLabel": "Allocation Mode:",
+    "percentage": "Percentage",
+    "amount": "Amount"
+  },
+  "clearConfirm": {
+    "title": "Clear All Assets",
+    "message": "Are you sure you want to clear all assets? This action cannot be undone.",
+    "confirm": "Clear All"
+  },
+  "manualInput": {
+    "title": "Manual Asset Entry for \"{identifier}\"",
+    "description": "The asset could not be resolved automatically. Please enter the Morningstar details manually.",
+    "morningstarId": "Morningstar ID",
+    "morningstarIdPlaceholder": "e.g., 0P0000YXJO",
+    "assetName": "Asset Name",
+    "assetNamePlaceholder": "e.g., iShares Core MSCI World UCITS ETF",
+    "morningstarUrl": "Morningstar URL",
+    "morningstarUrlPlaceholder": "https://global.morningstar.com/...",
+    "assetType": "Asset Type"
+  },
+  "alternatives": {
+    "singleMatch": "Match found for \"{identifier}\"",
+    "multipleMatches": "Multiple matches found for \"{identifier}\"",
+    "confirmSingle": "Please confirm this is the correct asset:",
+    "selectFromList": "Please select the correct asset from the list below:"
+  },
+  "editableIsin": {
+    "manual": "(manual)",
+    "notAvailable": "ISIN not available",
+    "enterManually": "Enter ISIN manually",
+    "saveError": "Failed to save ISIN. Please try again.",
+    "placeholder": "e.g., LU2485535293"
+  },
+  "metadata": {
+    "title": "Portfolio X-Ray Generator",
+    "description": "Generate Morningstar X-Ray reports for your investment portfolio. Enter ISINs, tickers, or Morningstar IDs and get instant portfolio analysis."
+  },
+  "language": {
+    "switchLanguage": "Switch language"
+  }
+}
