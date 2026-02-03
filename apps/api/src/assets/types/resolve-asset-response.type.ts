@@ -65,6 +65,12 @@ export class AssetAlternativeDto {
     example: 85,
   })
   score!: number;
+
+  @ApiPropertyOptional({
+    description: 'Primary market/exchange code (e.g., "US", "ES", "LU")',
+    example: 'US',
+  })
+  market?: string;
 }
 
 /**
