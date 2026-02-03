@@ -34,12 +34,14 @@ export async function resolveAsset(
   assetType?: AssetType,
   options?: RequestOptions
 ): Promise<ResolveAssetResponse> {
-  const response = await apiClient.post(
+  const response = await apiClient.post<{ data: ResolveAssetResponse }>(
     '/assets/resolve',
     { input, assetType },
     { signal: options?.signal }
   );
-  return ResolveAssetResponseSchema.parse(response.data);
+  // The TransformResponseInterceptor wraps responses in { success: true, data: {...} }
+  // So we need to access response.data.data to get the actual ResolveAssetResponse
+  return ResolveAssetResponseSchema.parse(response.data.data);
 }
 
 /**
@@ -49,8 +51,9 @@ export async function resolveAsset(
 export async function confirmAsset(
   data: ConfirmAssetRequest
 ): Promise<Asset> {
-  const response = await apiClient.post('/assets/confirm', data);
-  return AssetSchema.parse(response.data);
+  const response = await apiClient.post<{ data: Asset }>('/assets/confirm', data);
+  // TransformResponseInterceptor wraps the response in { success: true, data: {...} }
+  return AssetSchema.parse(response.data.data);
 }
 
 /**
@@ -58,8 +61,9 @@ export async function confirmAsset(
  * Validates response against Zod schema
  */
 export async function getAssetById(id: string): Promise<Asset> {
-  const response = await apiClient.get(`/assets/${id}`);
-  return AssetSchema.parse(response.data);
+  const response = await apiClient.get<{ data: Asset }>(`/assets/${id}`);
+  // TransformResponseInterceptor wraps the response in { success: true, data: {...} }
+  return AssetSchema.parse(response.data.data);
 }
 
 /**
@@ -67,7 +71,8 @@ export async function getAssetById(id: string): Promise<Asset> {
  * Validates response against Zod schema
  */
 export async function updateAssetIsin(id: string, isin: string): Promise<Asset> {
-  const response = await apiClient.patch(`/assets/${id}/isin`, { isin });
-  return AssetSchema.parse(response.data);
+  const response = await apiClient.patch<{ data: Asset }>(`/assets/${id}/isin`, { isin });
+  // TransformResponseInterceptor wraps the response in { success: true, data: {...} }
+  return AssetSchema.parse(response.data.data);
 }
 
