@@ -4,14 +4,24 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { confirmAsset } from '@/lib/api/assets';
-import type { AlternativeAsset, AssetType } from '@/types';
+import type { AlternativeAsset, Asset, AssetType } from '@/types';
 import { useMutation } from '@tanstack/react-query';
 import { ASSET_TYPES } from '@/lib/constants';
+
+export interface AssetSelectedPayload {
+  morningstarId: string;
+  name: string;
+  url: string;
+  type: AssetType;
+  ticker?: string;
+  /** Full asset from confirm API; when present, parent should use it so UI shows exact type/ticker from backend */
+  confirmedAsset?: Asset;
+}
 
 interface AssetAlternativesProps {
   identifier: string;
   alternatives: AlternativeAsset[];
-  onSelected: (asset: { morningstarId: string; name: string; url: string; type: AssetType; ticker?: string }) => void;
+  onSelected: (payload: AssetSelectedPayload) => void;
   onCancel: () => void;
 }
 
@@ -85,15 +95,15 @@ export const AssetAlternatives: React.FC<AssetAlternativesProps> = ({
       });
     },
     onSuccess: (asset, alt) => {
-      // Pass the confirmed asset with the correct type and ticker
-      // Use asset from backend (has ticker) over alt (may not have it)
-      const assetType = asset.type || selectedTypes[alt.morningstarId] || determineAssetType(alt);
+      // Prefer type from API response so UI never shows wrong type (e.g. FUND when backend returned STOCK)
+      const assetType = asset.type ?? selectedTypes[alt.morningstarId] ?? determineAssetType(alt);
       onSelected({
         morningstarId: asset.morningstarId,
         name: asset.name,
         url: asset.url,
         type: assetType,
-        ticker: asset.ticker || alt.ticker,
+        ticker: asset.ticker ?? alt.ticker,
+        confirmedAsset: asset,
       });
     },
   });

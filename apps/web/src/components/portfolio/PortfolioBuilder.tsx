@@ -145,15 +145,8 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
         <AssetAlternatives
           identifier={selectedAssetForAlternatives.identifier}
           alternatives={selectedAssetForAlternatives.alternatives}
-          onSelected={(asset) =>
-            handleAlternativeSelected(
-              selectedAssetForAlternatives.id,
-              asset.morningstarId,
-              asset.name,
-              asset.url,
-              asset.type,
-              asset.ticker
-            )
+          onSelected={(payload) =>
+            handleAlternativeSelected(selectedAssetForAlternatives.id, payload)
           }
           onCancel={() => {
             handleRemove(selectedAssetForAlternatives.id);

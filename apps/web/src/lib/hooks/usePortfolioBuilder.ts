@@ -36,11 +36,14 @@ interface UsePortfolioBuilderReturn {
   handleAssetUpdated: (id: string, updatedAsset: Asset) => void;
   handleAlternativeSelected: (
     assetId: string,
-    morningstarId: string,
-    name: string,
-    url: string,
-    type: AssetType,
-    ticker?: string
+    payload: {
+      morningstarId: string;
+      name: string;
+      url: string;
+      type: AssetType;
+      ticker?: string;
+      confirmedAsset?: Asset;
+    }
   ) => void;
   handleManualConfirmed: (
     assetId: string,
@@ -135,10 +138,31 @@ export function usePortfolioBuilder({
     [assetManagement, xrayGeneration]
   );
 
-  // Handler: Alternative selected
+  // Handler: Alternative selected (use confirmed asset from API when present so UI shows correct type)
   const handleAlternativeSelected = useCallback(
-    (assetId: string, morningstarId: string, name: string, url: string, type: AssetType, ticker?: string) => {
-      assetManagement.resolveAssetManually(assetId, morningstarId, name, url, type, ticker);
+    (
+      assetId: string,
+      payload: {
+        morningstarId: string;
+        name: string;
+        url: string;
+        type: AssetType;
+        ticker?: string;
+        confirmedAsset?: Asset;
+      }
+    ) => {
+      if (payload.confirmedAsset) {
+        assetManagement.resolveAssetWithConfirmed(assetId, payload.confirmedAsset);
+      } else {
+        assetManagement.resolveAssetManually(
+          assetId,
+          payload.morningstarId,
+          payload.name,
+          payload.url,
+          payload.type,
+          payload.ticker
+        );
+      }
       setSelectedAssetForAlternatives(null);
     },
     [assetManagement]

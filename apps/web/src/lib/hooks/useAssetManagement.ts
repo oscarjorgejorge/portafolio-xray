@@ -22,6 +22,8 @@ interface UseAssetManagementReturn {
     type?: AssetType,
     ticker?: string
   ) => void;
+  /** Update asset with the full object from confirm API so UI shows exact type/ticker from backend */
+  resolveAssetWithConfirmed: (assetId: string, confirmedAsset: Asset) => void;
   clearAll: () => void;
   getAssetById: (id: string) => PortfolioAsset | undefined;
 }
@@ -111,6 +113,24 @@ export function useAssetManagement({
     []
   );
 
+  const resolveAssetWithConfirmed = useCallback((assetId: string, confirmedAsset: Asset) => {
+    setAssets((prev) =>
+      prev.map((portfolioAsset) =>
+        portfolioAsset.id === assetId
+          ? {
+              ...portfolioAsset,
+              status: 'resolved' as const,
+              asset: {
+                ...confirmedAsset,
+                isin: confirmedAsset.isin ?? portfolioAsset.identifier,
+              },
+              isinPending: confirmedAsset.isinPending ?? false,
+            }
+          : portfolioAsset
+      )
+    );
+  }, []);
+
   const clearAll = useCallback(() => {
     setAssets([]);
     onAssetsChange?.();
@@ -134,6 +154,7 @@ export function useAssetManagement({
     updateWeight,
     updateAsset,
     resolveAssetManually,
+    resolveAssetWithConfirmed,
     clearAll,
     getAssetById,
   };
