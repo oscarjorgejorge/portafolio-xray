@@ -34,21 +34,13 @@ export async function resolveAsset(
   assetType?: AssetType,
   options?: RequestOptions
 ): Promise<ResolveAssetResponse> {
-  const response = await apiClient.post<{ success: true; data: ResolveAssetResponse; timestamp: string; requestId?: string }>(
+  const response = await apiClient.post<ResolveAssetResponse>(
     '/assets/resolve',
     { input, assetType },
     { signal: options?.signal }
   );
-  // The TransformResponseInterceptor wraps responses in { success: true, data: {...}, timestamp, requestId }
-  // So we need to access response.data.data to get the actual ResolveAssetResponse
-  const wrappedData = response.data.data;
-  
-  // Validate the response structure
-  if (!wrappedData) {
-    throw new Error('Invalid API response: data.data is undefined');
-  }
-  
-  return ResolveAssetResponseSchema.parse(wrappedData);
+  // Client already unwraps envelope, so response.data is the ResolveAssetResponse
+  return ResolveAssetResponseSchema.parse(response.data);
 }
 
 /**
@@ -58,9 +50,9 @@ export async function resolveAsset(
 export async function confirmAsset(
   data: ConfirmAssetRequest
 ): Promise<Asset> {
-  const response = await apiClient.post<{ success: true; data: Asset; timestamp: string; requestId?: string }>('/assets/confirm', data);
-  // TransformResponseInterceptor wraps the response in { success: true, data: {...}, timestamp, requestId }
-  return AssetSchema.parse(response.data.data);
+  const response = await apiClient.post<Asset>('/assets/confirm', data);
+  // Client already unwraps envelope, so response.data is the asset
+  return AssetSchema.parse(response.data);
 }
 
 /**
@@ -68,9 +60,9 @@ export async function confirmAsset(
  * Validates response against Zod schema
  */
 export async function getAssetById(id: string): Promise<Asset> {
-  const response = await apiClient.get<{ success: true; data: Asset; timestamp: string; requestId?: string }>(`/assets/${id}`);
-  // TransformResponseInterceptor wraps the response in { success: true, data: {...}, timestamp, requestId }
-  return AssetSchema.parse(response.data.data);
+  const response = await apiClient.get<Asset>(`/assets/${id}`);
+  // Client already unwraps envelope, so response.data is the asset
+  return AssetSchema.parse(response.data);
 }
 
 /**
@@ -78,9 +70,9 @@ export async function getAssetById(id: string): Promise<Asset> {
  * Validates response against Zod schema
  */
 export async function updateAssetIsin(id: string, isin: string): Promise<Asset> {
-  const response = await apiClient.patch<{ success: true; data: Asset; timestamp: string; requestId?: string }>(`/assets/${id}/isin`, { isin });
-  // TransformResponseInterceptor wraps the response in { success: true, data: {...}, timestamp, requestId }
-  return AssetSchema.parse(response.data.data);
+  const response = await apiClient.patch<Asset>(`/assets/${id}/isin`, { isin });
+  // Client already unwraps envelope, so response.data is the asset
+  return AssetSchema.parse(response.data);
 }
 
 /**
