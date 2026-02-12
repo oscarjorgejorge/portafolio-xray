@@ -50,9 +50,14 @@ export async function resolveAsset(
 export async function confirmAsset(
   data: ConfirmAssetRequest
 ): Promise<Asset> {
-  const response = await apiClient.post<Asset>('/assets/confirm', data);
-  // Client already unwraps envelope, so response.data is the asset
-  return AssetSchema.parse(response.data);
+  const response = await apiClient.post<Asset | { success: boolean; data: Asset }>('/assets/confirm', data);
+  const payload = response.data;
+  // Client usually unwraps so payload is Asset; if we get raw envelope use payload.data
+  const assetPayload =
+    payload && typeof payload === 'object' && 'success' in payload && 'data' in payload
+      ? (payload as { data: Asset }).data
+      : payload;
+  return AssetSchema.parse(assetPayload);
 }
 
 /**

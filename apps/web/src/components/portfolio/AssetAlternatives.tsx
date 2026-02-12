@@ -99,12 +99,14 @@ export const AssetAlternatives: React.FC<AssetAlternativesProps> = ({
       });
     },
     onSuccess: (asset, alt) => {
-      const assetType = asset.type ?? selectedTypes[alt.morningstarId] ?? determineAssetType(alt);
+      // Use type from API response first so UI never shows FUND when backend returned STOCK
+      const typeFromApi = asset?.type;
+      const type = typeFromApi ?? selectedTypes[alt.morningstarId] ?? determineAssetType(alt);
       onSelected({
         morningstarId: asset.morningstarId,
         name: asset.name,
         url: asset.url,
-        type: assetType,
+        type,
         ticker: asset.ticker ?? alt.ticker,
         confirmedAsset: asset,
       });

@@ -122,6 +122,8 @@ export function useAssetManagement({
               status: 'resolved' as const,
               asset: {
                 ...confirmedAsset,
+                // Ensure type from API is never lost (backend returns STOCK/FUND/ETF/ETC)
+                type: confirmedAsset.type ?? portfolioAsset.asset?.type ?? 'FUND',
                 isin: confirmedAsset.isin ?? portfolioAsset.identifier,
               },
               isinPending: confirmedAsset.isinPending ?? false,
