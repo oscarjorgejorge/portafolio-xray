@@ -1,6 +1,7 @@
 'use client';
 
 import React, { memo, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/Button';
 
 /** Copy button visual state */
@@ -26,6 +27,9 @@ export const ShareableUrlSection = memo<ShareableUrlSectionProps>(function Share
   onCopyUrl,
   onOpenPDF,
 }) {
+  const t = useTranslations('shareable');
+  const tCommon = useTranslations('common');
+  
   // Derive copy state from boolean flags
   const copyState: CopyState = useMemo(() => {
     if (copied) return 'copied';
@@ -34,9 +38,9 @@ export const ShareableUrlSection = memo<ShareableUrlSectionProps>(function Share
   }, [copied, copyError]);
 
   const copyButtonText = {
-    idle: 'Copy',
-    copied: 'Copied!',
-    error: 'Failed',
+    idle: tCommon('copy'),
+    copied: tCommon('copied'),
+    error: tCommon('failed'),
   }[copyState];
 
   const copyButtonVariant = copyState === 'error' ? 'danger' : 'secondary';
@@ -46,7 +50,7 @@ export const ShareableUrlSection = memo<ShareableUrlSectionProps>(function Share
       <div className="space-y-3">
         <div className="space-y-2">
           <label className="block text-sm font-medium text-muted-foreground">
-            Shareable Link
+            {t('title')}
           </label>
           <div className="flex gap-2">
             <input
@@ -66,7 +70,7 @@ export const ShareableUrlSection = memo<ShareableUrlSectionProps>(function Share
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Share this link to recreate the portfolio
+            {t('description')}
           </p>
         </div>
         <Button
@@ -74,7 +78,7 @@ export const ShareableUrlSection = memo<ShareableUrlSectionProps>(function Share
           className="w-full"
           disabled={!morningstarUrl}
         >
-          View X-Ray Report
+          {t('viewReport')}
         </Button>
       </div>
     </div>

@@ -113,6 +113,9 @@ export class MorningstarResolverService implements IMorningstarResolver {
     // Prioritize fund results with "F" ID
     scoredResults = this.scorer.prioritizeFundResults(scoredResults);
 
+    // Filter duplicate names to reduce alternatives
+    scoredResults = this.scorer.filterDuplicateNames(scoredResults);
+
     // Determine initial state
     let bestMatch = scoredResults[0] || null;
     let status: 'resolved' | 'needs_review' | 'not_found' = 'not_found';
@@ -177,6 +180,7 @@ export class MorningstarResolverService implements IMorningstarResolver {
         scoredResults,
         confidence,
         verification?.verified ?? false,
+        inputType,
       );
     }
 
@@ -482,6 +486,7 @@ export class MorningstarResolverService implements IMorningstarResolver {
     scoredResults: ScoredResult[],
     confidence: number,
     verified: boolean,
+    inputType: IdentifierType,
   ): 'resolved' | 'needs_review' | 'not_found' {
     // Check if this is a fund with "F" ID that we prioritized
     const isPrioritizedFund =
@@ -504,6 +509,18 @@ export class MorningstarResolverService implements IMorningstarResolver {
         `Auto-resolving fund with "F" ID from multiple same-name results: ${bestMatch.morningstarId}`,
       );
       return 'resolved';
+    }
+
+    // Require confirmation for FREE_TEXT inputs that resolve to STOCK assets
+    // This prevents auto-selecting stocks when user types ambiguous text like "bitcoin"
+    if (
+      inputType === IdentifierType.FREE_TEXT &&
+      bestMatch.assetType === MS_ASSET_TYPES.STOCK
+    ) {
+      this.logger.log(
+        `Requiring confirmation for FREE_TEXT input resolving to STOCK: ${bestMatch.morningstarId} (${bestMatch.title})`,
+      );
+      return 'needs_review';
     }
 
     if (

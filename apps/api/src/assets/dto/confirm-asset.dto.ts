@@ -4,6 +4,7 @@ import {
   IsEnum,
   IsOptional,
   MaxLength,
+  ValidateIf,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -21,16 +22,20 @@ export enum AssetTypeDto {
 export class ConfirmAssetDto {
   @ApiPropertyOptional({
     description:
-      'International Securities Identification Number (optional when asset found by ticker)',
+      'International Securities Identification Number. Optional when confirming assets identified by ticker or Morningstar ID only.',
     example: 'IE00B4L5Y983',
     minLength: 12,
     maxLength: 12,
   })
   @Transform(trimUppercase)
+  @ValidateIf(
+    (o: ConfirmAssetDto) =>
+      o.isin !== null && o.isin !== undefined && o.isin !== '',
+  )
   @IsString()
   @IsOptional()
   @IsValidIsin()
-  isin?: string;
+  isin?: string | null;
 
   @ApiProperty({
     description: 'Morningstar unique identifier',

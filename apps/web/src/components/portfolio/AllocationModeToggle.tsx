@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useTranslations } from 'next-intl';
 import { AllocationMode } from '@/types';
 
 interface AllocationModeToggleProps {
@@ -12,9 +13,11 @@ export const AllocationModeToggle: React.FC<AllocationModeToggleProps> = ({
   mode,
   onChange,
 }) => {
+  const t = useTranslations('allocation');
+  
   return (
     <div className="flex items-center space-x-4 mb-4">
-      <span className="text-sm font-medium text-slate-700">Allocation Mode:</span>
+      <span className="text-sm font-medium text-slate-700">{t('modeLabel')}</span>
       <div className="flex bg-slate-200 rounded-lg p-1">
         <button
           type="button"
@@ -28,7 +31,7 @@ export const AllocationModeToggle: React.FC<AllocationModeToggleProps> = ({
             }
           `}
         >
-          Percentage
+          {t('percentage')}
         </button>
         <button
           type="button"
@@ -42,7 +45,7 @@ export const AllocationModeToggle: React.FC<AllocationModeToggleProps> = ({
             }
           `}
         >
-          Amount
+          {t('amount')}
         </button>
       </div>
     </div>

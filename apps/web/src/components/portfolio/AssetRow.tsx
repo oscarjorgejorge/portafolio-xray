@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, memo } from 'react';
+import { useTranslations } from 'next-intl';
 import { PortfolioAsset, AllocationMode } from '@/types';
 import { Spinner } from '@/components/ui/Spinner';
 import { InputNumber } from '@/components/ui/InputNumber';
@@ -22,6 +23,7 @@ interface WeightInputProps {
   allocationMode: AllocationMode;
   hasError: boolean;
   variant: 'mobile' | 'desktop';
+  labels: { weightPercent: string; amount: string };
 }
 
 const WeightInput = memo<WeightInputProps>(function WeightInput({
@@ -30,8 +32,9 @@ const WeightInput = memo<WeightInputProps>(function WeightInput({
   allocationMode,
   hasError,
   variant,
+  labels,
 }) {
-  const label = allocationMode === 'percentage' ? 'Weight (%)' : 'Amount';
+  const label = allocationMode === 'percentage' ? labels.weightPercent : labels.amount;
   const isMobile = variant === 'mobile';
   const maxValue = allocationMode === 'percentage' ? 100 : undefined;
 
@@ -59,6 +62,7 @@ interface RemoveButtonProps {
   onMouseEnter: () => void;
   onMouseLeave: () => void;
   className?: string;
+  removeLabel: string;
 }
 
 const RemoveButton = memo<RemoveButtonProps>(function RemoveButton({
@@ -67,6 +71,7 @@ const RemoveButton = memo<RemoveButtonProps>(function RemoveButton({
   onMouseEnter,
   onMouseLeave,
   className,
+  removeLabel,
 }) {
   return (
     <div className={cn('relative', className)}>
@@ -75,13 +80,13 @@ const RemoveButton = memo<RemoveButtonProps>(function RemoveButton({
         onMouseEnter={onMouseEnter}
         onMouseLeave={onMouseLeave}
         className="p-1.5 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
-        aria-label="Remove asset"
+        aria-label={removeLabel}
       >
         <TrashIcon />
       </button>
       {showTooltip && (
         <div className="absolute right-0 top-full mt-1 px-2 py-1 bg-slate-900 text-white text-xs rounded shadow-lg z-10 whitespace-nowrap">
-          Remove
+          {removeLabel}
           <div className="absolute -top-1 right-2 h-2 w-2 bg-slate-900 rotate-45" />
         </div>
       )}
@@ -133,7 +138,14 @@ export const AssetRow = memo<AssetRowProps>(function AssetRow({
   error,
   isLoading = false,
 }) {
+  const t = useTranslations('assetRow');
+  const tCommon = useTranslations('common');
   const [showTooltip, setShowTooltip] = useState(false);
+  
+  const weightLabels = {
+    weightPercent: t('weightPercent'),
+    amount: t('amount'),
+  };
 
   const handleWeightChange = useCallback(
     (value: number) => {
@@ -205,10 +217,9 @@ export const AssetRow = memo<AssetRowProps>(function AssetRow({
                     onTickerUpdated={handleIsinResolved}
                   />
                 ) : (
-                  /* For other asset types: show ticker if available */
                   asset.asset.ticker && (
                     <span>
-                      <span className="font-medium">Ticker:</span> {asset.asset.ticker}
+                      <span className="font-medium">{t('ticker')}</span> {asset.asset.ticker}
                     </span>
                   )
                 )}
@@ -217,7 +228,7 @@ export const AssetRow = memo<AssetRowProps>(function AssetRow({
                   isinPending ? (
                     <span className="flex items-center gap-1 text-slate-500">
                       <Spinner size="sm" className="text-blue-500" />
-                      <span className="text-xs">Fetching ISIN...</span>
+                      <span className="text-xs">{t('fetchingIsin')}</span>
                     </span>
                   ) : (
                     <EditableIsin
@@ -230,14 +241,14 @@ export const AssetRow = memo<AssetRowProps>(function AssetRow({
                 )}
                 {asset.asset.morningstarId && (
                   <span>
-                    <span className="font-medium">Morningstar ID:</span> {asset.asset.morningstarId}
+                    <span className="font-medium">{t('morningstarId')}</span> {asset.asset.morningstarId}
                   </span>
                 )}
               </div>
               {/* Mobile: Weight input */}
               <div className="md:hidden flex items-center gap-2 mt-2">
                 <label className="text-xs font-medium text-slate-700 whitespace-nowrap">
-                  {allocationMode === 'percentage' ? 'Weight (%)' : 'Amount'}
+                  {allocationMode === 'percentage' ? t('weightPercent') : t('amount')}
                 </label>
                 <WeightInput
                   value={asset.weight}
@@ -245,6 +256,7 @@ export const AssetRow = memo<AssetRowProps>(function AssetRow({
                   allocationMode={allocationMode}
                   hasError={hasWeightError}
                   variant="mobile"
+                  labels={weightLabels}
                 />
               </div>
             </div>
@@ -256,6 +268,7 @@ export const AssetRow = memo<AssetRowProps>(function AssetRow({
                 allocationMode={allocationMode}
                 hasError={hasWeightError}
                 variant="desktop"
+                labels={weightLabels}
               />
               <RemoveButton
                 onClick={handleRemove}
@@ -263,6 +276,7 @@ export const AssetRow = memo<AssetRowProps>(function AssetRow({
                 onMouseEnter={handleMouseEnter}
                 onMouseLeave={handleMouseLeave}
                 className="flex items-start"
+                removeLabel={tCommon('remove')}
               />
             </div>
             {/* Mobile: Remove button */}
@@ -273,6 +287,7 @@ export const AssetRow = memo<AssetRowProps>(function AssetRow({
                 onMouseEnter={handleMouseEnter}
                 onMouseLeave={handleMouseLeave}
                 className="mt-0.5"
+                removeLabel={tCommon('remove')}
               />
             </div>
           </div>
@@ -300,6 +315,7 @@ export const AssetRow = memo<AssetRowProps>(function AssetRow({
                 allocationMode={allocationMode}
                 hasError={hasWeightError}
                 variant="desktop"
+                labels={weightLabels}
               />
               <RemoveButton
                 onClick={handleRemove}
@@ -307,6 +323,7 @@ export const AssetRow = memo<AssetRowProps>(function AssetRow({
                 onMouseEnter={handleMouseEnter}
                 onMouseLeave={handleMouseLeave}
                 className="flex items-start pt-6"
+                removeLabel={tCommon('remove')}
               />
             </div>
             {/* Mobile: Remove button */}
@@ -317,13 +334,14 @@ export const AssetRow = memo<AssetRowProps>(function AssetRow({
                 onMouseEnter={handleMouseEnter}
                 onMouseLeave={handleMouseLeave}
                 className="mt-0.5"
+                removeLabel={tCommon('remove')}
               />
             </div>
           </div>
           {/* Mobile: Weight input */}
           <div className="md:hidden mb-2">
             <label className="block text-xs font-medium text-slate-700 mb-1">
-              {allocationMode === 'percentage' ? 'Weight (%)' : 'Amount'}
+              {allocationMode === 'percentage' ? t('weightPercent') : t('amount')}
             </label>
             <WeightInput
               value={asset.weight}
@@ -331,13 +349,14 @@ export const AssetRow = memo<AssetRowProps>(function AssetRow({
               allocationMode={allocationMode}
               hasError={hasWeightError}
               variant="mobile"
+              labels={weightLabels}
             />
             {hasWeightError && <ErrorMessage error={error!} className="mt-1" />}
           </div>
           {asset.status === 'resolving' && (
             <div className="flex items-center gap-2 text-slate-500">
               <Spinner size="sm" className="text-blue-500" />
-              <span className="text-sm">Resolving asset...</span>
+              <span className="text-sm">{t('resolving')}</span>
             </div>
           )}
           {asset.error && (
@@ -348,7 +367,7 @@ export const AssetRow = memo<AssetRowProps>(function AssetRow({
                   onClick={() => onOpenManualInput(asset.id)}
                   className="mt-2 text-sm text-blue-600 hover:text-blue-700 underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded"
                 >
-                  Enter Morningstar ID manually
+                  {t('enterManually')}
                 </button>
               )}
             </div>

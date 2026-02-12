@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { confirmAsset } from '@/lib/api/assets';
@@ -64,6 +65,10 @@ export const AssetAlternatives: React.FC<AssetAlternativesProps> = ({
   onSelected,
   onCancel,
 }) => {
+  const t = useTranslations('alternatives');
+  const tCommon = useTranslations('common');
+  const tAssetRow = useTranslations('assetRow');
+
   // Track selected asset type per alternative (for user override)
   const [selectedTypes, setSelectedTypes] = useState<Record<string, AssetType>>(() => {
     const initial: Record<string, AssetType> = {};
@@ -79,10 +84,9 @@ export const AssetAlternatives: React.FC<AssetAlternativesProps> = ({
 
   const confirmMutation = useMutation({
     mutationFn: async (alt: AlternativeAsset) => {
-      // Only include ISIN if identifier is valid ISIN format (12 chars)
-      const isin = identifier.length === 12 ? identifier : undefined;
+      const isIsinFormat = /^[A-Z]{2}[A-Z0-9]{10}$/.test(identifier.toUpperCase());
+      const isin = isIsinFormat ? identifier.toUpperCase() : undefined;
 
-      // Use the user-selected type (or auto-detected)
       const assetType = selectedTypes[alt.morningstarId] || determineAssetType(alt);
 
       return confirmAsset({
@@ -95,7 +99,6 @@ export const AssetAlternatives: React.FC<AssetAlternativesProps> = ({
       });
     },
     onSuccess: (asset, alt) => {
-      // Prefer type from API response so UI never shows wrong type (e.g. FUND when backend returned STOCK)
       const assetType = asset.type ?? selectedTypes[alt.morningstarId] ?? determineAssetType(alt);
       onSelected({
         morningstarId: asset.morningstarId,
@@ -106,19 +109,22 @@ export const AssetAlternatives: React.FC<AssetAlternativesProps> = ({
         confirmedAsset: asset,
       });
     },
+    onError: (error) => {
+      console.error('Failed to confirm asset:', error);
+    },
   });
 
   const isSingleAlternative = alternatives.length === 1;
   const title = isSingleAlternative
-    ? `Match found for "${identifier}"`
-    : `Multiple matches found for "${identifier}"`;
+    ? t('singleMatch', { identifier })
+    : t('multipleMatches', { identifier });
 
   return (
     <Modal isOpen onClose={onCancel} title={title} maxWidth="2xl">
       <p className="text-sm text-slate-700 mb-4">
         {isSingleAlternative
-          ? 'Please confirm this is the correct asset:'
-          : 'Please select the correct asset from the list below:'}
+          ? t('confirmSingle')
+          : t('selectFromList')}
       </p>
       <div className="space-y-2">
         {alternatives.map((alt) => {
@@ -131,9 +137,16 @@ export const AssetAlternatives: React.FC<AssetAlternativesProps> = ({
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-medium text-slate-900">{alt.name}</h4>
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-medium text-slate-900">{alt.name}</h4>
+                    {alt.market && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                        {alt.market}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-sm text-slate-600 mt-1">
-                    Morningstar ID: {alt.morningstarId}
+                    {tAssetRow('morningstarId')} {alt.morningstarId}
                   </p>
                   {alt.ticker && (
                     <p className="text-sm text-slate-500">Ticker: {alt.ticker}</p>
@@ -159,7 +172,7 @@ export const AssetAlternatives: React.FC<AssetAlternativesProps> = ({
                     isLoading={confirmMutation.isPending}
                     size="sm"
                   >
-                    Select
+                    {tCommon('select')}
                   </Button>
                 </div>
               </div>
@@ -169,7 +182,7 @@ export const AssetAlternatives: React.FC<AssetAlternativesProps> = ({
       </div>
       <div className="mt-6 flex justify-end">
         <Button variant="secondary" onClick={onCancel}>
-          Cancel
+          {tCommon('cancel')}
         </Button>
       </div>
     </Modal>

@@ -78,6 +78,12 @@ export class AssetAlternativeDto {
     example: 'STOCK',
   })
   assetType?: string;
+
+  @ApiPropertyOptional({
+    description: 'Primary market/exchange code (e.g., "US", "ES", "LU")',
+    example: 'US',
+  })
+  market?: string;
 }
 
 /**

@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useTranslations } from 'next-intl';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 
@@ -13,17 +14,20 @@ export const ClearAllConfirmation: React.FC<ClearAllConfirmationProps> = ({
   onConfirm,
   onCancel,
 }) => {
+  const t = useTranslations('clearConfirm');
+  const tCommon = useTranslations('common');
+  
   return (
-    <Modal isOpen onClose={onCancel} title="Clear All Assets">
+    <Modal isOpen onClose={onCancel} title={t('title')}>
       <p className="text-sm text-slate-700 mb-6">
-        Are you sure you want to clear all assets? This action cannot be undone.
+        {t('message')}
       </p>
       <div className="flex gap-2 justify-end">
         <Button variant="secondary" onClick={onCancel}>
-          Cancel
+          {tCommon('cancel')}
         </Button>
         <Button variant="danger" onClick={onConfirm}>
-          Clear All
+          {t('confirm')}
         </Button>
       </div>
     </Modal>

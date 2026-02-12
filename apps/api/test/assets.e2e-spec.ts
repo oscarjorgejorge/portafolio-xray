@@ -361,6 +361,34 @@ describe('AssetsController (e2e)', () => {
 
         expect(response.body.source).toBe('manual');
       });
+
+      it('should confirm asset without ISIN (ticker-only asset)', async () => {
+        const mockAsset = {
+          id: '456',
+          isin: null,
+          morningstarId: '0P0000AQ17',
+          name: 'Ocean Power Technologies Inc',
+          type: 'STOCK',
+          url: 'https://global.morningstar.com/es/inversiones/acciones/0P0000AQ17/cotizacion',
+          source: 'manual',
+          ticker: 'OPTT',
+        };
+        mockAssetsService.confirm.mockResolvedValue(mockAsset);
+
+        const response = await request(app.getHttpServer())
+          .post('/assets/confirm')
+          .send({
+            morningstarId: '0P0000AQ17',
+            name: 'Ocean Power Technologies Inc',
+            type: 'STOCK',
+            url: 'https://global.morningstar.com/es/inversiones/acciones/0P0000AQ17/cotizacion',
+            ticker: 'OPTT',
+          })
+          .expect(201);
+
+        expect(response.body.source).toBe('manual');
+        expect(response.body.morningstarId).toBe('0P0000AQ17');
+      });
     });
 
     describe('validation errors', () => {

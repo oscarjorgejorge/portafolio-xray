@@ -37,7 +37,7 @@ export const SCORE_WEIGHTS = {
   /** ISIN found in result text */
   ISIN_MATCH: 50,
   /** Ticker symbol matches exactly */
-  TICKER_MATCH: 40,
+  TICKER_MATCH: 60,
   /** Maximum score for partial name match (scaled by match percentage) */
   NAME_MATCH_MAX: 30,
   /** Result from a Morningstar domain */
@@ -60,7 +60,7 @@ export const MAX_SCORES = {
   /** When input is a Morningstar ID */
   MORNINGSTAR_ID: 130,
   /** When input is a ticker symbol */
-  TICKER: 70,
+  TICKER: 90,
   /** When input is free text or ISIN */
   DEFAULT: 80,
 } as const;

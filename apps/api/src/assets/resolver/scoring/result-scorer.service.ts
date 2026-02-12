@@ -58,12 +58,18 @@ export class ResultScorerService {
       breakdown.isinMatch = SCORE_WEIGHTS.ISIN_MATCH;
     }
 
-    // Ticker matches exactly
+    // Ticker matches exactly - improved detection
     if (inputType === IdentifierType.TICKER) {
       const tickerPattern = new RegExp(`\\b${normalizedInput}\\b`, 'i');
       const tickerValue =
         typeof result.ticker === 'string' ? result.ticker.toUpperCase() : '';
-      if (tickerPattern.test(result.title) || tickerValue === normalizedInput) {
+      // Check in title, snippet, URL, and ticker field
+      if (
+        tickerPattern.test(result.title) ||
+        tickerPattern.test(result.snippet) ||
+        tickerPattern.test(result.url) ||
+        tickerValue === normalizedInput
+      ) {
         breakdown.tickerMatch = SCORE_WEIGHTS.TICKER_MATCH;
       }
     }
@@ -210,5 +216,97 @@ export class ResultScorerService {
    */
   getVerificationBonus(): number {
     return SCORE_WEIGHTS.VERIFICATION_BONUS;
+  }
+
+  /**
+   * Filter duplicate results by normalized name
+   * Groups variants of the same asset and keeps only the best match from each group
+   * For stocks, prioritizes main market listings over CDRs/CEDEARs
+   */
+  filterDuplicateNames(scoredResults: ScoredResult[]): ScoredResult[] {
+    if (scoredResults.length <= 1) return scoredResults;
+
+    const nameGroups = new Map<string, ScoredResult[]>();
+
+    // Group results by normalized name
+    for (const result of scoredResults) {
+      if (!result.title) continue;
+
+      const normalizedName = IdentifierClassifier.normalizeInput(result.title);
+      // Extract base name (remove common suffixes like "Class B", "CDR", "CEDEAR")
+      const baseName = this.extractBaseName(normalizedName);
+
+      if (!nameGroups.has(baseName)) {
+        nameGroups.set(baseName, []);
+      }
+      nameGroups.get(baseName)!.push(result);
+    }
+
+    // For each group, keep only the best result
+    const filtered: ScoredResult[] = [];
+    for (const [, group] of nameGroups) {
+      if (group.length === 1) {
+        filtered.push(group[0]);
+        continue;
+      }
+
+      // Sort group by score (highest first)
+      group.sort((a, b) => b.score - a.score);
+
+      // For stocks, prioritize main market listings
+      const isStock = group[0].assetType === MS_ASSET_TYPES.STOCK;
+      if (isStock) {
+        // Prefer results without "CDR", "CEDEAR", "Canadian Depository Receipt" in name
+        const mainMarketResult =
+          group.find(
+            (r) =>
+              !this.isSecondaryMarketListing(
+                IdentifierClassifier.normalizeInput(r.title),
+              ),
+          ) || group[0];
+        filtered.push(mainMarketResult);
+      } else {
+        // For funds/ETFs, just take the highest score
+        filtered.push(group[0]);
+      }
+    }
+
+    // Sort filtered results by score
+    return filtered.sort((a, b) => b.score - a.score);
+  }
+
+  /**
+   * Extract base name from normalized asset name
+   * Removes common suffixes and variations
+   */
+  private extractBaseName(normalizedName: string): string {
+    // Remove common suffixes
+    let baseName = normalizedName
+      .replace(
+        /\s+(CLASS\s+[A-Z]|CDR|CEDEAR|CANADIAN\s+DEPOSITORY\s+RECEIPT).*$/i,
+        '',
+      )
+      .trim();
+
+    // Remove trailing "Inc", "Corp", "Ltd" etc. for better grouping
+    baseName = baseName.replace(/\s+(INC|CORP|LTD|SA|NV|AG|PLC)\.?$/i, '');
+
+    return baseName;
+  }
+
+  /**
+   * Check if a normalized name indicates a secondary market listing
+   */
+  private isSecondaryMarketListing(normalizedName: string): boolean {
+    const secondaryMarketPatterns = [
+      /CDR/i,
+      /CEDEAR/i,
+      /CANADIAN\s+DEPOSITORY\s+RECEIPT/i,
+      /DEPOSITARY\s+RECEIPT/i,
+    ];
+
+    return secondaryMarketPatterns.some((pattern) =>
+      pattern.test(normalizedName),
+    );
   }
 }

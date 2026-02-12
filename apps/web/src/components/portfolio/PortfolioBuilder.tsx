@@ -2,6 +2,7 @@
 
 import React from 'react';
 import dynamic from 'next/dynamic';
+import { useTranslations } from 'next-intl';
 import { AssetInput } from './AssetInput';
 import { AssetRow } from './AssetRow';
 import { AllocationModeToggle } from './AllocationModeToggle';
@@ -35,6 +36,7 @@ interface PortfolioBuilderProps {
 export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
   initialAssets = [],
 }) => {
+  const t = useTranslations('portfolio');
   const {
     assets,
     allocationMode,
@@ -71,7 +73,7 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
 
   return (
     <div className="space-y-6">
-      <Card title="Portfolio Builder">
+      <Card title={t('builder')}>
         <AllocationModeToggle mode={allocationMode} onChange={setAllocationMode} />
 
         <div className="mb-6">
@@ -132,9 +134,9 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
 
         {assets.length === 0 && (
           <div className="text-center py-12 text-slate-500">
-            <p>No assets added yet.</p>
+            <p>{t('noAssets')}</p>
             <p className="text-sm mt-2">
-              Enter an ISIN, Morningstar ID, or ticker above to get started.
+              {t('noAssetsHint')}
             </p>
           </div>
         )}
@@ -185,7 +187,7 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
       {/* Success Toast Notification */}
       {showSuccessToast && (
         <Toast
-          message="X-Ray generated successfully!"
+          message={t('successToast')}
           variant="success"
           duration={3000}
           onClose={() => setShowSuccessToast(false)}
