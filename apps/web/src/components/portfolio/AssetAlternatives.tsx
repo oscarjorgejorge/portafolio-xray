@@ -1,18 +1,62 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { confirmAsset } from '@/lib/api/assets';
-import type { AlternativeAsset, AssetType } from '@/types';
+import type { AlternativeAsset, Asset, AssetType } from '@/types';
 import { useMutation } from '@tanstack/react-query';
+import { ASSET_TYPES } from '@/lib/constants';
+
+export interface AssetSelectedPayload {
+  morningstarId: string;
+  name: string;
+  url: string;
+  type: AssetType;
+  ticker?: string;
+  /** Full asset from confirm API; when present, parent should use it so UI shows exact type/ticker from backend */
+  confirmedAsset?: Asset;
+}
 
 interface AssetAlternativesProps {
   identifier: string;
   alternatives: AlternativeAsset[];
-  onSelected: (morningstarId: string, name: string, url: string) => void;
+  onSelected: (payload: AssetSelectedPayload) => void;
   onCancel: () => void;
+}
+
+/**
+ * Extract asset type from Morningstar URL
+ * URLs contain: /fondos/ (FUND), /acciones/ (STOCK), /etfs/ (ETF)
+ */
+function extractTypeFromUrl(url: string): AssetType | undefined {
+  const urlLower = url.toLowerCase();
+  if (urlLower.includes('/etf') || urlLower.includes('/etfs/')) return 'ETF';
+  if (urlLower.includes('/acciones/') || urlLower.includes('/stocks/')) return 'STOCK';
+  if (urlLower.includes('/fondos/') || urlLower.includes('/funds/')) return 'FUND';
+  return undefined;
+}
+
+/**
+ * Determine the best asset type from available sources
+ * Priority: 1) Backend assetType, 2) URL extraction, 3) Name heuristic, 4) Default FUND
+ */
+function determineAssetType(alt: AlternativeAsset): AssetType {
+  // 1. Use backend-detected type if available
+  if (alt.assetType) return alt.assetType;
+
+  // 2. Try to extract from URL
+  const urlType = extractTypeFromUrl(alt.url);
+  if (urlType) return urlType;
+
+  // 3. Fallback to name heuristic
+  const nameUpper = alt.name.toUpperCase();
+  if (nameUpper.includes('ETF')) return 'ETF';
+  if (nameUpper.includes('STOCK') || nameUpper.includes('SHARE')) return 'STOCK';
+
+  // 4. Default to FUND
+  return 'FUND';
 }
 
 export const AssetAlternatives: React.FC<AssetAlternativesProps> = ({
@@ -24,30 +68,48 @@ export const AssetAlternatives: React.FC<AssetAlternativesProps> = ({
   const t = useTranslations('alternatives');
   const tCommon = useTranslations('common');
   const tAssetRow = useTranslations('assetRow');
-  
+
+  // Track selected asset type per alternative (for user override)
+  const [selectedTypes, setSelectedTypes] = useState<Record<string, AssetType>>(() => {
+    const initial: Record<string, AssetType> = {};
+    alternatives.forEach((alt) => {
+      initial[alt.morningstarId] = determineAssetType(alt);
+    });
+    return initial;
+  });
+
+  const handleTypeChange = (morningstarId: string, type: AssetType) => {
+    setSelectedTypes((prev) => ({ ...prev, [morningstarId]: type }));
+  };
+
   const confirmMutation = useMutation({
     mutationFn: async (alt: AlternativeAsset) => {
-      // Check if identifier is a valid ISIN format (12 characters: 2 letters + 10 alphanumeric)
-      // Only use it as ISIN if it matches the format, otherwise send null
       const isIsinFormat = /^[A-Z]{2}[A-Z0-9]{10}$/.test(identifier.toUpperCase());
-      const isin = isIsinFormat ? identifier.toUpperCase() : null;
-      
-      // Try to determine asset type from name (simple heuristic)
-      let assetType: AssetType = 'FUND';
-      const nameUpper = alt.name.toUpperCase();
-      if (nameUpper.includes('ETF')) assetType = 'ETF';
-      else if (nameUpper.includes('STOCK') || nameUpper.includes('SHARE')) assetType = 'STOCK';
-      
+      const isin = isIsinFormat ? identifier.toUpperCase() : undefined;
+
+      const assetType = selectedTypes[alt.morningstarId] || determineAssetType(alt);
+
       return confirmAsset({
-        isin,
+        ...(isin && { isin }),
         morningstarId: alt.morningstarId,
         name: alt.name,
         type: assetType,
         url: alt.url,
+        ticker: alt.ticker,
+      });
+    },
+    onSuccess: (asset, alt) => {
+      const assetType = asset.type ?? selectedTypes[alt.morningstarId] ?? determineAssetType(alt);
+      onSelected({
+        morningstarId: asset.morningstarId,
+        name: asset.name,
+        url: asset.url,
+        type: assetType,
+        ticker: asset.ticker ?? alt.ticker,
+        confirmedAsset: asset,
       });
     },
     onError: (error) => {
-      // Log error for debugging - in production you might want to show a toast
       console.error('Failed to confirm asset:', error);
     },
   });
@@ -65,45 +127,58 @@ export const AssetAlternatives: React.FC<AssetAlternativesProps> = ({
           : t('selectFromList')}
       </p>
       <div className="space-y-2">
-        {alternatives.map((alt) => (
-          <div
-            key={alt.morningstarId}
-            className="border border-slate-200 rounded-lg p-4 hover:bg-slate-50 transition-colors bg-white"
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <h4 className="font-medium text-slate-900">{alt.name}</h4>
-                  {alt.market && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                      {alt.market}
-                    </span>
+        {alternatives.map((alt) => {
+          const currentType = selectedTypes[alt.morningstarId] || determineAssetType(alt);
+
+          return (
+            <div
+              key={alt.morningstarId}
+              className="border border-slate-200 rounded-lg p-4 hover:bg-slate-50 transition-colors bg-white"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-medium text-slate-900">{alt.name}</h4>
+                    {alt.market && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                        {alt.market}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-slate-600 mt-1">
+                    {tAssetRow('morningstarId')} {alt.morningstarId}
+                  </p>
+                  {alt.ticker && (
+                    <p className="text-sm text-slate-500">Ticker: {alt.ticker}</p>
                   )}
                 </div>
-                <p className="text-sm text-slate-600 mt-1">
-                  {tAssetRow('morningstarId')} {alt.morningstarId}
-                </p>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <select
+                    value={currentType}
+                    onChange={(e) =>
+                      handleTypeChange(alt.morningstarId, e.target.value as AssetType)
+                    }
+                    className="text-sm border border-slate-300 rounded-md px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    title="Asset type"
+                  >
+                    {ASSET_TYPES.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </select>
+                  <Button
+                    onClick={() => confirmMutation.mutate(alt)}
+                    isLoading={confirmMutation.isPending}
+                    size="sm"
+                  >
+                    {tCommon('select')}
+                  </Button>
+                </div>
               </div>
-              <Button
-                onClick={async () => {
-                  try {
-                    const asset = await confirmMutation.mutateAsync(alt);
-                    // Call onSelected which will close the modal via handleAlternativeSelected
-                    onSelected(asset.morningstarId, asset.name, asset.url);
-                  } catch (error) {
-                    // Error is already handled by onError callback
-                    console.error('Failed to confirm asset:', error);
-                  }
-                }}
-                isLoading={confirmMutation.isPending}
-                size="sm"
-                className="ml-4"
-              >
-                {tCommon('select')}
-              </Button>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
       <div className="mt-6 flex justify-end">
         <Button variant="secondary" onClick={onCancel}>

@@ -1,5 +1,6 @@
 import { API } from '@/lib/constants';
 import { env } from '@/lib/env';
+import { tokenStorage } from '@/lib/auth/token-storage';
 
 /**
  * Error thrown by API client
@@ -34,6 +35,17 @@ interface ApiResponse<T> {
 }
 
 /**
+ * Standard API response wrapper from the backend
+ * All successful responses are wrapped in this format by TransformResponseInterceptor
+ */
+interface ApiResponseWrapper<T> {
+  success: boolean;
+  data: T;
+  timestamp: string;
+  requestId?: string;
+}
+
+/**
  * Lightweight fetch-based API client
  * Replaces axios for smaller bundle size (~13KB savings)
  */
@@ -53,15 +65,37 @@ class FetchApiClient {
   }
 
   /**
-   * Get auth headers (for future V2 implementation)
+   * Refresh token callback (set by auth module to avoid circular deps)
+   */
+  private refreshTokenCallback: (() => Promise<void>) | null = null;
+
+  /**
+   * Set the refresh token callback
+   */
+  setRefreshCallback(callback: () => Promise<void>): void {
+    this.refreshTokenCallback = callback;
+  }
+
+  /**
+   * Get auth headers with current access token
    */
   private getAuthHeaders(): Record<string, string> {
-    // Add auth token if available (V2)
-    // const token = getAuthToken();
-    // if (token) {
-    //   return { Authorization: `Bearer ${token}` };
-    // }
+    const token = tokenStorage.getAccessToken();
+    if (token) {
+      return { Authorization: `Bearer ${token}` };
+    }
     return {};
+  }
+
+  /**
+   * Check if we need to refresh the token before making a request
+   */
+  private async ensureValidToken(): Promise<void> {
+    if (tokenStorage.hasTokens() && tokenStorage.isAccessTokenExpired()) {
+      if (this.refreshTokenCallback) {
+        await this.refreshTokenCallback();
+      }
+    }
   }
 
   /**
@@ -73,6 +107,12 @@ class FetchApiClient {
     data?: unknown,
     config?: RequestConfig
   ): Promise<ApiResponse<T>> {
+    // Skip token refresh for auth endpoints to avoid circular calls
+    const isAuthEndpoint = path.startsWith('/auth/');
+    if (!isAuthEndpoint) {
+      await this.ensureValidToken();
+    }
+
     const url = `${this.baseURL}${path}`;
     const timeout = config?.timeout ?? this.defaultTimeout;
 
@@ -95,20 +135,35 @@ class FetchApiClient {
       clearTimeout(timeoutId);
 
       // Parse response data
-      let responseData: T;
+      let rawData: unknown;
       const contentType = response.headers.get('content-type');
       if (contentType?.includes('application/json')) {
-        responseData = await response.json();
+        rawData = await response.json();
       } else {
-        responseData = (await response.text()) as T;
+        rawData = await response.text();
       }
 
       // Handle error responses
       if (!response.ok) {
         const message =
-          (responseData as { message?: string })?.message ||
+          (rawData as { message?: string })?.message ||
           `Request failed with status ${response.status}`;
-        throw new ApiError(message, response.status, responseData);
+        throw new ApiError(message, response.status, rawData);
+      }
+
+      // Unwrap the standard API response envelope { success, data, timestamp, requestId }
+      // The backend wraps all successful responses in this format via TransformResponseInterceptor
+      let responseData: T;
+      if (
+        typeof rawData === 'object' &&
+        rawData !== null &&
+        'success' in rawData &&
+        'data' in rawData
+      ) {
+        const wrapper = rawData as ApiResponseWrapper<T>;
+        responseData = wrapper.data;
+      } else {
+        responseData = rawData as T;
       }
 
       return {

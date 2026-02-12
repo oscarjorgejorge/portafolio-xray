@@ -3,13 +3,15 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { ConfigService } from '@nestjs/config';
 import { Cache } from 'cache-manager';
 import { AssetsRepository } from './assets.repository';
-import { MorningstarResolverService } from './resolver';
+import { MorningstarResolverService, PageVerifierService } from './resolver';
 import { IsinEnrichmentService } from './isin-enrichment.service';
+import { MS_ASSET_TYPES } from './resolver/utils/constants';
 import {
   ResolveAssetDto,
   ConfirmAssetDto,
   BatchResolveAssetDto,
   BatchResolveAssetItemDto,
+  AssetTypeDto,
 } from './dto';
 import { Asset, AssetSource, AssetType } from '@prisma/client';
 import {
@@ -42,6 +44,7 @@ export class AssetsService implements IAssetsService {
     private readonly assetsRepository: AssetsRepository,
     private readonly morningstarResolver: MorningstarResolverService,
     private readonly isinEnrichmentService: IsinEnrichmentService,
+    private readonly pageVerifier: PageVerifierService,
     private readonly configService: ConfigService<AppConfig, true>,
   ) {
     const resolutionConfig = this.configService.get('resolution', {
@@ -208,6 +211,9 @@ export class AssetsService implements IAssetsService {
             name: r.title,
             url: r.url,
             score: r.score,
+            ticker: r.ticker,
+            // Map internal assetType (Spanish) to API enum (English)
+            assetType: this.mapAssetType(r.assetType),
             market: this.detectMarketFromUrl(r.url),
           }));
 
@@ -468,36 +474,48 @@ export class AssetsService implements IAssetsService {
   }
 
   async confirm(dto: ConfirmAssetDto): Promise<ResolvedAssetDto> {
-    // Create or update asset with manual source
-    // Use upsertByMorningstarId when ISIN is not available (e.g., ticker-only assets)
-    const isin = dto.isin && dto.isin.trim() !== '' ? dto.isin : null;
+    // If no ticker provided and it's a STOCK, try to extract from page
+    let ticker = dto.ticker;
+    if (!ticker && dto.type === AssetTypeDto.STOCK) {
+      this.logger.log(
+        `[CONFIRM] No ticker provided for STOCK ${dto.morningstarId}, attempting extraction...`,
+      );
+      try {
+        const { verification } =
+          await this.pageVerifier.verifyFundPageWithFallback(
+            dto.morningstarId,
+            '',
+            MS_ASSET_TYPES.STOCK,
+          );
+        if (verification.additionalInfo?.ticker) {
+          ticker = verification.additionalInfo.ticker;
+          this.logger.log(`[CONFIRM] Extracted ticker from page: ${ticker}`);
+        }
+      } catch (error) {
+        this.logger.warn(
+          `[CONFIRM] Failed to extract ticker for ${dto.morningstarId}: ${error}`,
+        );
+      }
+    }
 
-    const asset = isin
-      ? await this.assetsRepository.upsertByIsin({
-          isin,
-          morningstarId: dto.morningstarId,
-          name: dto.name,
-          type: dto.type as AssetType,
-          url: dto.url,
-          source: AssetSource.manual,
-          ticker: dto.ticker,
-        })
-      : await this.assetsRepository.upsertByMorningstarId({
-          isin: null,
-          morningstarId: dto.morningstarId,
-          name: dto.name,
-          type: dto.type as AssetType,
-          url: dto.url,
-          source: AssetSource.manual,
-          ticker: dto.ticker,
-          isinPending: false,
-        });
+    // Create or update asset with manual source
+    // Use upsertByMorningstarId since ISIN may be undefined (e.g., when found by ticker)
+    const asset = await this.assetsRepository.upsertByMorningstarId({
+      isin: dto.isin ?? null,
+      morningstarId: dto.morningstarId,
+      name: dto.name,
+      type: dto.type as AssetType,
+      url: dto.url,
+      source: AssetSource.manual,
+      ticker,
+      isinPending: !dto.isin, // Mark as pending if no ISIN provided
+    });
 
     // Invalidate cache for all identifiers (ISIN, Morningstar ID, and ticker)
     await this.invalidateAssetCache({
-      isin: isin ?? undefined,
+      isin: dto.isin ?? undefined,
       morningstarId: dto.morningstarId,
-      ticker: dto.ticker,
+      ticker: asset.ticker,
     });
 
     return toResolvedAssetDto(asset);
@@ -526,6 +544,35 @@ export class AssetsService implements IAssetsService {
       isin,
       morningstarId: asset.morningstarId,
       ticker: asset.ticker,
+    });
+
+    return toResolvedAssetDto(asset);
+  }
+
+  /**
+   * Update ticker for an existing asset (manual entry by user)
+   * Primarily used for stocks where ticker is not automatically resolved
+   * Uses transactional method to ensure atomicity between existence check and update
+   * @param id - Asset UUID
+   * @param ticker - New ticker value
+   * @throws EntityNotFoundException if asset not found (returns 404 automatically)
+   */
+  async updateTicker(id: string, ticker: string): Promise<ResolvedAssetDto> {
+    this.logger.log(`Manually updating ticker for asset ${id}: ${ticker}`);
+
+    // Repository throws EntityNotFoundException (extends NotFoundException)
+    // which is automatically handled by NestJS and returns 404
+    const asset = await this.assetsRepository.updateTickerWithVerification(
+      id,
+      ticker,
+      true, // Mark as manually entered
+    );
+
+    // Invalidate cache for all identifiers
+    await this.invalidateAssetCache({
+      isin: asset.isin,
+      morningstarId: asset.morningstarId,
+      ticker,
     });
 
     return toResolvedAssetDto(asset);

@@ -13,6 +13,7 @@ describe('asset.mapper', () => {
     source: AssetSource.web_search,
     isinPending: false,
     isinManual: false,
+    tickerManual: false,
     createdAt: new Date('2024-01-15T10:00:00Z'),
     updatedAt: new Date('2024-01-16T12:00:00Z'),
     ...overrides,
@@ -47,18 +48,17 @@ describe('asset.mapper', () => {
       expect(dto).not.toHaveProperty('updatedAt');
     });
 
-    it('should NOT include isinPending field', () => {
-      const asset = createMockAsset();
+    it('should map isinPending, isinManual, tickerManual when present', () => {
+      const asset = createMockAsset({
+        isinPending: true,
+        isinManual: true,
+        tickerManual: true,
+      });
       const dto = toResolvedAssetDto(asset);
 
-      expect(dto).not.toHaveProperty('isinPending');
-    });
-
-    it('should NOT include isinManual field', () => {
-      const asset = createMockAsset();
-      const dto = toResolvedAssetDto(asset);
-
-      expect(dto).not.toHaveProperty('isinManual');
+      expect(dto.isinPending).toBe(true);
+      expect(dto.isinManual).toBe(true);
+      expect(dto.tickerManual).toBe(true);
     });
 
     it('should handle null ISIN', () => {
@@ -124,7 +124,7 @@ describe('asset.mapper', () => {
       expect(dtos).toEqual([]);
     });
 
-    it('should NOT include internal fields in any mapped items', () => {
+    it('should NOT include internal DB fields (createdAt, updatedAt) in any mapped items', () => {
       const assets = [
         createMockAsset({ id: 'id-1' }),
         createMockAsset({ id: 'id-2' }),
@@ -135,8 +135,6 @@ describe('asset.mapper', () => {
       dtos.forEach((dto) => {
         expect(dto).not.toHaveProperty('createdAt');
         expect(dto).not.toHaveProperty('updatedAt');
-        expect(dto).not.toHaveProperty('isinPending');
-        expect(dto).not.toHaveProperty('isinManual');
       });
     });
   });

@@ -257,6 +257,11 @@ export class MorningstarResolverService implements IMorningstarResolver {
       bestMatch.isin = verification.isinFound;
     }
 
+    // Update ticker if found from page verification
+    if (verification?.additionalInfo?.ticker && !bestMatch.ticker) {
+      bestMatch.ticker = verification.additionalInfo.ticker;
+    }
+
     if (verification?.nameFound) {
       bestMatch.title = verification.nameFound;
     }
@@ -337,6 +342,7 @@ export class MorningstarResolverService implements IMorningstarResolver {
         morningstarId: normalizedInput,
         domain: 'global.morningstar.com',
         isin: verification.isinFound || undefined,
+        ticker: verification.additionalInfo?.ticker || undefined,
         assetType: foundAssetType,
         score: 100,
         scoreBreakdown: {
@@ -404,6 +410,11 @@ export class MorningstarResolverService implements IMorningstarResolver {
         bestMatch.title = verification.nameFound;
       }
 
+      // Update ticker if found from page verification
+      if (verification.additionalInfo?.ticker && !bestMatch.ticker) {
+        bestMatch.ticker = verification.additionalInfo.ticker;
+      }
+
       scoredResults = scoredResults.sort((a, b) => b.score - a.score);
     }
 
@@ -449,6 +460,14 @@ export class MorningstarResolverService implements IMorningstarResolver {
       bestMatch.isin = verification.isinFound;
       this.logger.log(
         `[VERIFY] Extracted ISIN from page: ${verification.isinFound}`,
+      );
+    }
+
+    // Update ticker if found from page verification
+    if (verification?.additionalInfo?.ticker && !bestMatch.ticker) {
+      bestMatch.ticker = verification.additionalInfo.ticker;
+      this.logger.log(
+        `[VERIFY] Extracted ticker from page: ${verification.additionalInfo.ticker}`,
       );
     }
 

@@ -9,6 +9,7 @@ import { AssetRowSkeleton } from '@/components/ui/Skeleton';
 import { TrashIcon, ExternalLinkIcon } from '@/components/ui/Icons';
 import { cn } from '@/lib/utils';
 import { EditableIsin } from './EditableIsin';
+import { EditableTicker } from './EditableTicker';
 import { useIsinPolling } from '@/lib/hooks/useIsinPolling';
 import type { Asset } from '@/types';
 
@@ -207,23 +208,36 @@ export const AssetRow = memo<AssetRowProps>(function AssetRow({
               </h4>
               <div className="flex items-center gap-2 sm:gap-4 text-sm text-slate-600 mt-1 flex-wrap">
                 <span className="font-medium uppercase">{asset.asset.type}</span>
-                {asset.asset.ticker && (
-                  <span>
-                    <span className="font-medium">{t('ticker')}</span> {asset.asset.ticker}
-                  </span>
-                )}
-                {isinPending ? (
-                  <span className="flex items-center gap-1 text-slate-500">
-                    <Spinner size="sm" className="text-blue-500" />
-                    <span className="text-xs">{t('fetchingIsin')}</span>
-                  </span>
-                ) : (
-                  <EditableIsin
+                {/* For stocks: show editable ticker (since stocks typically don't have ISINs) */}
+                {asset.asset.type === 'STOCK' ? (
+                  <EditableTicker
                     assetId={asset.asset.id}
-                    currentIsin={asset.asset.isin}
-                    isinManual={asset.asset.isinManual}
-                    onIsinUpdated={handleIsinResolved}
+                    currentTicker={asset.asset.ticker}
+                    tickerManual={asset.asset.tickerManual}
+                    onTickerUpdated={handleIsinResolved}
                   />
+                ) : (
+                  asset.asset.ticker && (
+                    <span>
+                      <span className="font-medium">{t('ticker')}</span> {asset.asset.ticker}
+                    </span>
+                  )
+                )}
+                {/* For non-stocks: show editable ISIN */}
+                {asset.asset.type !== 'STOCK' && (
+                  isinPending ? (
+                    <span className="flex items-center gap-1 text-slate-500">
+                      <Spinner size="sm" className="text-blue-500" />
+                      <span className="text-xs">{t('fetchingIsin')}</span>
+                    </span>
+                  ) : (
+                    <EditableIsin
+                      assetId={asset.asset.id}
+                      currentIsin={asset.asset.isin}
+                      isinManual={asset.asset.isinManual}
+                      onIsinUpdated={handleIsinResolved}
+                    />
+                  )
                 )}
                 {asset.asset.morningstarId && (
                   <span>

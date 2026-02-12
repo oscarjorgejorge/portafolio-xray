@@ -73,6 +73,7 @@ export const MIN_WORD_LENGTH_FOR_MATCHING = 3;
 /**
  * European markets to try when a fund is not available in the default market (ES)
  * Ordered by likelihood of fund availability (Luxembourg is most common for UCITS funds)
+ * Note: Nordic markets (se, no, dk, fi) added for Scandinavian securities
  */
 export const EUROPEAN_MARKETS = [
   'lu',
@@ -84,6 +85,10 @@ export const EUROPEAN_MARKETS = [
   'nl',
   'at',
   'be',
+  'se', // Sweden - for Nordic ETFs like CoinShares
+  'no', // Norway
+  'dk', // Denmark
+  'fi', // Finland
 ] as const;
 
 /**

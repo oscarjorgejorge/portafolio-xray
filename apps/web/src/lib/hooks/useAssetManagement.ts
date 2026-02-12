@@ -18,8 +18,12 @@ interface UseAssetManagementReturn {
     assetId: string,
     morningstarId: string,
     name: string,
-    url: string
+    url: string,
+    type?: AssetType,
+    ticker?: string
   ) => void;
+  /** Update asset with the full object from confirm API so UI shows exact type/ticker from backend */
+  resolveAssetWithConfirmed: (assetId: string, confirmedAsset: Asset) => void;
   clearAll: () => void;
   getAssetById: (id: string) => PortfolioAsset | undefined;
 }
@@ -82,7 +86,7 @@ export function useAssetManagement({
   }, []);
 
   const resolveAssetManually = useCallback(
-    (assetId: string, morningstarId: string, name: string, url: string) => {
+    (assetId: string, morningstarId: string, name: string, url: string, type: AssetType = 'FUND', ticker?: string) => {
       setAssets((prev) =>
         prev.map((asset) =>
           asset.id === assetId
@@ -93,9 +97,10 @@ export function useAssetManagement({
                   id: '',
                   isin: asset.identifier,
                   morningstarId,
+                  ticker: ticker || null,
                   name,
                   url,
-                  type: 'FUND' as AssetType,
+                  type,
                   source: 'manual',
                   createdAt: new Date().toISOString(),
                   updatedAt: new Date().toISOString(),
@@ -107,6 +112,24 @@ export function useAssetManagement({
     },
     []
   );
+
+  const resolveAssetWithConfirmed = useCallback((assetId: string, confirmedAsset: Asset) => {
+    setAssets((prev) =>
+      prev.map((portfolioAsset) =>
+        portfolioAsset.id === assetId
+          ? {
+              ...portfolioAsset,
+              status: 'resolved' as const,
+              asset: {
+                ...confirmedAsset,
+                isin: confirmedAsset.isin ?? portfolioAsset.identifier,
+              },
+              isinPending: confirmedAsset.isinPending ?? false,
+            }
+          : portfolioAsset
+      )
+    );
+  }, []);
 
   const clearAll = useCallback(() => {
     setAssets([]);
@@ -131,6 +154,7 @@ export function useAssetManagement({
     updateWeight,
     updateAsset,
     resolveAssetManually,
+    resolveAssetWithConfirmed,
     clearAll,
     getAssetById,
   };

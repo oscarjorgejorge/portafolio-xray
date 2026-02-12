@@ -26,14 +26,16 @@ export function createAlternativesResponse(): ResolveAssetResponse {
       {
         morningstarId: 'F00000WU13',
         name: 'Vanguard FTSE All-World ETF',
-        url: 'https://morningstar.com/etf/1',
+        url: 'https://morningstar.com/etfs/1',
         score: 0.85,
+        assetType: 'ETF',
       },
       {
         morningstarId: 'F00000WU14',
         name: 'Similar Fund',
-        url: 'https://morningstar.com/etf/2',
+        url: 'https://morningstar.com/funds/2',
         score: 0.75,
+        assetType: 'FUND',
       },
     ],
     error: 'Multiple matches found',

@@ -1,6 +1,9 @@
 import type { Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
+import { QueryProvider } from '@/providers/QueryProvider';
+import { AuthProvider } from '@/lib/auth';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -15,7 +18,17 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return children;
+  return (
+    <html lang="en">
+      <body className={inter.className}>
+        <QueryProvider>
+          <AuthProvider>
+            <ErrorBoundary>{children}</ErrorBoundary>
+          </AuthProvider>
+        </QueryProvider>
+      </body>
+    </html>
+  );
 }
 
 export { inter };

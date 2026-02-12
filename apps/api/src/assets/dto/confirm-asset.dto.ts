@@ -33,7 +33,7 @@ export class ConfirmAssetDto {
       o.isin !== null && o.isin !== undefined && o.isin !== '',
   )
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   @IsValidIsin()
   isin?: string | null;
 

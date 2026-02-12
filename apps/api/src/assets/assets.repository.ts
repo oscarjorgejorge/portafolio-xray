@@ -100,6 +100,9 @@ export class AssetsRepository implements IAssetsRepository {
           isinPending: data.isinPending,
         }),
         ...(data.isinManual !== undefined && { isinManual: data.isinManual }),
+        ...(data.tickerManual !== undefined && {
+          tickerManual: data.tickerManual,
+        }),
       },
     });
   }
@@ -158,6 +161,8 @@ export class AssetsRepository implements IAssetsRepository {
 
   /**
    * Create or update asset by Morningstar ID (used when ISIN is not available)
+   * Note: Only updates ticker if explicitly provided (not undefined)
+   * This prevents overwriting existing ticker data during manual confirmation
    */
   async upsertByMorningstarId(
     data: UpsertAssetByMorningstarIdData,
@@ -170,7 +175,8 @@ export class AssetsRepository implements IAssetsRepository {
         type: data.type,
         url: data.url,
         source: data.source,
-        ticker: data.ticker,
+        // Only update ticker if explicitly provided (preserves existing ticker)
+        ...(data.ticker !== undefined && { ticker: data.ticker }),
         isinPending: data.isinPending ?? false,
       },
       create: {
@@ -180,7 +186,7 @@ export class AssetsRepository implements IAssetsRepository {
         type: data.type,
         url: data.url,
         source: data.source,
-        ticker: data.ticker,
+        ticker: data.ticker ?? null,
         isinPending: data.isinPending ?? false,
       },
     });
@@ -250,6 +256,39 @@ export class AssetsRepository implements IAssetsRepository {
       data: {
         isinPending: false,
       },
+    });
+  }
+
+  /**
+   * Verify asset exists and update ticker atomically using a transaction
+   * This method ensures no race conditions between checking existence and updating
+   * @param assetId - Asset UUID
+   * @param ticker - New ticker value
+   * @param isManual - Whether the ticker was manually entered by user (default: false)
+   * @returns Updated asset
+   * @throws EntityNotFoundException if asset not found
+   */
+  async updateTickerWithVerification(
+    assetId: string,
+    ticker: string,
+    isManual = false,
+  ): Promise<Asset> {
+    return this.prisma.$transaction(async (tx) => {
+      const asset = await tx.asset.findUnique({
+        where: { id: assetId },
+      });
+
+      if (!asset) {
+        throw new EntityNotFoundException('Asset', assetId);
+      }
+
+      return tx.asset.update({
+        where: { id: assetId },
+        data: {
+          ticker: ticker.toUpperCase(),
+          tickerManual: isManual,
+        },
+      });
     });
   }
 }
