@@ -4,7 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { Cache } from 'cache-manager';
 import { AssetsService } from './assets.service';
 import { AssetsRepository } from './assets.repository';
-import { MorningstarResolverService } from './resolver';
+import { MorningstarResolverService, PageVerifierService } from './resolver';
 import { IsinEnrichmentService } from './isin-enrichment.service';
 import { AssetSource, AssetType } from '@prisma/client';
 import { ResolutionSource, ResolutionErrorCode } from './types';
@@ -97,6 +97,10 @@ describe('AssetsService', () => {
       enrichIsinInBackground: jest.fn(),
     } as unknown as jest.Mocked<IsinEnrichmentService>;
 
+    const pageVerifier = {
+      verifyFundPageWithFallback: jest.fn(),
+    } as unknown as jest.Mocked<PageVerifierService>;
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AssetsService,
@@ -104,6 +108,7 @@ describe('AssetsService', () => {
         { provide: AssetsRepository, useValue: repository },
         { provide: MorningstarResolverService, useValue: morningstarResolver },
         { provide: IsinEnrichmentService, useValue: isinEnrichment },
+        { provide: PageVerifierService, useValue: pageVerifier },
         {
           provide: ConfigService,
           useValue: {
@@ -495,7 +500,7 @@ describe('AssetsService', () => {
   describe('confirm', () => {
     it('should create/update asset with manual source', async () => {
       const mockAsset = createMockAsset({ source: AssetSource.manual });
-      repository.upsertByIsin.mockResolvedValue(mockAsset);
+      repository.upsertByMorningstarId.mockResolvedValue(mockAsset);
 
       const result = await service.confirm({
         isin: 'IE00B4L5Y983',
@@ -506,6 +511,7 @@ describe('AssetsService', () => {
       });
 
       expect(result.source).toBe(AssetSource.manual);
+      expect(repository.upsertByMorningstarId).toHaveBeenCalled();
       expect(cacheManager.del).toHaveBeenCalled();
     });
   });
