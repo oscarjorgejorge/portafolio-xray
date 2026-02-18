@@ -4,10 +4,8 @@ import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getTranslations } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { routing } from '@/i18n/routing';
-import { QueryProvider } from '@/providers/QueryProvider';
-import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
-import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
-import { inter } from '../layout';
+import { NavBar } from '@/components/navigation/NavBar';
+import { HtmlLangUpdater } from '@/components/layout/HtmlLangUpdater';
 
 interface LocaleLayoutProps {
   children: ReactNode;
@@ -76,20 +74,10 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
   const messages = await getMessages();
 
   return (
-    <html lang={locale}>
-      <body className={inter.className}>
-        <NextIntlClientProvider messages={messages}>
-          <QueryProvider>
-            <ErrorBoundary>
-              {/* Language Switcher - Fixed position in top right */}
-              <div className="fixed top-4 right-4 z-50">
-                <LanguageSwitcher />
-              </div>
-              {children}
-            </ErrorBoundary>
-          </QueryProvider>
-        </NextIntlClientProvider>
-      </body>
-    </html>
+    <NextIntlClientProvider messages={messages}>
+      <HtmlLangUpdater />
+      <NavBar />
+      {children}
+    </NextIntlClientProvider>
   );
 }

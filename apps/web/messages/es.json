@@ -107,5 +107,72 @@
   },
   "language": {
     "switchLanguage": "Cambiar idioma"
+  },
+  "auth": {
+    "login": {
+      "title": "Inicia sesión en tu cuenta",
+      "email": "Dirección de correo electrónico",
+      "password": "Contraseña",
+      "forgotPassword": "¿Olvidaste tu contraseña?",
+      "signIn": "Iniciar sesión",
+      "signingIn": "Iniciando sesión...",
+      "continueWithGoogle": "Continuar con Google",
+      "noAccount": "¿No tienes una cuenta?",
+      "signUp": "Regístrate",
+      "loginFailed": "Error al iniciar sesión"
+    },
+    "register": {
+      "title": "Crea tu cuenta",
+      "email": "Dirección de correo electrónico",
+      "userName": "Nombre de usuario",
+      "userNameHint": "Solo letras, números, guiones bajos y guiones",
+      "name": "Nombre completo",
+      "password": "Contraseña",
+      "passwordHint": "Al menos 8 caracteres con mayúsculas, minúsculas y números",
+      "confirmPassword": "Confirmar contraseña",
+      "createAccount": "Crear cuenta",
+      "creatingAccount": "Creando cuenta...",
+      "continueWithGoogle": "Continuar con Google",
+      "hasAccount": "¿Ya tienes una cuenta?",
+      "signIn": "Iniciar sesión",
+      "passwordsNoMatch": "Las contraseñas no coinciden",
+      "passwordTooShort": "La contraseña debe tener al menos 8 caracteres",
+      "registrationFailed": "Error al registrarse",
+      "emailAlreadyRegistered": "El correo electrónico ya está registrado",
+      "usernameAlreadyTaken": "El nombre de usuario ya está en uso",
+      "emailSendFailedMessage": "No se pudo enviar el correo de verificación automáticamente. Por favor, regístrate de nuevo para recibir un nuevo correo de verificación."
+    },
+    "verifyEmailPending": {
+      "title": "Verifica tu correo electrónico",
+      "subtitle": "Hemos enviado un enlace de verificación a tu dirección de correo electrónico",
+      "registrationSuccess": "Por favor, revisa tu correo electrónico para verificar tu cuenta.",
+      "verificationFailedMessage": "Se ha enviado un nuevo correo de verificación. Por favor, revisa tu bandeja de entrada.",
+      "instructions": "Por favor, revisa tu bandeja de entrada y haz clic en el enlace de verificación que te enviamos. Este enlace expirará en 24 horas.",
+      "emailLabel": "Dirección de correo electrónico",
+      "checkSpam": "¿No recibiste el correo? Revisa tu carpeta de spam.",
+      "expiryNotice": "El enlace de verificación expira en 24 horas.",
+      "resendButton": "Reenviar correo de verificación",
+      "resending": "Enviando...",
+      "resendSuccess": "¡Correo de verificación enviado! Por favor, revisa tu bandeja de entrada.",
+      "backToHome": "Volver a la Página Principal"
+    },
+    "verifyEmail": {
+      "verifying": "Verificando tu correo electrónico...",
+      "success": "¡Correo Verificado!",
+      "successMessage": "Tu correo electrónico ha sido verificado exitosamente. Ahora puedes usar todas las funciones de Portfolio X-Ray.",
+      "failed": "Verificación Fallida",
+      "noToken": "No se proporcionó token de verificación",
+      "verificationFailed": "Error en la verificación",
+      "verificationFailedExpired": "El token de verificación ha expirado",
+      "verificationFailedUsed": "El token de verificación ya fue utilizado",
+      "verificationFailedInvalid": "Token de verificación inválido",
+      "goToLogin": "Ir al Inicio de Sesión",
+      "goToDashboard": "Ir al Panel",
+      "resendVerification": "Reenviar correo de verificación",
+      "redirectingMessage": "Redirigiendo...",
+      "alreadyVerified": "Tu correo electrónico ya estaba verificado. Bienvenido de nuevo.",
+      "tooManyRequests": "Demasiados intentos. Espera un momento antes de volver a intentar."
+    },
+    "logout": "Cerrar sesión"
   }
 }

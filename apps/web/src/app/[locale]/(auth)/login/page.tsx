@@ -1,15 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
+import { Link, useRouter } from '@/i18n/navigation';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import { Alert } from '@/components/ui/Alert';
 
 export default function LoginPage() {
   const router = useRouter();
+  const t = useTranslations('auth.login');
   const { login, getGoogleLoginUrl, isLoading: authLoading } = useAuth();
   
   const [email, setEmail] = useState('');
@@ -26,7 +28,7 @@ export default function LoginPage() {
       await login({ email, password });
       router.push('/');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setError(err instanceof Error ? err.message : t('loginFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -45,16 +47,17 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold text-center text-gray-900">
-            Portfolio X-Ray
-          </h1>
-          <h2 className="mt-6 text-center text-xl font-semibold text-gray-700">
-            Sign in to your account
-          </h2>
-        </div>
+    <div className="min-h-screen bg-gray-50">
+      <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-8">
+          <div>
+            <h1 className="text-3xl font-bold text-center text-gray-900">
+              Portfolio X-Ray
+            </h1>
+            <h2 className="mt-6 text-center text-xl font-semibold text-gray-700">
+              {t('title')}
+            </h2>
+          </div>
 
         {error && (
           <Alert variant="error">
@@ -66,7 +69,7 @@ export default function LoginPage() {
           <div className="space-y-4">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email address
+                {t('email')}
               </label>
               <Input
                 id="email"
@@ -81,12 +84,9 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password
-              </label>
-              <Input
+              <PasswordInput
                 id="password"
-                type="password"
+                label={t('password')}
                 autoComplete="current-password"
                 required
                 value={password}
@@ -102,7 +102,7 @@ export default function LoginPage() {
               href="/forgot-password"
               className="text-sm font-medium text-blue-600 hover:text-blue-500"
             >
-              Forgot your password?
+              {t('forgotPassword')}
             </Link>
           </div>
 
@@ -111,7 +111,7 @@ export default function LoginPage() {
             className="w-full"
             disabled={isLoading}
           >
-            {isLoading ? 'Signing in...' : 'Sign in'}
+            {isLoading ? t('signingIn') : t('signIn')}
           </Button>
 
           <div className="relative">
@@ -126,7 +126,7 @@ export default function LoginPage() {
           <Button
             type="button"
             variant="secondary"
-            className="w-full"
+            className="w-full flex items-center justify-center"
             onClick={handleGoogleLogin}
           >
             <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
@@ -147,16 +147,17 @@ export default function LoginPage() {
                 d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
               />
             </svg>
-            Continue with Google
+            {t('continueWithGoogle')}
           </Button>
         </form>
 
         <p className="mt-4 text-center text-sm text-gray-600">
-          Don&apos;t have an account?{' '}
+          {t('noAccount')}{' '}
           <Link href="/register" className="font-medium text-blue-600 hover:text-blue-500">
-            Sign up
+            {t('signUp')}
           </Link>
         </p>
+        </div>
       </div>
     </div>
   );

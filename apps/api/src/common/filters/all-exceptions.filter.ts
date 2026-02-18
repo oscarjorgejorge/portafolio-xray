@@ -10,19 +10,6 @@ import { Response, Request } from 'express';
 import { getRequestId } from '../context';
 
 /**
- * Response structure for error responses
- */
-interface ErrorResponse {
-  success: false;
-  statusCode: number;
-  error: string;
-  message: string;
-  path: string;
-  timestamp: string;
-  requestId?: string;
-}
-
-/**
  * Global exception filter that catches all unhandled exceptions.
  * Provides consistent error response format across the API.
  */
@@ -36,22 +23,31 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const request = ctx.getRequest<Request>();
     const requestId = getRequestId();
 
-    const { status, error, message } = this.getErrorDetails(exception);
+    const details = this.getErrorDetails(exception);
 
     // Log the error with appropriate level (includes requestId)
-    this.logError(exception, request, status, requestId);
+    this.logError(exception, request, details.status, requestId);
 
-    const errorResponse: ErrorResponse = {
+    const errorResponse: Record<string, unknown> = {
       success: false,
-      statusCode: status,
-      error,
-      message,
+      statusCode: details.status,
+      error: details.error,
+      message: details.message,
       path: request.url,
       timestamp: new Date().toISOString(),
       ...(requestId && { requestId }),
     };
 
-    response.status(status).json(errorResponse);
+    // Preserve custom payload from HttpException (e.g. userEmail, emailVerified for verify-email)
+    if (
+      details.extra &&
+      typeof details.extra === 'object' &&
+      details.extra !== null
+    ) {
+      Object.assign(errorResponse, details.extra);
+    }
+
+    response.status(details.status).json(errorResponse);
   }
 
   /**
@@ -61,19 +57,25 @@ export class AllExceptionsFilter implements ExceptionFilter {
     status: number;
     error: string;
     message: string;
+    extra?: Record<string, unknown>;
   } {
     // Handle NestJS HTTP exceptions (400, 401, 403, 404, etc.)
     if (exception instanceof HttpException) {
       const status = exception.getStatus();
       const exceptionResponse = exception.getResponse();
 
-      // Handle validation errors (class-validator)
+      // Handle validation errors (class-validator) or custom payload object
       if (typeof exceptionResponse === 'object' && exceptionResponse !== null) {
         const response = exceptionResponse as Record<string, unknown>;
+        const error = response.error as string | undefined;
+        const extra = { ...response };
+        delete extra.message;
+        delete extra.error;
         return {
           status,
-          error: (response.error as string) || this.getHttpErrorName(status),
+          error: error || this.getHttpErrorName(status),
           message: this.extractMessage(response),
+          extra: Object.keys(extra).length > 0 ? extra : undefined,
         };
       }
 

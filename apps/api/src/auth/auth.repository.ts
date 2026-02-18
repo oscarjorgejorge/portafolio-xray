@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   AuthProvider,
@@ -6,6 +6,7 @@ import {
   RefreshToken,
   PasswordReset,
   EmailVerification,
+  Prisma,
 } from '@prisma/client';
 
 export interface CreateUserData {
@@ -16,6 +17,7 @@ export interface CreateUserData {
   avatarUrl?: string;
   provider: AuthProvider;
   emailVerified?: boolean;
+  locale?: string; // User language preference: 'es' or 'en', defaults to 'es'
 }
 
 export interface CreateRefreshTokenData {
@@ -40,6 +42,8 @@ export interface CreateEmailVerificationData {
 
 @Injectable()
 export class AuthRepository {
+  private readonly logger = new Logger(AuthRepository.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   // ==========================================
@@ -59,8 +63,24 @@ export class AuthRepository {
   }
 
   async findUserByUserName(userName: string): Promise<User | null> {
+    // Validate input
+    if (
+      !userName ||
+      typeof userName !== 'string' ||
+      userName.trim().length === 0
+    ) {
+      return null;
+    }
+
+    const normalizedUserName = userName.toLowerCase().trim();
+
+    // Ensure minimum length (database constraint)
+    if (normalizedUserName.length < 3) {
+      return null;
+    }
+
     return this.prisma.user.findUnique({
-      where: { userName: userName.toLowerCase() },
+      where: { userName: normalizedUserName },
     });
   }
 
@@ -74,7 +94,50 @@ export class AuthRepository {
         avatarUrl: data.avatarUrl,
         provider: data.provider,
         emailVerified: data.emailVerified ?? false,
+        locale: data.locale || 'es', // Default to Spanish
       },
+    });
+  }
+
+  async updateUser(
+    userId: string,
+    data: {
+      userName?: string;
+      name?: string;
+      password?: string;
+      locale?: string;
+    },
+  ): Promise<User> {
+    const updateData: {
+      userName?: string;
+      name?: string;
+      password?: string;
+      locale?: string;
+    } = {};
+
+    if (data.userName) {
+      updateData.userName = data.userName.toLowerCase();
+    }
+    if (data.name) {
+      updateData.name = data.name;
+    }
+    if (data.password) {
+      updateData.password = data.password;
+    }
+    if (data.locale) {
+      updateData.locale = data.locale;
+    }
+
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+    });
+  }
+
+  async updateUserLocale(userId: string, locale: string): Promise<User> {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { locale },
     });
   }
 
@@ -220,5 +283,56 @@ export class AuthRepository {
       where: { id },
       data: { usedAt: new Date() },
     });
+  }
+
+  /**
+   * Check if user has any recent unused and non-expired verification tokens
+   * Used to determine if auto-resend should happen (only if no valid tokens exist)
+   * @param userId - User ID to check
+   * @param excludeTokenId - Optional token ID to exclude from check (e.g., the expired token being verified)
+   */
+  async hasRecentValidVerificationToken(
+    userId: string,
+    excludeTokenId?: string,
+  ): Promise<boolean> {
+    const whereClause: Prisma.EmailVerificationWhereInput = {
+      userId,
+      usedAt: null,
+      expiresAt: {
+        gt: new Date(), // Not expired
+      },
+      createdAt: {
+        // Only consider tokens created in the last 24 hours as "recent"
+        gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
+      },
+      ...(excludeTokenId && {
+        id: { not: excludeTokenId },
+      }),
+    };
+
+    try {
+      const recentTokens = await this.prisma.emailVerification.findFirst({
+        where: whereClause,
+        orderBy: {
+          createdAt: 'desc', // Get the most recent one
+        },
+      });
+
+      const hasToken = recentTokens !== null;
+
+      // Log for debugging
+      this.logger.log(
+        `hasRecentValidVerificationToken - userId: ${userId}, excludeTokenId: ${excludeTokenId || 'none'}, hasToken: ${hasToken}`,
+      );
+
+      return hasToken;
+    } catch (error) {
+      // If there's an error with the database query, log it and return false
+      // This allows the auto-resend to proceed if we can't verify
+      this.logger.error(
+        `Error checking for recent valid tokens: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+      return false; // Default to allowing auto-resend if we can't check
+    }
   }
 }

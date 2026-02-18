@@ -107,5 +107,72 @@
   },
   "language": {
     "switchLanguage": "Switch language"
+  },
+  "auth": {
+    "login": {
+      "title": "Sign in to your account",
+      "email": "Email address",
+      "password": "Password",
+      "forgotPassword": "Forgot your password?",
+      "signIn": "Sign in",
+      "signingIn": "Signing in...",
+      "continueWithGoogle": "Continue with Google",
+      "noAccount": "Don't have an account?",
+      "signUp": "Sign up",
+      "loginFailed": "Login failed"
+    },
+    "register": {
+      "title": "Create your account",
+      "email": "Email address",
+      "userName": "Username",
+      "userNameHint": "Only letters, numbers, underscores, and hyphens",
+      "name": "Full name",
+      "password": "Password",
+      "passwordHint": "At least 8 characters with uppercase, lowercase, and number",
+      "confirmPassword": "Confirm password",
+      "createAccount": "Create account",
+      "creatingAccount": "Creating account...",
+      "continueWithGoogle": "Continue with Google",
+      "hasAccount": "Already have an account?",
+      "signIn": "Sign in",
+      "passwordsNoMatch": "Passwords do not match",
+      "passwordTooShort": "Password must be at least 8 characters",
+      "registrationFailed": "Registration failed",
+      "emailAlreadyRegistered": "Email already registered",
+      "usernameAlreadyTaken": "Username already taken",
+      "emailSendFailedMessage": "Could not send verification email automatically. Please register again to receive a new verification email."
+    },
+    "verifyEmailPending": {
+      "title": "Verify your email",
+      "subtitle": "We've sent a verification link to your email address",
+      "registrationSuccess": "Please check your email to verify your account.",
+      "verificationFailedMessage": "A new verification email has been sent. Please check your inbox.",
+      "instructions": "Please check your email inbox and click on the verification link we sent you. This link will expire in 24 hours.",
+      "emailLabel": "Email address",
+      "checkSpam": "Didn't receive the email? Check your spam folder.",
+      "expiryNotice": "The verification link expires in 24 hours.",
+      "resendButton": "Resend verification email",
+      "resending": "Sending...",
+      "resendSuccess": "Verification email sent! Please check your inbox.",
+      "backToHome": "Back to Home"
+    },
+    "verifyEmail": {
+      "verifying": "Verifying your email...",
+      "success": "Email Verified!",
+      "successMessage": "Your email has been successfully verified. You can now use all features of Portfolio X-Ray.",
+      "failed": "Verification Failed",
+      "noToken": "No verification token provided",
+      "verificationFailed": "Verification failed",
+      "verificationFailedExpired": "The verification token has expired",
+      "verificationFailedUsed": "The verification token has already been used",
+      "verificationFailedInvalid": "Invalid verification token",
+      "goToLogin": "Go to Login",
+      "goToDashboard": "Go to Dashboard",
+      "resendVerification": "Resend verification email",
+      "redirectingMessage": "Redirecting...",
+      "alreadyVerified": "Your email was already verified. Welcome back.",
+      "tooManyRequests": "Too many attempts. Please wait a moment before trying again."
+    },
+    "logout": "Logout"
   }
 }
