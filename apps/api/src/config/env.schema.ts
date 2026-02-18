@@ -67,7 +67,9 @@ export const envSchema = z.object({
 
   // Email Service (Resend)
   RESEND_API_KEY: z.string().optional(),
-  EMAIL_FROM: z.string().email().default('noreply@example.com'),
+  EMAIL_FROM: z.string().email().default('noreply@xrayportfolio.com'),
+  RESEND_TEMPLATE_VERIFICATION_ID: z.string().default('email-verification'),
+  RESEND_TEMPLATE_PASSWORD_RESET_ID: z.string().default('password-reset'),
 
   // Frontend URL (for email links)
   FRONTEND_URL: z.string().url().default('http://localhost:3000'),

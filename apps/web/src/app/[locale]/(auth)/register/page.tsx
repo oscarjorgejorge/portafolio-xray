@@ -1,15 +1,19 @@
 'use client';
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
+import { useSearchParams } from 'next/navigation';
+import { Link, useRouter } from '@/i18n/navigation';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import { Alert } from '@/components/ui/Alert';
 
 export default function RegisterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const t = useTranslations('auth.register');
   const { register, getGoogleLoginUrl, isLoading: authLoading } = useAuth();
   
   const [formData, setFormData] = useState({
@@ -21,6 +25,15 @@ export default function RegisterPage() {
   });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showEmailSendFailedMessage, setShowEmailSendFailedMessage] = useState(false);
+
+  useEffect(() => {
+    // Check if user came from email send failure
+    const emailSendFailed = searchParams.get('emailSendFailed');
+    if (emailSendFailed === 'true') {
+      setShowEmailSendFailedMessage(true);
+    }
+  }, [searchParams]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((prev) => ({
@@ -29,18 +42,37 @@ export default function RegisterPage() {
     }));
   };
 
+  const getErrorMessage = (error: unknown): string => {
+    if (!(error instanceof Error)) {
+      return t('registrationFailed');
+    }
+
+    const errorMessage = error.message.toLowerCase();
+    
+    // Map backend error messages to translations
+    if (errorMessage.includes('email already registered')) {
+      return t('emailAlreadyRegistered');
+    }
+    if (errorMessage.includes('username already taken')) {
+      return t('usernameAlreadyTaken');
+    }
+    
+    // Return original message if no translation found
+    return error.message || t('registrationFailed');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
     // Validation
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
+      setError(t('passwordsNoMatch'));
       return;
     }
 
     if (formData.password.length < 8) {
-      setError('Password must be at least 8 characters');
+      setError(t('passwordTooShort'));
       return;
     }
 
@@ -53,9 +85,9 @@ export default function RegisterPage() {
         name: formData.name,
         password: formData.password,
       });
-      router.push('/?registered=true');
+      router.push(`/verify-email-pending?email=${encodeURIComponent(formData.email)}&registered=true`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed');
+      setError(getErrorMessage(err));
     } finally {
       setIsLoading(false);
     }
@@ -74,16 +106,23 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold text-center text-gray-900">
-            Portfolio X-Ray
-          </h1>
-          <h2 className="mt-6 text-center text-xl font-semibold text-gray-700">
-            Create your account
-          </h2>
-        </div>
+    <div className="min-h-screen bg-gray-50">
+      <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-8">
+          <div>
+            <h1 className="text-3xl font-bold text-center text-gray-900">
+              Portfolio X-Ray
+            </h1>
+            <h2 className="mt-6 text-center text-xl font-semibold text-gray-700">
+              {t('title')}
+            </h2>
+          </div>
+
+        {showEmailSendFailedMessage && (
+          <Alert variant="warning">
+            {t('emailSendFailedMessage')}
+          </Alert>
+        )}
 
         {error && (
           <Alert variant="error">
@@ -95,7 +134,7 @@ export default function RegisterPage() {
           <div className="space-y-4">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email address
+                {t('email')}
               </label>
               <Input
                 id="email"
@@ -112,7 +151,7 @@ export default function RegisterPage() {
 
             <div>
               <label htmlFor="userName" className="block text-sm font-medium text-gray-700">
-                Username
+                {t('userName')}
               </label>
               <Input
                 id="userName"
@@ -126,13 +165,13 @@ export default function RegisterPage() {
                 className="mt-1"
               />
               <p className="mt-1 text-xs text-gray-500">
-                Only letters, numbers, underscores, and hyphens
+                {t('userNameHint')}
               </p>
             </div>
 
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                Full name
+                {t('name')}
               </label>
               <Input
                 id="name"
@@ -148,13 +187,10 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password
-              </label>
-              <Input
+              <PasswordInput
                 id="password"
                 name="password"
-                type="password"
+                label={t('password')}
                 autoComplete="new-password"
                 required
                 value={formData.password}
@@ -163,18 +199,15 @@ export default function RegisterPage() {
                 className="mt-1"
               />
               <p className="mt-1 text-xs text-gray-500">
-                At least 8 characters with uppercase, lowercase, and number
+                {t('passwordHint')}
               </p>
             </div>
 
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-                Confirm password
-              </label>
-              <Input
+              <PasswordInput
                 id="confirmPassword"
                 name="confirmPassword"
-                type="password"
+                label={t('confirmPassword')}
                 autoComplete="new-password"
                 required
                 value={formData.confirmPassword}
@@ -190,7 +223,7 @@ export default function RegisterPage() {
             className="w-full"
             disabled={isLoading}
           >
-            {isLoading ? 'Creating account...' : 'Create account'}
+            {isLoading ? t('creatingAccount') : t('createAccount')}
           </Button>
 
           <div className="relative">
@@ -205,7 +238,7 @@ export default function RegisterPage() {
           <Button
             type="button"
             variant="secondary"
-            className="w-full"
+            className="w-full flex items-center justify-center"
             onClick={handleGoogleLogin}
           >
             <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
@@ -226,16 +259,17 @@ export default function RegisterPage() {
                 d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
               />
             </svg>
-            Continue with Google
+            {t('continueWithGoogle')}
           </Button>
         </form>
 
         <p className="mt-4 text-center text-sm text-gray-600">
-          Already have an account?{' '}
+          {t('hasAccount')}{' '}
           <Link href="/login" className="font-medium text-blue-600 hover:text-blue-500">
-            Sign in
+            {t('signIn')}
           </Link>
         </p>
+        </div>
       </div>
     </div>
   );

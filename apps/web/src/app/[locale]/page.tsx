@@ -15,11 +15,29 @@ import { generateSimpleId } from '@/lib/utils/id';
 function HomePageContent() {
   const t = useTranslations('home');
   const tCommon = useTranslations('common');
+  const tVerify = useTranslations('auth.verifyEmail');
   const searchParams = useSearchParams();
   const [initialAssets, setInitialAssets] = useState<PortfolioAsset[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [urlParseError, setUrlParseError] = useState<string | null>(null);
+  const [showVerificationSuccess, setShowVerificationSuccess] = useState(false);
+  const [showAlreadyVerified, setShowAlreadyVerified] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    const verified = searchParams.get('verified');
+    const alreadyVerified = searchParams.get('alreadyVerified');
+    if (verified === 'true') {
+      setShowVerificationSuccess(true);
+      const t = setTimeout(() => setShowVerificationSuccess(false), 5000);
+      return () => clearTimeout(t);
+    }
+    if (alreadyVerified === 'true') {
+      setShowAlreadyVerified(true);
+      const t = setTimeout(() => setShowAlreadyVerified(false), 5000);
+      return () => clearTimeout(t);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     // Parse shareable URL if assets param exists
@@ -129,6 +147,19 @@ function HomePageContent() {
             {t('subtitle')}
           </p>
         </div>
+
+        {showVerificationSuccess && (
+          <Alert variant="success" className="mb-6">
+            <div className="font-semibold mb-1">{tVerify('success')}</div>
+            <div>{tVerify('successMessage')}</div>
+          </Alert>
+        )}
+
+        {showAlreadyVerified && (
+          <Alert variant="success" className="mb-6">
+            {tVerify('alreadyVerified')}
+          </Alert>
+        )}
 
         {urlParseError && (
           <Alert variant="warning" className="mb-6">

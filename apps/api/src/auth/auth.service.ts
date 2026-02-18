@@ -4,6 +4,7 @@ import {
   ConflictException,
   BadRequestException,
   NotFoundException,
+  Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
@@ -32,6 +33,8 @@ const PASSWORD_RESET_EXPIRY_HOURS = 1;
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly authRepository: AuthRepository,
     private readonly jwtService: JwtService,
@@ -46,6 +49,7 @@ export class AuthService {
     dto: RegisterDto,
     ipAddress?: string,
     userAgent?: string,
+    locale?: string,
   ): Promise<{
     user: AuthenticatedUser;
     tokens: TokenPair;
@@ -53,22 +57,115 @@ export class AuthService {
   }> {
     // Check if email already exists
     const existingEmail = await this.authRepository.findUserByEmail(dto.email);
+
+    // If email exists but is not verified, allow re-registration
     if (existingEmail) {
-      throw new ConflictException('Email already registered');
+      // Check if email is verified
+      // emailVerified should be boolean (true/false) per schema
+      // Explicitly check for true value - anything else (false, null, undefined) allows re-registration
+      const emailVerifiedValue = existingEmail.emailVerified;
+
+      // More explicit check: only block if explicitly true
+      // emailVerified is boolean per schema, so we only check for true
+      const isEmailVerified = emailVerifiedValue === true;
+
+      // Debug: Log the actual value to help diagnose issues
+      this.logger.log(
+        `[REGISTER DEBUG] Email: ${dto.email}, emailVerified value: ${JSON.stringify(emailVerifiedValue)}, type: ${typeof emailVerifiedValue}, isVerified: ${isEmailVerified}`,
+      );
+
+      // Only block registration if email is explicitly verified
+      if (isEmailVerified) {
+        this.logger.warn(
+          `[REGISTER] Blocked: Email ${dto.email} is already verified`,
+        );
+        throw new ConflictException('Email already registered');
+      }
+
+      this.logger.log(
+        `[REGISTER] Allowing re-registration for unverified email: ${dto.email}`,
+      );
+
+      // Email exists but is NOT verified - proceed with update and resend verification
+      // Check if username conflicts with another verified user
+      const existingUserName = await this.authRepository.findUserByUserName(
+        dto.userName,
+      );
+      if (
+        existingUserName &&
+        existingUserName.id !== existingEmail.id &&
+        existingUserName.emailVerified
+      ) {
+        throw new ConflictException('Username already taken');
+      }
+
+      // Hash password
+      const hashedPassword = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
+
+      // Update existing unverified user
+      const updateData: {
+        userName?: string;
+        name?: string;
+        password?: string;
+        locale?: string;
+      } = {
+        userName: dto.userName,
+        name: dto.name,
+        password: hashedPassword,
+      };
+
+      // Update locale if provided
+      if (locale && (locale === 'es' || locale === 'en')) {
+        updateData.locale = locale;
+      }
+
+      const updatedUser = await this.authRepository.updateUser(
+        existingEmail.id,
+        updateData,
+      );
+
+      // Generate tokens
+      const tokens = await this.generateTokens(
+        updatedUser.id,
+        updatedUser.email,
+        ipAddress,
+        userAgent,
+      );
+
+      // Create new email verification token
+      const verificationToken = await this.createEmailVerificationToken(
+        updatedUser.id,
+      );
+
+      return {
+        user: {
+          id: updatedUser.id,
+          email: updatedUser.email,
+          userName: updatedUser.userName,
+          name: updatedUser.name,
+          avatarUrl: updatedUser.avatarUrl,
+          emailVerified: updatedUser.emailVerified,
+          locale: updatedUser.locale || 'es',
+        },
+        tokens,
+        verificationToken,
+      };
     }
 
-    // Check if username already exists
+    // Check if username already exists (only for verified users)
     const existingUserName = await this.authRepository.findUserByUserName(
       dto.userName,
     );
-    if (existingUserName) {
+    if (existingUserName && existingUserName.emailVerified) {
       throw new ConflictException('Username already taken');
     }
 
     // Hash password
     const hashedPassword = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
 
-    // Create user
+    // Create user with locale preference
+    const userLocale =
+      locale && (locale === 'es' || locale === 'en') ? locale : 'es';
     const user = await this.authRepository.createUser({
       email: dto.email,
       userName: dto.userName,
@@ -76,6 +173,7 @@ export class AuthService {
       password: hashedPassword,
       provider: AuthProvider.email,
       emailVerified: false,
+      locale: userLocale,
     });
 
     // Generate tokens
@@ -97,6 +195,7 @@ export class AuthService {
         name: user.name,
         avatarUrl: user.avatarUrl,
         emailVerified: user.emailVerified,
+        locale: user.locale || 'es',
       },
       tokens,
       verificationToken,
@@ -147,6 +246,7 @@ export class AuthService {
         name: user.name,
         avatarUrl: user.avatarUrl,
         emailVerified: user.emailVerified,
+        locale: user.locale || 'es',
       },
       tokens,
     };
@@ -160,6 +260,7 @@ export class AuthService {
     googleUser: GoogleUser,
     ipAddress?: string,
     userAgent?: string,
+    locale?: string,
   ): Promise<{
     user: AuthenticatedUser;
     tokens: TokenPair;
@@ -172,6 +273,8 @@ export class AuthService {
     if (!user) {
       // Create new user from Google data
       const userName = await this.generateUniqueUserName(googleUser.email);
+      const userLocale =
+        locale && (locale === 'es' || locale === 'en') ? locale : 'es';
 
       user = await this.authRepository.createUser({
         email: googleUser.email,
@@ -180,6 +283,7 @@ export class AuthService {
         avatarUrl: googleUser.avatarUrl ?? undefined,
         provider: AuthProvider.google,
         emailVerified: true, // Google emails are pre-verified
+        locale: userLocale,
       });
 
       isNewUser = true;
@@ -201,6 +305,7 @@ export class AuthService {
         name: user.name,
         avatarUrl: user.avatarUrl,
         emailVerified: user.emailVerified,
+        locale: user.locale || 'es',
       },
       tokens,
       isNewUser,
@@ -280,40 +385,116 @@ export class AuthService {
   // Email Verification
   // ==========================================
 
-  async verifyEmail(token: string): Promise<AuthenticatedUser> {
+  async verifyEmail(
+    token: string,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<{
+    user: AuthenticatedUser;
+    tokens: TokenPair;
+    alreadyVerified?: boolean;
+  }> {
     const verification = await this.authRepository.findEmailVerification(token);
 
     if (!verification) {
       throw new BadRequestException('Invalid verification token');
     }
 
+    // Get user before checking if token is valid (for auto-resend or already-verified login)
+    const user = await this.authRepository.findUserById(verification.userId);
+    const userEmail = user?.email;
+
     if (verification.usedAt) {
-      throw new BadRequestException('Verification token already used');
+      // If token was already used and email is verified, log the user in (return user + tokens)
+      if (user?.emailVerified) {
+        this.logger.log(
+          `[VERIFY EMAIL] Token already used for user ${verification.userId} (email: ${userEmail}). Email verified - returning user and tokens to log in.`,
+        );
+        const authenticatedUser: AuthenticatedUser = {
+          id: user.id,
+          email: user.email,
+          userName: user.userName,
+          name: user.name,
+          avatarUrl: user.avatarUrl,
+          emailVerified: user.emailVerified,
+          locale: user.locale || 'es',
+        };
+        const tokens = await this.generateTokens(
+          user.id,
+          user.email,
+          ipAddress,
+          userAgent,
+        );
+        return { user: authenticatedUser, tokens, alreadyVerified: true };
+      }
+      // Email not verified - throw so controller can auto-resend
+      const error = new BadRequestException('Verification token already used');
+      (error as any).userEmail = userEmail;
+      (error as any).emailVerified = false;
+      this.logger.log(
+        `[VERIFY EMAIL] Token already used for user ${verification.userId} (email: ${userEmail}). Email not verified.`,
+      );
+      throw error;
     }
 
     if (verification.expiresAt < new Date()) {
-      throw new BadRequestException('Verification token has expired');
+      // If token expired, check if user already has a recent valid token (excluding the current expired one)
+      // Only auto-resend if no valid tokens exist (first time only)
+      let hasRecentToken = false;
+      try {
+        hasRecentToken =
+          await this.authRepository.hasRecentValidVerificationToken(
+            verification.userId,
+            verification.id, // Exclude the current expired token from the check
+          );
+      } catch (error) {
+        // If there's an error checking for recent tokens, log it but don't fail
+        // Default to allowing auto-resend if we can't check
+        this.logger.error(
+          `Error checking for recent tokens: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        );
+        hasRecentToken = false;
+      }
+
+      const error = new BadRequestException('Verification token has expired');
+      (error as any).userEmail = userEmail;
+      (error as any).hasRecentToken = hasRecentToken; // Flag to prevent auto-resend if token exists
+      (error as any).expiredTokenId = verification.id; // Include expired token ID for debugging
+      throw error;
     }
 
     // Mark verification as used
     await this.authRepository.markEmailVerificationUsed(verification.id);
 
     // Mark user email as verified
-    const user = await this.authRepository.markEmailVerified(
+    const verifiedUser = await this.authRepository.markEmailVerified(
       verification.userId,
     );
 
-    return {
-      id: user.id,
-      email: user.email,
-      userName: user.userName,
-      name: user.name,
-      avatarUrl: user.avatarUrl,
-      emailVerified: user.emailVerified,
+    const authenticatedUser: AuthenticatedUser = {
+      id: verifiedUser.id,
+      email: verifiedUser.email,
+      userName: verifiedUser.userName,
+      name: verifiedUser.name,
+      avatarUrl: verifiedUser.avatarUrl,
+      emailVerified: verifiedUser.emailVerified,
+      locale: verifiedUser.locale || 'es',
     };
+
+    const tokens = await this.generateTokens(
+      verifiedUser.id,
+      verifiedUser.email,
+      ipAddress,
+      userAgent,
+    );
+
+    return { user: authenticatedUser, tokens };
   }
 
-  async resendVerificationEmail(email: string): Promise<string> {
+  async resendVerificationEmail(email: string): Promise<{
+    token: string;
+    locale: string;
+  }> {
     const user = await this.authRepository.findUserByEmail(email);
 
     if (!user) {
@@ -327,14 +508,22 @@ export class AuthService {
       throw new BadRequestException('Email is already verified');
     }
 
-    return this.createEmailVerificationToken(user.id);
+    // Create new token (this will invalidate previous unused tokens)
+    const token = await this.createEmailVerificationToken(user.id);
+    return {
+      token,
+      locale: user.locale || 'es',
+    };
   }
 
   // ==========================================
   // Password Reset
   // ==========================================
 
-  async forgotPassword(email: string): Promise<string | null> {
+  async forgotPassword(email: string): Promise<{
+    token: string;
+    locale: string;
+  } | null> {
     const user = await this.authRepository.findUserByEmail(email);
 
     if (!user) {
@@ -347,7 +536,11 @@ export class AuthService {
       return null;
     }
 
-    return this.createPasswordResetToken(user.id);
+    const token = await this.createPasswordResetToken(user.id);
+    return {
+      token,
+      locale: user.locale || 'es',
+    };
   }
 
   async resetPassword(dto: ResetPasswordDto): Promise<void> {
@@ -430,6 +623,33 @@ export class AuthService {
       name: user.name,
       avatarUrl: user.avatarUrl,
       emailVerified: user.emailVerified,
+      locale: user.locale || 'es',
+    };
+  }
+
+  // ==========================================
+  // User Preferences
+  // ==========================================
+
+  async updateUserLocale(
+    userId: string,
+    locale: string,
+  ): Promise<AuthenticatedUser> {
+    // Validate locale
+    if (locale !== 'es' && locale !== 'en') {
+      throw new BadRequestException('Invalid locale. Must be "es" or "en"');
+    }
+
+    const user = await this.authRepository.updateUserLocale(userId, locale);
+
+    return {
+      id: user.id,
+      email: user.email,
+      userName: user.userName,
+      name: user.name,
+      avatarUrl: user.avatarUrl,
+      emailVerified: user.emailVerified,
+      locale: user.locale || 'es',
     };
   }
 
@@ -518,19 +738,65 @@ export class AuthService {
   }
 
   private async generateUniqueUserName(email: string): Promise<string> {
+    // Validate email input
+    if (!email || typeof email !== 'string' || !email.includes('@')) {
+      throw new Error('Invalid email provided for username generation');
+    }
+
     // Extract username from email
-    const baseUserName = email
+    let baseUserName = email
       .split('@')[0]
       .toLowerCase()
       .replace(/[^a-z0-9_-]/g, '');
+
+    // If baseUserName is empty or too short after cleaning, use a default prefix
+    if (!baseUserName || baseUserName.length < 3) {
+      // Use a combination of 'user' and a hash of the email for uniqueness
+      const emailHash = email
+        .split('')
+        .reduce((acc, char) => acc + char.charCodeAt(0), 0)
+        .toString(36)
+        .substring(0, 6);
+      baseUserName = `user${emailHash}`;
+    }
+
+    // Ensure it doesn't exceed 30 characters (database constraint)
+    if (baseUserName.length > 27) {
+      baseUserName = baseUserName.substring(0, 27);
+    }
+
+    // Ensure minimum length
+    if (baseUserName.length < 3) {
+      baseUserName = baseUserName.padEnd(3, '0');
+    }
 
     let userName = baseUserName;
     let suffix = 1;
 
     // Keep trying until we find a unique username
-    while (await this.authRepository.findUserByUserName(userName)) {
-      userName = `${baseUserName}${suffix}`;
+    while (true) {
+      const existingUser =
+        await this.authRepository.findUserByUserName(userName);
+      if (!existingUser) {
+        break; // Found a unique username
+      }
+
+      const suffixStr = suffix.toString();
+      // Ensure total length doesn't exceed 30 characters
+      const maxBaseLength = 30 - suffixStr.length;
+      const truncatedBase = baseUserName.substring(
+        0,
+        Math.max(3, maxBaseLength),
+      );
+      userName = `${truncatedBase}${suffix}`;
       suffix++;
+
+      // Safety check to prevent infinite loop
+      if (suffix > 10000) {
+        throw new Error(
+          'Unable to generate unique username after many attempts',
+        );
+      }
     }
 
     return userName;

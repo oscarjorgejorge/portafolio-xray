@@ -58,6 +58,7 @@ model User {
   avatarUrl     String?      @map("avatar_url")
   provider      AuthProvider
   emailVerified Boolean      @default(false) @map("email_verified")
+  locale        String       @default("es") // User language preference: 'es' or 'en'
   createdAt     DateTime     @default(now()) @map("created_at")
   updatedAt     DateTime     @updatedAt @map("updated_at")
 

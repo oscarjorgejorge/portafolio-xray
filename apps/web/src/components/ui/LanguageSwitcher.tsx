@@ -5,12 +5,14 @@ import { useLocale, useTranslations } from 'next-intl';
 import { useRouter, usePathname } from '@/i18n/navigation';
 import { routing } from '@/i18n/routing';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/lib/auth';
 
 export const LanguageSwitcher: React.FC = () => {
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
   const t = useTranslations('language');
+  const { updateLocale, isAuthenticated } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -31,9 +33,20 @@ export const LanguageSwitcher: React.FC = () => {
     };
   }, [isOpen]);
 
-  const handleLanguageChange = (newLocale: string) => {
+  const handleLanguageChange = async (newLocale: string) => {
+    // Update URL first for immediate UI feedback
     router.replace(pathname, { locale: newLocale });
     setIsOpen(false);
+
+    // Update user preference in database if authenticated
+    if (isAuthenticated && (newLocale === 'es' || newLocale === 'en')) {
+      try {
+        await updateLocale(newLocale);
+      } catch (error) {
+        // Silently fail - language change in UI already happened
+        console.error('Failed to update locale preference:', error);
+      }
+    }
   };
 
   const languages = [

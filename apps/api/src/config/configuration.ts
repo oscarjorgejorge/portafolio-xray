@@ -77,7 +77,11 @@ export const configuration = (): AppConfig => ({
   },
   email: {
     resendApiKey: process.env.RESEND_API_KEY,
-    from: process.env.EMAIL_FROM || 'noreply@example.com',
+    from: process.env.EMAIL_FROM || 'noreply@xrayportfolio.com',
+    templateVerificationId:
+      process.env.RESEND_TEMPLATE_VERIFICATION_ID || 'email-verification',
+    templatePasswordResetId:
+      process.env.RESEND_TEMPLATE_PASSWORD_RESET_ID || 'password-reset',
   },
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
 });
@@ -163,6 +167,10 @@ export interface EmailConfig {
   resendApiKey?: string;
   /** Email address to send from */
   from: string;
+  /** Resend template ID for email verification */
+  templateVerificationId: string;
+  /** Resend template ID for password reset */
+  templatePasswordResetId: string;
 }
 
 /**

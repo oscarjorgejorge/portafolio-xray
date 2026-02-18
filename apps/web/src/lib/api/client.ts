@@ -99,6 +99,19 @@ class FetchApiClient {
   }
 
   /**
+   * Get current locale from URL path
+   * Extracts locale from pathname (e.g., /es/... or /en/...)
+   */
+  private getLocaleFromUrl(): string {
+    if (typeof window === 'undefined') {
+      return 'es'; // Default for SSR
+    }
+    const pathname = window.location.pathname;
+    const localeMatch = pathname.match(/^\/(es|en)\//);
+    return localeMatch ? localeMatch[1] : 'es';
+  }
+
+  /**
    * Make a fetch request with timeout and error handling
    */
   private async request<T>(
@@ -116,6 +129,9 @@ class FetchApiClient {
     const url = `${this.baseURL}${path}`;
     const timeout = config?.timeout ?? this.defaultTimeout;
 
+    // Get current locale and add Accept-Language header
+    const locale = this.getLocaleFromUrl();
+
     // Create abort controller for timeout
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -125,6 +141,7 @@ class FetchApiClient {
         method,
         headers: {
           ...this.defaultHeaders,
+          'Accept-Language': locale,
           ...this.getAuthHeaders(),
           ...config?.headers,
         },

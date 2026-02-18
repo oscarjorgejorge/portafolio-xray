@@ -18,9 +18,10 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Default to Spanish locale, but this will be overridden by locale layout
   return (
-    <html lang="en">
-      <body className={inter.className}>
+    <html lang="es" suppressHydrationWarning>
+      <body className={inter.className} suppressHydrationWarning>
         <QueryProvider>
           <AuthProvider>
             <ErrorBoundary>{children}</ErrorBoundary>

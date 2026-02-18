@@ -2,6 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Resend } from 'resend';
 import { AppConfig } from '../config';
+import {
+  getEmailTranslations,
+  type SupportedLocale,
+} from './translations/email-translations';
 
 export interface SendEmailOptions {
   to: string;
@@ -17,11 +21,15 @@ export class MailService {
   private readonly from: string;
   private readonly frontendUrl: string;
   private readonly isConfigured: boolean;
+  private readonly templateVerificationId: string;
+  private readonly templatePasswordResetId: string;
 
   constructor(private readonly configService: ConfigService<AppConfig, true>) {
     const emailConfig = this.configService.get('email', { infer: true });
     this.from = emailConfig.from;
     this.frontendUrl = this.configService.get('frontendUrl', { infer: true });
+    this.templateVerificationId = emailConfig.templateVerificationId;
+    this.templatePasswordResetId = emailConfig.templatePasswordResetId;
 
     if (emailConfig.resendApiKey) {
       this.resend = new Resend(emailConfig.resendApiKey);
@@ -79,141 +87,127 @@ export class MailService {
   }
 
   /**
-   * Send email verification link
+   * Send email verification link using Resend template
    */
-  async sendVerificationEmail(email: string, token: string): Promise<boolean> {
-    const verifyUrl = `${this.frontendUrl}/verify-email?token=${token}`;
+  async sendVerificationEmail(
+    email: string,
+    token: string,
+    locale: SupportedLocale = 'es',
+  ): Promise<boolean> {
+    if (!this.resend) {
+      this.logger.warn(
+        `Mail not sent (service not configured): verification email to ${email}`,
+      );
+      return false;
+    }
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Verify your email</title>
-        </head>
-        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #2563eb; margin: 0;">Portfolio X-Ray</h1>
-          </div>
-          
-          <h2 style="color: #1f2937;">Verify your email address</h2>
-          
-          <p>Thank you for signing up! Please click the button below to verify your email address:</p>
-          
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${verifyUrl}" 
-               style="display: inline-block; background-color: #2563eb; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 500;">
-              Verify Email
-            </a>
-          </div>
-          
-          <p style="color: #6b7280; font-size: 14px;">
-            If the button doesn't work, copy and paste this link into your browser:
-            <br>
-            <a href="${verifyUrl}" style="color: #2563eb; word-break: break-all;">${verifyUrl}</a>
-          </p>
-          
-          <p style="color: #6b7280; font-size: 14px;">
-            This link will expire in 24 hours.
-          </p>
-          
-          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
-          
-          <p style="color: #9ca3af; font-size: 12px; text-align: center;">
-            If you didn't create an account, you can safely ignore this email.
-          </p>
-        </body>
-      </html>
-    `;
+    // Ensure locale is valid, default to 'es' if not
+    const validLocale = locale === 'es' || locale === 'en' ? locale : 'es';
+    const verifyUrl = `${this.frontendUrl}/${validLocale}/verify-email?token=${token}`;
+    const translations = getEmailTranslations(validLocale, 'verification');
 
-    const text = `
-Verify your email address
+    // Log the URL being sent for debugging
+    this.logger.log(
+      `[EMAIL DEBUG] Received locale: "${locale}", Valid locale: "${validLocale}", Generated URL: ${verifyUrl}`,
+    );
 
-Thank you for signing up for Portfolio X-Ray! Please verify your email by visiting the following link:
+    try {
+      const result = await this.resend.emails.send({
+        from: this.from,
+        to: email,
+        template: {
+          id: this.templateVerificationId,
+          variables: {
+            subject: translations.subject,
+            greeting: translations.greeting,
+            body: translations.body,
+            buttonText: translations.buttonText,
+            linkFallback: translations.linkFallback,
+            verifyUrl: verifyUrl,
+            expiryNotice: translations.expiryNotice,
+            footer: translations.footer,
+          },
+        },
+      });
 
-${verifyUrl}
+      if (result.error) {
+        this.logger.error(
+          `Failed to send verification email: ${result.error.message}`,
+        );
+        return false;
+      }
 
-This link will expire in 24 hours.
-
-If you didn't create an account, you can safely ignore this email.
-    `.trim();
-
-    return this.sendEmail({
-      to: email,
-      subject: 'Verify your email - Portfolio X-Ray',
-      html,
-      text,
-    });
+      this.logger.log(
+        `Verification email sent successfully to ${email} (locale: ${validLocale}, URL: ${verifyUrl})`,
+      );
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `Error sending verification email to ${email}: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`,
+      );
+      return false;
+    }
   }
 
   /**
-   * Send password reset link
+   * Send password reset link using Resend template
    */
-  async sendPasswordResetEmail(email: string, token: string): Promise<boolean> {
-    const resetUrl = `${this.frontendUrl}/reset-password?token=${token}`;
+  async sendPasswordResetEmail(
+    email: string,
+    token: string,
+    locale: SupportedLocale = 'es',
+  ): Promise<boolean> {
+    if (!this.resend) {
+      this.logger.warn(
+        `Mail not sent (service not configured): password reset email to ${email}`,
+      );
+      return false;
+    }
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Reset your password</title>
-        </head>
-        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #2563eb; margin: 0;">Portfolio X-Ray</h1>
-          </div>
-          
-          <h2 style="color: #1f2937;">Reset your password</h2>
-          
-          <p>We received a request to reset your password. Click the button below to choose a new password:</p>
-          
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${resetUrl}" 
-               style="display: inline-block; background-color: #2563eb; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 500;">
-              Reset Password
-            </a>
-          </div>
-          
-          <p style="color: #6b7280; font-size: 14px;">
-            If the button doesn't work, copy and paste this link into your browser:
-            <br>
-            <a href="${resetUrl}" style="color: #2563eb; word-break: break-all;">${resetUrl}</a>
-          </p>
-          
-          <p style="color: #6b7280; font-size: 14px;">
-            This link will expire in 1 hour.
-          </p>
-          
-          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
-          
-          <p style="color: #9ca3af; font-size: 12px; text-align: center;">
-            If you didn't request a password reset, you can safely ignore this email.
-            Your password will remain unchanged.
-          </p>
-        </body>
-      </html>
-    `;
+    // Ensure locale is valid, default to 'es' if not
+    const validLocale = locale === 'es' || locale === 'en' ? locale : 'es';
+    const resetUrl = `${this.frontendUrl}/${validLocale}/reset-password?token=${token}`;
+    const translations = getEmailTranslations(validLocale, 'passwordReset');
 
-    const text = `
-Reset your password
+    try {
+      const result = await this.resend.emails.send({
+        from: this.from,
+        to: email,
+        template: {
+          id: this.templatePasswordResetId,
+          variables: {
+            subject: translations.subject,
+            greeting: translations.greeting,
+            body: translations.body,
+            buttonText: translations.buttonText,
+            linkFallback: translations.linkFallback,
+            resetUrl: resetUrl,
+            expiryNotice: translations.expiryNotice,
+            footer: translations.footer,
+          },
+        },
+      });
 
-We received a request to reset your password for Portfolio X-Ray. Visit the following link to choose a new password:
+      if (result.error) {
+        this.logger.error(
+          `Failed to send password reset email: ${result.error.message}`,
+        );
+        return false;
+      }
 
-${resetUrl}
-
-This link will expire in 1 hour.
-
-If you didn't request a password reset, you can safely ignore this email. Your password will remain unchanged.
-    `.trim();
-
-    return this.sendEmail({
-      to: email,
-      subject: 'Reset your password - Portfolio X-Ray',
-      html,
-      text,
-    });
+      this.logger.log(
+        `Password reset email sent successfully to ${email} (locale: ${validLocale})`,
+      );
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `Error sending password reset email to ${email}: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`,
+      );
+      return false;
+    }
   }
 }

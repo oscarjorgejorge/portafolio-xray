@@ -26,8 +26,8 @@ interface AuthContextValue extends AuthState {
   // Token management
   refreshAuth: () => Promise<void>;
   
-  // Email verification
-  verifyEmail: (token: string) => Promise<void>;
+  // Email verification (returns user + alreadyVerified so caller can redirect with correct query)
+  verifyEmail: (token: string) => Promise<{ user: User; alreadyVerified?: boolean }>;
   resendVerification: (email: string) => Promise<void>;
   
   // Password management
@@ -43,6 +43,9 @@ interface AuthContextValue extends AuthState {
   
   // Update user state (for email verification, etc.)
   updateUser: (user: User) => void;
+  
+  // Update user language preference
+  updateLocale: (locale: 'es' | 'en') => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -141,15 +144,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   /**
-   * Verify email
+   * Verify email. Stores tokens and sets user on success. Returns { user, alreadyVerified } for redirect.
    */
-  const verifyEmail = useCallback(async (token: string) => {
-    const verifiedUser = await authApi.verifyEmail(token);
-    // Update user if currently logged in
-    if (user?.id === verifiedUser.id) {
-      setUser(verifiedUser);
-    }
-  }, [user?.id]);
+  const verifyEmail = useCallback(
+    async (token: string): Promise<{ user: User; alreadyVerified?: boolean }> => {
+      const result = await authApi.verifyEmail(token);
+      const verifiedUser = result.user;
+      if (!user || user.id === verifiedUser.id) {
+        setUser(verifiedUser);
+      }
+      if (user && user.id !== verifiedUser.id && tokenStorage.hasTokens()) {
+        try {
+          const currentUser = await authApi.getCurrentUser();
+          setUser(currentUser);
+        } catch {
+          setUser(verifiedUser);
+        }
+      }
+      return result;
+    },
+    [user],
+  );
 
   /**
    * Resend verification email
@@ -199,6 +214,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   /**
+   * Update user language preference
+   */
+  const updateLocale = useCallback(async (locale: 'es' | 'en') => {
+    if (!isAuthenticated) {
+      return; // Don't update if not authenticated
+    }
+
+    try {
+      const updatedUser = await authApi.updateUserLocale(locale);
+      setUser(updatedUser);
+    } catch (error) {
+      // Silently fail - don't block language change in UI
+      console.error('Failed to update user locale preference:', error);
+    }
+  }, [isAuthenticated]);
+
+  /**
    * Update user state
    */
   const updateUser = useCallback((updatedUser: User) => {
@@ -223,6 +255,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       getGoogleLoginUrl,
       handleOAuthCallback,
       updateUser,
+      updateLocale,
     }),
     [
       user,
@@ -241,6 +274,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       getGoogleLoginUrl,
       handleOAuthCallback,
       updateUser,
+      updateLocale,
     ]
   );
 

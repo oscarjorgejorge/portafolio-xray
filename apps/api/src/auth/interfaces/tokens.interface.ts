@@ -18,4 +18,5 @@ export interface AuthenticatedUser {
   name: string;
   avatarUrl: string | null;
   emailVerified: boolean;
+  locale: string; // User language preference: 'es' or 'en'
 }

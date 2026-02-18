@@ -1855,3 +1855,18 @@ Fix the frontend so that after confirming an asset from the alternatives modal, 
 
 ### Prompt 103
 como se establece si el usuario esta logeado o no?
+
+### Prompt 104
+If user is verified (e.g. clicks already-used verification link), redirect to main page with message "user already verified" in Spanish and English. Backend should include emailVerified in error payload; frontend should redirect to /?alreadyVerified=true and show translated message.
+
+### Prompt 105
+Preserve custom exception payload in AllExceptionsFilter (userEmail, emailVerified, emailSent, etc.) so verify-email 400 responses include these fields and frontend can redirect already-verified users to home.
+
+### Prompt 106
+When user is already verified (token already used + email verified), user should be logged in: backend returns 200 with user + tokens (and alreadyVerified flag); verify-email endpoint returns tokens on success; frontend stores tokens and sets user so user stays authenticated.
+
+### Prompt 107
+Handle 429 (rate limit) on verify-email: show specific message "Too many attempts" (ES/EN), redirect without autoSent. If user is already authenticated and verified, skip API call and redirect to home with alreadyVerified=true to avoid hitting rate limit.
+
+### Prompt 108
+Prevent double verification request per token: use a ref so only one POST /auth/verify-email runs per token (avoids double email send from React Strict Mode or double mount).

@@ -105,14 +105,22 @@ export const authApi = {
   },
 
   /**
-   * Verify email with token
+   * Verify email with token. On success returns user and stores tokens (user is logged in).
    */
-  async verifyEmail(token: string): Promise<User> {
-    const response = await apiClient.post<{ user: User; message: string }>(
-      '/auth/verify-email',
-      { token }
-    );
-    return response.data.user;
+  async verifyEmail(token: string): Promise<{ user: User; alreadyVerified?: boolean }> {
+    const response = await apiClient.post<{
+      user: User;
+      message: string;
+      tokens?: TokenPair;
+      alreadyVerified?: boolean;
+    }>('/auth/verify-email', { token });
+    if (response.data.tokens) {
+      tokenStorage.setTokens(response.data.tokens);
+    }
+    return {
+      user: response.data.user,
+      alreadyVerified: response.data.alreadyVerified,
+    };
   },
 
   /**
@@ -144,6 +152,17 @@ export const authApi = {
       currentPassword,
       newPassword,
     });
+  },
+
+  /**
+   * Update user language preference
+   */
+  async updateUserLocale(locale: 'es' | 'en'): Promise<User> {
+    const response = await apiClient.put<{ user: User; message: string }>(
+      '/auth/preferences/locale',
+      { locale }
+    );
+    return response.data.user;
   },
 
   /**

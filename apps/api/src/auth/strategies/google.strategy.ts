@@ -33,15 +33,34 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     profile: Profile,
     done: VerifyCallback,
   ): Promise<void> {
-    const { id, emails, displayName, photos } = profile;
+    try {
+      const { id, emails, displayName, photos } = profile;
 
-    const user: GoogleUser = {
-      email: emails?.[0]?.value || '',
-      name: displayName || '',
-      avatarUrl: photos?.[0]?.value || null,
-      googleId: id,
-    };
+      // Validate that we have required data
+      if (!id) {
+        return done(new Error('Google profile missing ID'), false);
+      }
 
-    done(null, user);
+      const email = emails?.[0]?.value;
+      if (!email) {
+        return done(new Error('Google profile missing email'), false);
+      }
+
+      const user: GoogleUser = {
+        email,
+        name: displayName || '',
+        avatarUrl: photos?.[0]?.value || null,
+        googleId: id,
+      };
+
+      done(null, user);
+    } catch (error) {
+      done(
+        error instanceof Error
+          ? error
+          : new Error('Failed to validate Google profile'),
+        false,
+      );
+    }
   }
 }

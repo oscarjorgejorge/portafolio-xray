@@ -8,6 +8,7 @@ export interface User {
   name: string;
   avatarUrl: string | null;
   emailVerified: boolean;
+  locale: 'es' | 'en';
 }
 
 /**
