@@ -6,6 +6,7 @@ import {
   RefreshToken,
   PasswordReset,
   EmailVerification,
+  Prisma,
 } from '@prisma/client';
 
 export interface CreateUserData {
@@ -294,7 +295,7 @@ export class AuthRepository {
     userId: string,
     excludeTokenId?: string,
   ): Promise<boolean> {
-    const whereClause: any = {
+    const whereClause: Prisma.EmailVerificationWhereInput = {
       userId,
       usedAt: null,
       expiresAt: {
@@ -304,14 +305,10 @@ export class AuthRepository {
         // Only consider tokens created in the last 24 hours as "recent"
         gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
       },
+      ...(excludeTokenId && {
+        id: { not: excludeTokenId },
+      }),
     };
-
-    // Exclude the current token if provided (the one that just expired)
-    if (excludeTokenId) {
-      whereClause.id = {
-        not: excludeTokenId,
-      };
-    }
 
     try {
       const recentTokens = await this.prisma.emailVerification.findFirst({

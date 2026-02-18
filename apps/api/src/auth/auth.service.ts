@@ -428,9 +428,14 @@ export class AuthService {
         return { user: authenticatedUser, tokens, alreadyVerified: true };
       }
       // Email not verified - throw so controller can auto-resend
-      const error = new BadRequestException('Verification token already used');
-      (error as any).userEmail = userEmail;
-      (error as any).emailVerified = false;
+      const error = new BadRequestException(
+        'Verification token already used',
+      ) as BadRequestException & {
+        userEmail?: string;
+        emailVerified?: boolean;
+      };
+      error.userEmail = userEmail;
+      error.emailVerified = false;
       this.logger.log(
         `[VERIFY EMAIL] Token already used for user ${verification.userId} (email: ${userEmail}). Email not verified.`,
       );
@@ -456,10 +461,16 @@ export class AuthService {
         hasRecentToken = false;
       }
 
-      const error = new BadRequestException('Verification token has expired');
-      (error as any).userEmail = userEmail;
-      (error as any).hasRecentToken = hasRecentToken; // Flag to prevent auto-resend if token exists
-      (error as any).expiredTokenId = verification.id; // Include expired token ID for debugging
+      const error = new BadRequestException(
+        'Verification token has expired',
+      ) as BadRequestException & {
+        userEmail?: string;
+        hasRecentToken?: boolean;
+        expiredTokenId?: string;
+      };
+      error.userEmail = userEmail;
+      error.hasRecentToken = hasRecentToken; // Flag to prevent auto-resend if token exists
+      error.expiredTokenId = verification.id; // Include expired token ID for debugging
       throw error;
     }
 

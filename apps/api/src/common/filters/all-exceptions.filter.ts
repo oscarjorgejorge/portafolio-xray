@@ -10,19 +10,6 @@ import { Response, Request } from 'express';
 import { getRequestId } from '../context';
 
 /**
- * Response structure for error responses
- */
-interface ErrorResponse {
-  success: false;
-  statusCode: number;
-  error: string;
-  message: string;
-  path: string;
-  timestamp: string;
-  requestId?: string;
-}
-
-/**
  * Global exception filter that catches all unhandled exceptions.
  * Provides consistent error response format across the API.
  */
@@ -80,10 +67,13 @@ export class AllExceptionsFilter implements ExceptionFilter {
       // Handle validation errors (class-validator) or custom payload object
       if (typeof exceptionResponse === 'object' && exceptionResponse !== null) {
         const response = exceptionResponse as Record<string, unknown>;
-        const { message, error, ...extra } = response;
+        const error = response.error as string | undefined;
+        const extra = { ...response };
+        delete extra.message;
+        delete extra.error;
         return {
           status,
-          error: (error as string) || this.getHttpErrorName(status),
+          error: error || this.getHttpErrorName(status),
           message: this.extractMessage(response),
           extra: Object.keys(extra).length > 0 ? extra : undefined,
         };

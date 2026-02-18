@@ -43,6 +43,34 @@ import { AuthenticatedUser } from './interfaces';
 import { GoogleUser } from './strategies/google.strategy';
 import { AppConfig } from '../config';
 
+/** Safely extracts verify-email error fields (auth.service attaches these to BadRequestException). */
+function getVerifyEmailErrorFields(err: unknown): {
+  userEmail: string | undefined;
+  hasRecentToken: boolean;
+  expiredTokenId: string | undefined;
+  emailVerified: boolean;
+  message: string;
+} {
+  if (err === null || typeof err !== 'object') {
+    return {
+      userEmail: undefined,
+      hasRecentToken: false,
+      expiredTokenId: undefined,
+      emailVerified: false,
+      message: '',
+    };
+  }
+  const o = err as Record<string, unknown>;
+  return {
+    userEmail: typeof o.userEmail === 'string' ? o.userEmail : undefined,
+    hasRecentToken: Boolean(o.hasRecentToken),
+    expiredTokenId:
+      typeof o.expiredTokenId === 'string' ? o.expiredTokenId : undefined,
+    emailVerified: Boolean(o.emailVerified),
+    message: err instanceof Error ? err.message : '',
+  };
+}
+
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
@@ -296,18 +324,18 @@ export class AuthController {
         tokens: result.tokens,
         ...(result.alreadyVerified && { alreadyVerified: true }),
       };
-    } catch (error) {
-      // Only auto-resend if token expired, not if it was already used
-      // If token was already used, the email is likely already verified
-      const userEmail = error.userEmail;
-      const errorMessage =
-        error instanceof BadRequestException ? error.message : '';
-      const isExpiredToken = errorMessage.includes('expired');
-      const isUsedToken = errorMessage.includes('already used');
-
-      // Check if user already has a recent valid token (to prevent multiple auto-resends)
-      const hasRecentToken = error.hasRecentToken;
-      const expiredTokenId = error.expiredTokenId;
+    } catch (err: unknown) {
+      const {
+        userEmail,
+        hasRecentToken,
+        expiredTokenId,
+        message: errorMessage,
+        emailVerified: errorEmailVerified,
+      } = getVerifyEmailErrorFields(err);
+      const isBadRequest = err instanceof BadRequestException;
+      const messageForCheck = isBadRequest ? errorMessage : '';
+      const isExpiredToken = messageForCheck.includes('expired');
+      const isUsedToken = messageForCheck.includes('already used');
 
       this.logger.log(
         `[VERIFY EMAIL DEBUG] Token expired check - hasRecentToken: ${hasRecentToken}, expiredTokenId: ${expiredTokenId}, userEmail: ${userEmail}`,
@@ -315,7 +343,7 @@ export class AuthController {
 
       if (
         userEmail &&
-        error instanceof BadRequestException &&
+        isBadRequest &&
         isExpiredToken &&
         !isUsedToken &&
         !hasRecentToken
@@ -378,7 +406,7 @@ export class AuthController {
 
         // Include email send status in error response
         throw new BadRequestException({
-          message: error.message,
+          message: errorMessage,
           userEmail,
           emailSent,
           emailError,
@@ -389,17 +417,17 @@ export class AuthController {
           `[VERIFY EMAIL DEBUG] Token expired for ${userEmail}, but user already has a recent valid token. Not auto-resending.`,
         );
         throw new BadRequestException({
-          message: error.message,
+          message: errorMessage,
           userEmail,
           emailSent: false,
           emailError: null,
         });
       } else if (userEmail && isUsedToken) {
         // Token was already used and email is not verified - auto-resend (already-verified case returns 200 from service)
-        const emailVerified = error.emailVerified || false;
+        const emailVerified = errorEmailVerified;
         if (emailVerified) {
           // Should not reach here: service now returns 200 for already-verified
-          throw error;
+          throw err;
         }
 
         this.logger.log(
@@ -455,7 +483,7 @@ export class AuthController {
         }
 
         throw new BadRequestException({
-          message: error.message,
+          message: errorMessage,
           userEmail,
           emailSent,
           emailError,
@@ -466,13 +494,13 @@ export class AuthController {
           `[VERIFY EMAIL DEBUG] Token expired for ${userEmail}, but auto-resend conditions not met. isExpiredToken: ${isExpiredToken}, isUsedToken: ${isUsedToken}, hasRecentToken: ${hasRecentToken}`,
         );
         throw new BadRequestException({
-          message: error.message,
+          message: errorMessage,
           userEmail,
           emailSent: false,
           emailError: null,
         });
       }
-      throw error;
+      throw err;
     }
   }
 
@@ -494,7 +522,7 @@ export class AuthController {
       // Use locale from user's preference if available, otherwise use header
       let locale: SupportedLocale =
         result.locale === 'es' || result.locale === 'en' ? result.locale : 'es';
-      const user = (req as any).user as AuthenticatedUser | undefined;
+      const user = (req as Request & { user?: AuthenticatedUser }).user;
       if (!user) {
         // If not authenticated, try header as fallback
         const acceptLanguage = req.get('accept-language');
@@ -536,7 +564,7 @@ export class AuthController {
     status: 200,
     description: 'Password reset email sent if account exists',
   })
-  async forgotPassword(@Body() dto: ForgotPasswordDto, @Req() req: Request) {
+  async forgotPassword(@Body() dto: ForgotPasswordDto) {
     const result = await this.authService.forgotPassword(dto.email);
 
     if (result) {
