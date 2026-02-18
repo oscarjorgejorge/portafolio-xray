@@ -1852,3 +1852,6 @@ Updated `page-verifier.service.ts` with 5 extraction strategies (in priority ord
 
 ### Prompt (asset type display after confirm)
 Fix the frontend so that after confirming an asset from the alternatives modal, the UI shows the asset type returned by the confirm API (e.g. STOCK) instead of showing FUND. The resolve response does not always include assetType in alternatives; the confirm request and response correctly send/return the type, but the frontend was still displaying FUND.
+
+### Prompt 103
+como se establece si el usuario esta logeado o no?
