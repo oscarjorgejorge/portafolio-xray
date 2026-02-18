@@ -44,6 +44,9 @@ interface AuthContextValue extends AuthState {
   // Update user state (for email verification, etc.)
   updateUser: (user: User) => void;
   
+  // Update user profile (name, userName)
+  updateProfile: (data: { userName?: string; name?: string }) => Promise<void>;
+  
   // Update user language preference
   updateLocale: (locale: 'es' | 'en') => Promise<void>;
 }
@@ -237,6 +240,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(updatedUser);
   }, []);
 
+  /**
+   * Update user profile (name, userName)
+   */
+  const updateProfile = useCallback(
+    async (data: { userName?: string; name?: string }) => {
+      const updatedUser = await authApi.updateProfile(data);
+      setUser(updatedUser);
+    },
+    []
+  );
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
@@ -255,6 +269,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       getGoogleLoginUrl,
       handleOAuthCallback,
       updateUser,
+      updateProfile,
       updateLocale,
     }),
     [
@@ -274,6 +289,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       getGoogleLoginUrl,
       handleOAuthCallback,
       updateUser,
+      updateProfile,
       updateLocale,
     ]
   );

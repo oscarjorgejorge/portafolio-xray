@@ -17,6 +17,7 @@ import {
   LoginDto,
   ResetPasswordDto,
   ChangePasswordDto,
+  UpdateProfileDto,
 } from './dto';
 import {
   JwtPayload,
@@ -639,8 +640,45 @@ export class AuthService {
   }
 
   // ==========================================
-  // User Preferences
+  // User Preferences & Profile
   // ==========================================
+
+  async updateProfile(
+    userId: string,
+    dto: UpdateProfileDto,
+  ): Promise<AuthenticatedUser> {
+    if (dto.userName !== undefined) {
+      const existing = await this.authRepository.findUserByUserName(
+        dto.userName,
+      );
+      if (
+        existing &&
+        existing.id !== userId &&
+        existing.emailVerified
+      ) {
+        throw new ConflictException('Username already taken');
+      }
+    }
+
+    const updateData: { userName?: string; name?: string } = {};
+    if (dto.userName !== undefined) updateData.userName = dto.userName;
+    if (dto.name !== undefined) updateData.name = dto.name;
+
+    if (Object.keys(updateData).length === 0) {
+      return this.getCurrentUser(userId);
+    }
+
+    const user = await this.authRepository.updateUser(userId, updateData);
+    return {
+      id: user.id,
+      email: user.email,
+      userName: user.userName,
+      name: user.name,
+      avatarUrl: user.avatarUrl,
+      emailVerified: user.emailVerified,
+      locale: user.locale || 'es',
+    };
+  }
 
   async updateUserLocale(
     userId: string,

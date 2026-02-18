@@ -1870,3 +1870,12 @@ Handle 429 (rate limit) on verify-email: show specific message "Too many attempt
 
 ### Prompt 108
 Prevent double verification request per token: use a ref so only one POST /auth/verify-email runs per token (avoids double email send from React Strict Mode or double mount).
+
+### Prompt 109
+Crear sección de perfil solo para usuarios logueados: editar nombre, nombre de usuario e idioma; email solo lectura; cambio de contraseña (modal) y cerrar sesión en la misma página. El nombre en el navbar debe ser enlace a la página de perfil. API: PATCH /auth/profile (UpdateProfileDto: userName, name); sin avatar por ahora.
+
+### Prompt 110
+Quitar el botón "Cerrar sesión" del navbar; dejar solo el nombre como enlace al perfil (logout solo en la página de perfil).
+
+### Prompt 111
+Actualiza prompts, haz commits y push.

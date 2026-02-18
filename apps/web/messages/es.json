@@ -174,5 +174,26 @@
       "tooManyRequests": "Demasiados intentos. Espera un momento antes de volver a intentar."
     },
     "logout": "Cerrar sesión"
+  },
+  "profile": {
+    "title": "Mi perfil",
+    "name": "Nombre completo",
+    "userName": "Nombre de usuario",
+    "userNameHint": "Solo letras, números, guiones bajos y guiones",
+    "email": "Correo electrónico",
+    "save": "Guardar cambios",
+    "saving": "Guardando...",
+    "saveSuccess": "Perfil actualizado correctamente.",
+    "saveError": "Error al actualizar el perfil.",
+    "usernameAlreadyTaken": "El nombre de usuario ya está en uso",
+    "changePassword": "Cambiar contraseña",
+    "changePasswordTitle": "Cambiar contraseña",
+    "currentPassword": "Contraseña actual",
+    "newPassword": "Nueva contraseña",
+    "confirmNewPassword": "Confirmar nueva contraseña",
+    "changePasswordSuccess": "Contraseña cambiada correctamente.",
+    "changePasswordError": "Error al cambiar la contraseña.",
+    "logout": "Cerrar sesión",
+    "backToHome": "Volver al inicio"
   }
 }

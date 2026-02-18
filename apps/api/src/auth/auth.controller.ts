@@ -3,6 +3,7 @@ import {
   Post,
   Get,
   Put,
+  Patch,
   Body,
   UseGuards,
   Req,
@@ -36,6 +37,7 @@ import {
   ResetPasswordDto,
   ChangePasswordDto,
   UpdateLocaleDto,
+  UpdateProfileDto,
 } from './dto';
 import { JwtAuthGuard, GoogleAuthGuard } from './guards';
 import { CurrentUser, Public } from './decorators';
@@ -301,6 +303,23 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Not authenticated' })
   async getCurrentUser(@CurrentUser() user: AuthenticatedUser) {
     return { user: await this.authService.getCurrentUser(user.id) };
+  }
+
+  @Patch('profile')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Update authenticated user profile' })
+  @ApiResponse({ status: 200, description: 'Profile updated successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid input' })
+  @ApiResponse({ status: 401, description: 'Not authenticated' })
+  @ApiResponse({ status: 409, description: 'Username already taken' })
+  async updateProfile(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: UpdateProfileDto,
+  ) {
+    const updatedUser = await this.authService.updateProfile(user.id, dto);
+    return { user: updatedUser };
   }
 
   @Public()

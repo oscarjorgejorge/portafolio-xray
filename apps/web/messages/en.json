@@ -174,5 +174,26 @@
       "tooManyRequests": "Too many attempts. Please wait a moment before trying again."
     },
     "logout": "Logout"
+  },
+  "profile": {
+    "title": "My Profile",
+    "name": "Full name",
+    "userName": "Username",
+    "userNameHint": "Only letters, numbers, underscores, and hyphens",
+    "email": "Email",
+    "save": "Save changes",
+    "saving": "Saving...",
+    "saveSuccess": "Profile updated successfully.",
+    "saveError": "Failed to update profile.",
+    "usernameAlreadyTaken": "Username already taken",
+    "changePassword": "Change password",
+    "changePasswordTitle": "Change password",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "confirmNewPassword": "Confirm new password",
+    "changePasswordSuccess": "Password changed successfully.",
+    "changePasswordError": "Failed to change password.",
+    "logout": "Log out",
+    "backToHome": "Back to Home"
   }
 }

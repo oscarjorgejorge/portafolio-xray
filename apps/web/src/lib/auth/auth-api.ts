@@ -155,6 +155,20 @@ export const authApi = {
   },
 
   /**
+   * Update user profile (name, userName)
+   */
+  async updateProfile(data: {
+    userName?: string;
+    name?: string;
+  }): Promise<User> {
+    const response = await apiClient.patch<{ user: User }>(
+      '/auth/profile',
+      data
+    );
+    return response.data.user;
+  },
+
+  /**
    * Update user language preference
    */
   async updateUserLocale(locale: 'es' | 'en'): Promise<User> {

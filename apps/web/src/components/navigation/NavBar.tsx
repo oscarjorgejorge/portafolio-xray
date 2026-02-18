@@ -1,7 +1,7 @@
 'use client';
 
-import { useTranslations, useLocale } from 'next-intl';
-import { Link, usePathname, useRouter } from '@/i18n/navigation';
+import { useTranslations } from 'next-intl';
+import { Link, usePathname } from '@/i18n/navigation';
 import { useAuth } from '@/lib/auth';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { Button } from '@/components/ui/Button';
@@ -9,15 +9,12 @@ import { Button } from '@/components/ui/Button';
 export function NavBar() {
   const tLogin = useTranslations('auth.login');
   const tRegister = useTranslations('auth.register');
-  const tAuth = useTranslations('auth');
-  const locale = useLocale();
   const pathname = usePathname();
-  const router = useRouter();
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated } = useAuth();
 
   const isAuthPage = pathname === '/login' || pathname === '/register';
   const isVerifyEmailPage = pathname?.includes('/verify-email');
-  // Hide user info and logout if email is not verified or on verification pages
+  // Hide user name link if email is not verified or on verification pages
   const shouldShowUserInfo = isAuthenticated && user?.emailVerified && !isVerifyEmailPage;
 
   return (
@@ -39,21 +36,12 @@ export function NavBar() {
             {/* Auth buttons */}
             {!isAuthPage && !isVerifyEmailPage &&
                 (shouldShowUserInfo ? (
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm text-gray-700">
-                      {user?.name || user?.userName || user?.email}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={async () => {
-                        await logout();
-                        router.push('/');
-                      }}
-                    >
-                      {tAuth('logout')}
-                    </Button>
-                  </div>
+                  <Link
+                    href="/profile"
+                    className="text-sm font-medium text-blue-600 hover:text-blue-500"
+                  >
+                    {user?.name || user?.userName || user?.email}
+                  </Link>
                 ) : (
                   <div className="flex items-center gap-2">
                     <Link href="/login">
