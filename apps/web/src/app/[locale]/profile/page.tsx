@@ -68,10 +68,15 @@ export default function ProfilePage() {
       if (Object.keys(updates).length > 0) {
         await updateProfile(updates);
       }
-      if (locale !== user?.locale) {
+      const localeChanged = locale !== user?.locale;
+      if (localeChanged) {
         await updateLocale(locale);
       }
       setProfileSuccess(t('saveSuccess'));
+      // Switch the website to the new locale so URL and UI language match the profile preference
+      if (localeChanged) {
+        router.replace('/profile', { locale });
+      }
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
         setProfileError(t('usernameAlreadyTaken'));

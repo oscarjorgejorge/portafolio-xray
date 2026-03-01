@@ -63,6 +63,8 @@ export function Modal({
   const modalRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
   const previousActiveElement = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   // Only render portal after component mounts (client-side only)
   useEffect(() => {
@@ -78,11 +80,13 @@ export function Modal({
     );
   }, []);
 
-  // Handle keyboard events (Escape to close, Tab for focus trap)
+  // Handle keyboard events (Escape to close, Tab for focus trap).
+  // Use onCloseRef so this callback is stable and the open effect doesn't re-run on parent re-renders
+  // (e.g. typing in a form field), which would steal focus.
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        onClose();
+        onCloseRef.current();
         return;
       }
 
@@ -112,7 +116,7 @@ export function Modal({
         }
       }
     },
-    [onClose, getFocusableElements]
+    [getFocusableElements]
   );
 
   // Handle overlay click
@@ -139,14 +143,17 @@ export function Modal({
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
-    // Focus the first focusable element or the modal itself
+    // Focus the first focusable element only when opening (not when effect re-runs
+    // e.g. due to parent re-render); avoid stealing focus from inputs while user is typing
     const focusableElements = getFocusableElements();
-    if (focusableElements.length > 0) {
-      // Small delay to ensure DOM is ready
+    const activeEl = document.activeElement as HTMLElement | null;
+    const focusAlreadyInModal =
+      activeEl && modalRef.current?.contains(activeEl);
+    if (focusableElements.length > 0 && !focusAlreadyInModal) {
       requestAnimationFrame(() => {
         focusableElements[0].focus();
       });
-    } else {
+    } else if (focusableElements.length === 0) {
       modalRef.current?.focus();
     }
 

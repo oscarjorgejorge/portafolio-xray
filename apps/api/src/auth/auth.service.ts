@@ -651,11 +651,7 @@ export class AuthService {
       const existing = await this.authRepository.findUserByUserName(
         dto.userName,
       );
-      if (
-        existing &&
-        existing.id !== userId &&
-        existing.emailVerified
-      ) {
+      if (existing && existing.id !== userId && existing.emailVerified) {
         throw new ConflictException('Username already taken');
       }
     }

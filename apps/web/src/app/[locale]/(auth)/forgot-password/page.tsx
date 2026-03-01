@@ -1,15 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
+import { useTranslations } from 'next-intl';
+import { Link } from '@/i18n/navigation';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Alert } from '@/components/ui/Alert';
 
 export default function ForgotPasswordPage() {
+  const t = useTranslations('auth.forgotPassword');
   const { forgotPassword } = useAuth();
-  
+
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [error, setError] = useState('');
@@ -24,7 +26,7 @@ export default function ForgotPasswordPage() {
       setStatus('success');
     } catch (err) {
       setStatus('error');
-      setError(err instanceof Error ? err.message : 'Failed to send reset email');
+      setError(err instanceof Error ? err.message : t('sendError'));
     }
   };
 
@@ -37,18 +39,18 @@ export default function ForgotPasswordPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
             </svg>
           </div>
-          <h2 className="mt-4 text-xl font-semibold text-gray-900">Check your email</h2>
+          <h2 className="mt-4 text-xl font-semibold text-gray-900">{t('checkEmail')}</h2>
           <p className="mt-2 text-gray-600">
-            If an account exists with {email}, we&apos;ve sent a password reset link.
+            {t('checkEmailMessage', { email })}
           </p>
           <p className="mt-4 text-sm text-gray-500">
-            Don&apos;t see it? Check your spam folder.
+            {t('checkSpam')}
           </p>
           <Link
             href="/login"
             className="mt-6 inline-block text-sm font-medium text-blue-600 hover:text-blue-500"
           >
-            Back to login
+            {t('backToLogin')}
           </Link>
         </div>
       </div>
@@ -63,10 +65,10 @@ export default function ForgotPasswordPage() {
             Portfolio X-Ray
           </h1>
           <h2 className="mt-6 text-center text-xl font-semibold text-gray-700">
-            Reset your password
+            {t('title')}
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Enter your email address and we&apos;ll send you a link to reset your password.
+            {t('subtitle')}
           </p>
         </div>
 
@@ -79,7 +81,7 @@ export default function ForgotPasswordPage() {
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-              Email address
+              {t('emailLabel')}
             </label>
             <Input
               id="email"
@@ -88,7 +90,7 @@ export default function ForgotPasswordPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
+              placeholder={t('emailPlaceholder')}
               className="mt-1"
             />
           </div>
@@ -98,14 +100,14 @@ export default function ForgotPasswordPage() {
             className="w-full"
             disabled={status === 'loading'}
           >
-            {status === 'loading' ? 'Sending...' : 'Send reset link'}
+            {status === 'loading' ? t('sending') : t('sendLink')}
           </Button>
         </form>
 
         <p className="mt-4 text-center text-sm text-gray-600">
-          Remember your password?{' '}
+          {t('rememberPassword')}{' '}
           <Link href="/login" className="font-medium text-blue-600 hover:text-blue-500">
-            Sign in
+            {t('signIn')}
           </Link>
         </p>
       </div>

@@ -1879,3 +1879,18 @@ Quitar el botón "Cerrar sesión" del navbar; dejar solo el nombre como enlace a
 
 ### Prompt 111
 Actualiza prompts, haz commits y push.
+
+### Prompt 112
+If I change the language on my profile, I want to change the language of the website (when saving profile with a new locale, redirect to the same page with the new locale so URL and UI language match the profile preference).
+
+### Prompt 113
+When typing in the current password field in the change-password modal, focus was jumping to the modal close (X) button after each character. Fix by stabilizing the Modal's effect so it does not re-run on parent re-renders: use a ref for onClose (onCloseRef.current = onClose) and have handleKeyDown call onCloseRef.current(), so the effect only runs when isOpen changes.
+
+### Prompt 114
+Verify forgot-password page has translations in Spanish; the content (Check your email, Back to login, etc.) should display in Spanish when locale is ES. Add auth.forgotPassword translation keys to en.json and es.json and use useTranslations and i18n Link on the forgot-password page.
+
+### Prompt 115
+Reset-password page: add Spanish translations (auth.resetPassword in en.json/es.json), use useTranslations and i18n Link/router, and use PasswordInput component for both password fields so they have the eye icon to show/hide password.
+
+### Prompt 116
+Reset-password page: when clicking "Restablecer contraseña" with non-matching passwords, show an error (e.g. "Las contraseñas no coinciden"); set status to 'error' when validation fails so the Alert is visible. Disable the submit button until passwords match and meet length requirement; clear the error when the user edits either password field.
