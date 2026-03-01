@@ -21,9 +21,13 @@ export default function ProfilePage() {
     isLoading: authLoading,
     updateProfile,
     updateLocale,
+    setPassword,
     changePassword,
     logout,
   } = useAuth();
+
+  /** OAuth-only users (e.g. Google) have no password; they use "Set password" instead of "Change password" */
+  const isSetPasswordFlow = Boolean(user && user.hasPassword === false);
 
   const [name, setName] = useState('');
   const [userName, setUserName] = useState('');
@@ -88,6 +92,29 @@ export default function ProfilePage() {
     }
   };
 
+  const handleSetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError('');
+    if (newPassword !== confirmNewPassword) {
+      setPasswordError(t('confirmNewPassword').toLowerCase() + ' do not match');
+      return;
+    }
+    setIsChangingPassword(true);
+    try {
+      await setPassword(newPassword);
+      setShowPasswordModal(false);
+      setNewPassword('');
+      setConfirmNewPassword('');
+      setProfileSuccess(t('setPasswordSuccess'));
+    } catch (err) {
+      setPasswordError(
+        err instanceof ApiError ? err.message : t('setPasswordError')
+      );
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordError('');
@@ -103,8 +130,10 @@ export default function ProfilePage() {
       setNewPassword('');
       setConfirmNewPassword('');
       setProfileSuccess(t('changePasswordSuccess'));
-    } catch {
-      setPasswordError(t('changePasswordError'));
+    } catch (err) {
+      setPasswordError(
+        err instanceof ApiError ? err.message : t('changePasswordError')
+      );
     } finally {
       setIsChangingPassword(false);
     }
@@ -219,8 +248,11 @@ export default function ProfilePage() {
 
         <div className="bg-white shadow rounded-lg p-6 space-y-4">
           <h2 className="text-lg font-semibold text-gray-900">
-            {t('changePasswordTitle')}
+            {isSetPasswordFlow ? t('setPasswordTitle') : t('changePasswordTitle')}
           </h2>
+          {isSetPasswordFlow && (
+            <p className="text-sm text-gray-600">{t('setPasswordHint')}</p>
+          )}
           <Button
             type="button"
             variant="secondary"
@@ -229,7 +261,7 @@ export default function ProfilePage() {
               setShowPasswordModal(true);
             }}
           >
-            {t('changePassword')}
+            {isSetPasswordFlow ? t('setPassword') : t('changePassword')}
           </Button>
         </div>
 
@@ -254,21 +286,26 @@ export default function ProfilePage() {
           setConfirmNewPassword('');
           setPasswordError('');
         }}
-        title={t('changePasswordTitle')}
+        title={isSetPasswordFlow ? t('setPasswordTitle') : t('changePasswordTitle')}
         showCloseButton
       >
-        <form onSubmit={handleChangePassword} className="space-y-4">
+        <form
+          onSubmit={isSetPasswordFlow ? handleSetPassword : handleChangePassword}
+          className="space-y-4"
+        >
           {passwordError && (
             <Alert variant="error">{passwordError}</Alert>
           )}
-          <PasswordInput
-            id="currentPassword"
-            label={t('currentPassword')}
-            value={currentPassword}
-            onChange={(e) => setCurrentPassword(e.target.value)}
-            required
-            autoComplete="current-password"
-          />
+          {!isSetPasswordFlow && (
+            <PasswordInput
+              id="currentPassword"
+              label={t('currentPassword')}
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              required
+              autoComplete="current-password"
+            />
+          )}
           <PasswordInput
             id="newPassword"
             label={t('newPassword')}

@@ -227,6 +227,11 @@
     "confirmNewPassword": "Confirmar nueva contraseña",
     "changePasswordSuccess": "Contraseña cambiada correctamente.",
     "changePasswordError": "Error al cambiar la contraseña.",
+    "setPassword": "Establecer contraseña",
+    "setPasswordTitle": "Establecer contraseña",
+    "setPasswordHint": "Iniciaste sesión con Google. Puedes establecer una contraseña aquí para también iniciar sesión con correo.",
+    "setPasswordSuccess": "Contraseña establecida correctamente. Ahora puedes iniciar sesión con correo y contraseña.",
+    "setPasswordError": "Error al establecer la contraseña.",
     "logout": "Cerrar sesión",
     "backToHome": "Volver al inicio"
   }

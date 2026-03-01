@@ -1900,3 +1900,9 @@ With the current code base, do we need more test on the web or api? Execute the 
 
 ### Prompt 118
 GitGuardian alert: "Company Email Password exposed within your GitHub account" in repository oscarjorgejorge/portafolio-xray, pushed March 1st 2026. Is it true?
+
+### Prompt 119
+Users who signed in with Google have no password in the database (NULL). If they open "Change password" they cannot provide a current password. Support them by: (1) Expose hasPassword from the API (GET /auth/me and JWT) so the frontend knows OAuth vs email. (2) Add POST /auth/set-password for OAuth-only accounts (body: newPassword only; reject if user already has a password). (3) On the profile page, show "Set password" (new + confirm only) for OAuth users and "Change password" (current + new + confirm) for email users; show the API error message in the password modal on failure. Add setPassword/setPasswordTitle/setPasswordHint/setPasswordSuccess/setPasswordError translations (en + es).
+
+### Prompt 120
+Update prompts, commit changes and push.

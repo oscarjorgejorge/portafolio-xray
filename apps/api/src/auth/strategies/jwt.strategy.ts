@@ -47,6 +47,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       avatarUrl: user.avatarUrl,
       emailVerified: user.emailVerified,
       locale: user.locale || 'es', // Default to Spanish if not set
+      hasPassword: !!user.password,
     };
   }
 }

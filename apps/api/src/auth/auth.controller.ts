@@ -36,6 +36,7 @@ import {
   ForgotPasswordDto,
   ResetPasswordDto,
   ChangePasswordDto,
+  SetPasswordDto,
   UpdateLocaleDto,
   UpdateProfileDto,
 } from './dto';
@@ -616,6 +617,29 @@ export class AuthController {
       message:
         'Password reset successfully. Please login with your new password.',
     };
+  }
+
+  @Post('set-password')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Set password for OAuth-only accounts',
+    description:
+      'Allows users who signed in with Google (no password) to set a password. Not allowed for accounts that already have a password.',
+  })
+  @ApiResponse({ status: 200, description: 'Password set successfully' })
+  @ApiResponse({
+    status: 400,
+    description: 'Account already has a password',
+  })
+  @ApiResponse({ status: 401, description: 'Not authenticated' })
+  async setPassword(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: SetPasswordDto,
+  ) {
+    await this.authService.setPassword(user.id, dto);
+    return { message: 'Password set successfully' };
   }
 
   @Put('change-password')

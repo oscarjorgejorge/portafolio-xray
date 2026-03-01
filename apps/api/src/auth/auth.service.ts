@@ -17,6 +17,7 @@ import {
   LoginDto,
   ResetPasswordDto,
   ChangePasswordDto,
+  SetPasswordDto,
   UpdateProfileDto,
 } from './dto';
 import {
@@ -147,6 +148,7 @@ export class AuthService {
           avatarUrl: updatedUser.avatarUrl,
           emailVerified: updatedUser.emailVerified,
           locale: updatedUser.locale || 'es',
+          hasPassword: !!updatedUser.password,
         },
         tokens,
         verificationToken,
@@ -197,6 +199,7 @@ export class AuthService {
         avatarUrl: user.avatarUrl,
         emailVerified: user.emailVerified,
         locale: user.locale || 'es',
+        hasPassword: true,
       },
       tokens,
       verificationToken,
@@ -248,6 +251,7 @@ export class AuthService {
         avatarUrl: user.avatarUrl,
         emailVerified: user.emailVerified,
         locale: user.locale || 'es',
+        hasPassword: !!user.password,
       },
       tokens,
     };
@@ -307,6 +311,7 @@ export class AuthService {
         avatarUrl: user.avatarUrl,
         emailVerified: user.emailVerified,
         locale: user.locale || 'es',
+        hasPassword: !!user.password,
       },
       tokens,
       isNewUser,
@@ -419,6 +424,7 @@ export class AuthService {
           avatarUrl: user.avatarUrl,
           emailVerified: user.emailVerified,
           locale: user.locale || 'es',
+          hasPassword: !!user.password,
         };
         const tokens = await this.generateTokens(
           user.id,
@@ -491,6 +497,7 @@ export class AuthService {
       avatarUrl: verifiedUser.avatarUrl,
       emailVerified: verifiedUser.emailVerified,
       locale: verifiedUser.locale || 'es',
+      hasPassword: !!verifiedUser.password,
     };
 
     const tokens = await this.generateTokens(
@@ -617,6 +624,27 @@ export class AuthService {
     await this.authRepository.updateUserPassword(userId, hashedPassword);
   }
 
+  /**
+   * Set password for OAuth-only accounts (no current password required).
+   * Only allowed when user has no password (e.g. signed in with Google).
+   */
+  async setPassword(userId: string, dto: SetPasswordDto): Promise<void> {
+    const user = await this.authRepository.findUserById(userId);
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (user.password) {
+      throw new BadRequestException(
+        'Account already has a password. Use change password instead.',
+      );
+    }
+
+    const hashedPassword = await bcrypt.hash(dto.newPassword, BCRYPT_ROUNDS);
+    await this.authRepository.updateUserPassword(userId, hashedPassword);
+  }
+
   // ==========================================
   // Get Current User
   // ==========================================
@@ -636,6 +664,7 @@ export class AuthService {
       avatarUrl: user.avatarUrl,
       emailVerified: user.emailVerified,
       locale: user.locale || 'es',
+      hasPassword: !!user.password,
     };
   }
 
@@ -673,6 +702,7 @@ export class AuthService {
       avatarUrl: user.avatarUrl,
       emailVerified: user.emailVerified,
       locale: user.locale || 'es',
+      hasPassword: !!user.password,
     };
   }
 
@@ -695,6 +725,7 @@ export class AuthService {
       avatarUrl: user.avatarUrl,
       emailVerified: user.emailVerified,
       locale: user.locale || 'es',
+      hasPassword: !!user.password,
     };
   }
 

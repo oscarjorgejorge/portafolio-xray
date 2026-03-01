@@ -19,4 +19,6 @@ export interface AuthenticatedUser {
   avatarUrl: string | null;
   emailVerified: boolean;
   locale: string; // User language preference: 'es' or 'en'
+  /** True if user has a password (email sign-in); false for OAuth-only accounts */
+  hasPassword: boolean;
 }

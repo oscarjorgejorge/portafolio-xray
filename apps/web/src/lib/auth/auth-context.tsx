@@ -33,6 +33,7 @@ interface AuthContextValue extends AuthState {
   // Password management
   forgotPassword: (email: string) => Promise<void>;
   resetPassword: (token: string, newPassword: string) => Promise<void>;
+  setPassword: (newPassword: string) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   
   // Google OAuth
@@ -191,7 +192,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   /**
-   * Change password (authenticated)
+   * Set password for OAuth-only accounts (no current password required)
+   */
+  const setPassword = useCallback(async (newPassword: string) => {
+    await authApi.setPassword(newPassword);
+    const updatedUser = await authApi.getCurrentUser();
+    setUser(updatedUser);
+  }, []);
+
+  /**
+   * Change password (authenticated, for accounts that already have a password)
    */
   const changePassword = useCallback(
     async (currentPassword: string, newPassword: string) => {
@@ -265,6 +275,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       resendVerification,
       forgotPassword,
       resetPassword,
+      setPassword,
       changePassword,
       getGoogleLoginUrl,
       handleOAuthCallback,
@@ -285,6 +296,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       resendVerification,
       forgotPassword,
       resetPassword,
+      setPassword,
       changePassword,
       getGoogleLoginUrl,
       handleOAuthCallback,

@@ -145,7 +145,14 @@ export const authApi = {
   },
 
   /**
-   * Change password (authenticated)
+   * Set password for OAuth-only accounts (no current password required)
+   */
+  async setPassword(newPassword: string): Promise<void> {
+    await apiClient.post('/auth/set-password', { newPassword });
+  },
+
+  /**
+   * Change password (authenticated, for accounts that already have a password)
    */
   async changePassword(currentPassword: string, newPassword: string): Promise<void> {
     await apiClient.put('/auth/change-password', {

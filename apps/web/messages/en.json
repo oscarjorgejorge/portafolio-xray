@@ -227,6 +227,11 @@
     "confirmNewPassword": "Confirm new password",
     "changePasswordSuccess": "Password changed successfully.",
     "changePasswordError": "Failed to change password.",
+    "setPassword": "Set password",
+    "setPasswordTitle": "Set password",
+    "setPasswordHint": "You signed in with Google. You can set a password here to also sign in with email.",
+    "setPasswordSuccess": "Password set successfully. You can now sign in with email and password.",
+    "setPasswordError": "Failed to set password.",
     "logout": "Log out",
     "backToHome": "Back to Home"
   }

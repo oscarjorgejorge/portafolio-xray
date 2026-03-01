@@ -464,6 +464,32 @@ describe('AuthService', () => {
     });
   });
 
+  describe('setPassword', () => {
+    it('should set password for OAuth-only user', async () => {
+      authRepository.findUserById.mockResolvedValue({
+        ...mockUser,
+        password: null,
+        provider: AuthProvider.google,
+      });
+
+      await service.setPassword(mockUser.id, { newPassword: 'NewSecure1' });
+
+      expect(authRepository.updateUserPassword).toHaveBeenCalledWith(
+        mockUser.id,
+        'hashed_password',
+      );
+    });
+
+    it('should throw when user already has a password', async () => {
+      authRepository.findUserById.mockResolvedValue(mockUser);
+
+      await expect(
+        service.setPassword(mockUser.id, { newPassword: 'NewSecure1' }),
+      ).rejects.toThrow(BadRequestException);
+      expect(authRepository.updateUserPassword).not.toHaveBeenCalled();
+    });
+  });
+
   describe('updateProfile', () => {
     it('should throw ConflictException when username is taken by another verified user', async () => {
       authRepository.findUserByUserName.mockResolvedValue({

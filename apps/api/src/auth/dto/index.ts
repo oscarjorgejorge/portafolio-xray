@@ -6,5 +6,6 @@ export * from './resend-verification.dto';
 export * from './forgot-password.dto';
 export * from './reset-password.dto';
 export * from './change-password.dto';
+export * from './set-password.dto';
 export * from './update-locale.dto';
 export * from './update-profile.dto';

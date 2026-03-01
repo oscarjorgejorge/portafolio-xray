@@ -9,6 +9,8 @@ export interface User {
   avatarUrl: string | null;
   emailVerified: boolean;
   locale: 'es' | 'en';
+  /** True if user has a password (email sign-in); false for OAuth-only (e.g. Google) */
+  hasPassword?: boolean;
 }
 
 /**
