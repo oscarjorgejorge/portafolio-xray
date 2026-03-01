@@ -29,7 +29,7 @@ interface AllProvidersProps {
   children: React.ReactNode;
 }
 
-function AllProviders({ children }: AllProvidersProps) {
+export function AllProviders({ children }: AllProvidersProps) {
   const queryClient = createTestQueryClient();
   return (
     <NextIntlClientProvider locale="en" messages={enMessages}>
