@@ -1894,3 +1894,9 @@ Reset-password page: add Spanish translations (auth.resetPassword in en.json/es.
 
 ### Prompt 116
 Reset-password page: when clicking "Restablecer contraseña" with non-matching passwords, show an error (e.g. "Las contraseñas no coinciden"); set status to 'error' when validation fails so the Alert is visible. Disable the submit button until passwords match and meet length requirement; clear the error when the user edits either password field.
+
+### Prompt 117
+With the current code base, do we need more test on the web or api? Execute the plan adding the meaningful test that we need (don't add test just for adding test).
+
+### Prompt 118
+GitGuardian alert: "Company Email Password exposed within your GitHub account" in repository oscarjorgejorge/portafolio-xray, pushed March 1st 2026. Is it true?
