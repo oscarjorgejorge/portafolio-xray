@@ -13,6 +13,7 @@ import { XRayModule } from './xray/xray.module';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './auth/auth.module';
 import { MailModule } from './mail/mail.module';
+import { PortfoliosModule } from './portfolios/portfolios.module';
 import { HttpClientModule } from './common/http';
 import { LoggerModule } from './common/logger';
 import {
@@ -67,6 +68,7 @@ import { RequestLoggerMiddleware } from './common/middleware';
     AuthModule,
     AssetsModule,
     XRayModule,
+    PortfoliosModule,
   ],
   controllers: [AppController],
   providers: [

@@ -60,9 +60,16 @@ export class AssetsService implements IAssetsService {
     const identifierType = IdentifierClassifier.classify(input);
     const cacheKey = `${CACHE_CONFIG.ASSET_KEY_PREFIX}${input}`;
 
-    // Step 0: Check in-memory cache first (fastest)
-    const memoryCached =
-      await this.cacheManager.get<ResolveAssetResponse>(cacheKey);
+    // Step 0: Check in-memory cache first (fastest) ONLY for strong identifiers
+    // (ISIN and Morningstar ID). For tickers or free-text we always require
+    // explicit user confirmation, so we skip the cache.
+    const shouldUseCacheForIdentifier =
+      identifierType === IdentifierType.ISIN ||
+      identifierType === IdentifierType.MORNINGSTAR_ID;
+
+    const memoryCached = shouldUseCacheForIdentifier
+      ? await this.cacheManager.get<ResolveAssetResponse>(cacheKey)
+      : null;
     if (memoryCached) {
       this.logger.debug(`[MEMORY CACHE] Hit for: ${input}`);
       return memoryCached;
@@ -107,7 +114,46 @@ export class AssetsService implements IAssetsService {
       const resolution = await this.morningstarResolver.resolve(input);
 
       if (resolution.status === 'resolved' && resolution.morningstarId) {
-        // Auto-save to cache for future lookups
+        // For any input that is NOT a strong identifier (ISIN or Morningstar ID)
+        // - e.g. ticker or free-text like "gold" - always require user confirmation
+        // instead of auto-adding the asset.
+        if (
+          identifierType !== IdentifierType.ISIN &&
+          identifierType !== IdentifierType.MORNINGSTAR_ID
+        ) {
+          const resultsWithId = resolution.allResults.filter(
+            (r) => r.morningstarId,
+          );
+          const sourceResults =
+            resultsWithId.length > 0
+              ? resultsWithId
+              : resolution.bestMatch
+                ? [resolution.bestMatch]
+                : [];
+          const alternatives = sourceResults
+            .slice(0, this.maxAlternatives)
+            .map((r) => ({
+              morningstarId: r.morningstarId!,
+              name: r.title,
+              url: r.url,
+              score: r.score,
+              ticker: r.ticker,
+              assetType: this.mapAssetType(r.assetType),
+              market: this.detectMarketFromUrl(r.url),
+            }));
+          this.logger.log(
+            `Match for non-identifier input "${input}" -> requiring confirmation (${alternatives.length} option(s))`,
+          );
+          return {
+            success: false,
+            source: ResolutionSource.MANUAL_REQUIRED,
+            errorCode: ResolutionErrorCode.AMBIGUOUS_MATCH,
+            alternatives,
+            error: `Asset found by name for "${input}". Please confirm it is the correct one.`,
+          };
+        }
+
+        // Auto-save to cache for future lookups (ISIN, Morningstar ID, or Ticker)
         const assetType = this.mapAssetType(
           resolution.bestMatch?.assetType,
           dto.assetType,

@@ -6,6 +6,7 @@ import { HttpClientService } from '../common/http';
 import { createContextLogger } from '../common/logger';
 import { getErrorMessage } from './resolver/utils/error-handler';
 import { VALID_ISIN_PREFIXES } from './resolver/utils/constants';
+import { IdentifierClassifier } from '../common/utils/identifier-classifier';
 import { IIsinEnrichmentService } from './interfaces';
 import type { AppConfig } from '../config';
 
@@ -275,16 +276,26 @@ export class IsinEnrichmentService implements IIsinEnrichmentService {
       return null;
     }
 
-    // Filter to valid ISIN country codes (exclude Morningstar IDs like F00000...)
-    const validIsins = matches.filter((isin) => {
-      const prefix = isin.substring(0, 2);
-      return VALID_ISIN_PREFIXES.includes(
-        prefix as (typeof VALID_ISIN_PREFIXES)[number],
-      );
-    });
+    // Filter to valid ISIN country codes AND valid checksum.
+    // Prefix filter avoids Morningstar IDs like F00000..., checksum filter avoids garbage strings.
+    const validIsins = matches
+      .map((m) => m.toUpperCase())
+      .filter((isin) => {
+        const prefix = isin.substring(0, 2);
+        if (
+          !VALID_ISIN_PREFIXES.includes(
+            prefix as (typeof VALID_ISIN_PREFIXES)[number],
+          )
+        ) {
+          return false;
+        }
+        return IdentifierClassifier.validateISINChecksum(isin);
+      });
 
     if (validIsins.length === 0) {
-      this.logger.debug(`[ENRICH] No valid ISIN prefixes found in matches`);
+      this.logger.debug(
+        `[ENRICH] No valid ISINs found (prefix+checksum) in matches`,
+      );
       return null;
     }
 

@@ -51,6 +51,16 @@ export const INPUT_VALIDATION = {
 } as const;
 
 /**
+ * Portfolio (saved) validation constants
+ */
+export const PORTFOLIO_VALIDATION = {
+  /** Maximum length for portfolio name */
+  MAX_NAME_LENGTH: 200,
+  /** Maximum length for portfolio description */
+  MAX_DESCRIPTION_LENGTH: 2000,
+} as const;
+
+/**
  * Cache configuration constants
  */
 export const CACHE_CONFIG = {
