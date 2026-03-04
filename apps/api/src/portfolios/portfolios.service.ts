@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreatePortfolioDto } from './dto';
+import { CreatePortfolioDto, UpdatePortfolioDto } from './dto';
 import type { AuthenticatedUser } from '../auth/interfaces';
 
 export interface PortfolioListItem {
@@ -9,6 +10,9 @@ export interface PortfolioListItem {
   description: string | null;
   isPublic: boolean;
   assets: { morningstarId: string; weight: number }[];
+  xrayShareableUrl: string | null;
+  xrayMorningstarUrl: string | null;
+  xrayGeneratedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -30,6 +34,45 @@ export class PortfoliosService {
         assets: dto.assets as unknown as object,
       },
     });
+    return this.toListItem(portfolio);
+  }
+
+  async update(
+    userId: string,
+    id: string,
+    dto: UpdatePortfolioDto,
+  ): Promise<PortfolioListItem> {
+    const existing = await this.prisma.portfolio.findFirst({
+      where: { id, userId },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Portfolio not found');
+    }
+
+    const updateData: Prisma.PortfolioUpdateInput = {};
+
+    if (dto.name !== undefined) {
+      updateData.name = dto.name.trim();
+    }
+
+    if (dto.description !== undefined) {
+      updateData.description = dto.description?.trim() || null;
+    }
+
+    if (dto.isPublic !== undefined) {
+      updateData.isPublic = dto.isPublic;
+    }
+
+    if (dto.assets !== undefined) {
+      updateData.assets = dto.assets as unknown as Prisma.InputJsonValue;
+    }
+
+    const portfolio = await this.prisma.portfolio.update({
+      where: { id: existing.id },
+      data: updateData,
+    });
+
     return this.toListItem(portfolio);
   }
 
@@ -61,6 +104,9 @@ export class PortfoliosService {
     description: string | null;
     isPublic: boolean;
     assets: unknown;
+    xrayShareableUrl: string | null;
+    xrayMorningstarUrl: string | null;
+    xrayGeneratedAt: Date | null;
     createdAt: Date;
     updatedAt: Date;
   }): PortfolioListItem {
@@ -70,6 +116,9 @@ export class PortfoliosService {
       description: portfolio.description,
       isPublic: portfolio.isPublic,
       assets: portfolio.assets as { morningstarId: string; weight: number }[],
+      xrayShareableUrl: portfolio.xrayShareableUrl,
+      xrayMorningstarUrl: portfolio.xrayMorningstarUrl,
+      xrayGeneratedAt: portfolio.xrayGeneratedAt,
       createdAt: portfolio.createdAt,
       updatedAt: portfolio.updatedAt,
     };

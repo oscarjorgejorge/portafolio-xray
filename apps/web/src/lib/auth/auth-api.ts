@@ -194,3 +194,14 @@ export const authApi = {
     return `${process.env.NEXT_PUBLIC_API_URL}/auth/google`;
   },
 };
+
+// Configure API client to refresh access tokens transparently before requests
+apiClient.setRefreshCallback(async () => {
+  try {
+    await authApi.refreshTokens();
+  } catch (error) {
+    // If refresh fails, clear tokens so the app can redirect to login
+    tokenStorage.clearTokens();
+    throw error;
+  }
+});

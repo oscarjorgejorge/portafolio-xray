@@ -8,22 +8,23 @@ import {
   ArrayMinSize,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { HasUniqueProperty } from '../../common/validators';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { INPUT_VALIDATION, PORTFOLIO_VALIDATION } from '../../common/constants';
+import { HasUniqueProperty } from '../../common/validators';
 import { PortfolioAssetDto } from './portfolio-asset.dto';
 
-export class CreatePortfolioDto {
-  @ApiProperty({
+export class UpdatePortfolioDto {
+  @ApiPropertyOptional({
     description: 'Portfolio name',
     example: 'My ETF Portfolio',
     maxLength: PORTFOLIO_VALIDATION.MAX_NAME_LENGTH,
   })
+  @IsOptional()
   @IsString()
   @MaxLength(PORTFOLIO_VALIDATION.MAX_NAME_LENGTH, {
     message: `Name must not exceed ${PORTFOLIO_VALIDATION.MAX_NAME_LENGTH} characters`,
   })
-  name!: string;
+  name?: string;
 
   @ApiPropertyOptional({
     description: 'Optional portfolio description',
@@ -42,13 +43,14 @@ export class CreatePortfolioDto {
   })
   @IsOptional()
   @IsBoolean()
-  isPublic?: boolean = true;
+  isPublic?: boolean;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description:
       'Array of portfolio assets with weights. Total weight is not required to be 100%.',
     type: [PortfolioAssetDto],
   })
+  @IsOptional()
   @IsArray()
   @ArrayMinSize(INPUT_VALIDATION.MIN_BATCH_SIZE)
   @HasUniqueProperty('morningstarId', {
@@ -56,5 +58,5 @@ export class CreatePortfolioDto {
   })
   @ValidateNested({ each: true })
   @Type(() => PortfolioAssetDto)
-  assets!: PortfolioAssetDto[];
+  assets?: PortfolioAssetDto[];
 }

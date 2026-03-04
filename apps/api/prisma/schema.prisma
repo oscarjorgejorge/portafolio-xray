@@ -128,14 +128,17 @@ enum AuthProvider {
 // ==========================================
 
 model Portfolio {
-  id          String   @id @default(uuid())
-  userId      String   @map("user_id")
-  name        String
-  description String?
-  isPublic    Boolean  @default(true) @map("is_public")
-  assets      Json     // Array of { morningstarId: string, weight: number }
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id                String   @id @default(uuid())
+  userId            String   @map("user_id")
+  name              String
+  description       String?
+  isPublic          Boolean  @default(true) @map("is_public")
+  assets            Json     // Array of { morningstarId: string, weight: number }
+  xrayShareableUrl  String?  @map("xray_shareable_url")
+  xrayMorningstarUrl String? @map("xray_morningstar_url")
+  xrayGeneratedAt   DateTime? @map("xray_generated_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

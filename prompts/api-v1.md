@@ -417,6 +417,102 @@ Response: Updated Asset object
 ### Prompt 59
 porque no encontraste este fondo? F000011OEO puedes intentarlo por aqui? (Screenshots showing fund not available in ES market but available in DE, IT, LU, CH markets)
 
+### Prompt 59.1
+the "Fetching ISIN..." spinner keeps loading forever when enrichment fails
+
+**Root Cause Analysis:**
+- Frontend `useIsinPolling` hook stopped polling after `maxAttempts` but continued to treat the asset as `isinPending`
+- `AssetRow` renders the spinner based solely on the `isinPending` flag (`asset.isinPending || asset.asset?.isinPending`)
+- When the backend still reported `isinPending: true` after several failed lookups, polling stopped but the flag kept the spinner visible indefinitely
+
+**Implementation:**
+- Updated `useIsinPolling` to force `isinPending: false` on the `updatedAsset` when `maxAttempts` is reached
+- This ensures the UI stops showing the "Fetching ISIN..." state once retries are exhausted
+- When `isinPending` becomes `false` and no ISIN is present, `AssetRow` now automatically shows the manual `EditableIsin` control instead of a stuck spinner
+
+**UX Result:**
+- Users briefly see "Fetching ISIN..." while enrichment is in progress
+- If enrichment succeeds, the ISIN is shown normally
+- If enrichment fails after several attempts, the spinner disappears and the user can enter the ISIN manually without confusion
+
+### Prompt 59.2
+se puede mejorar la busqueda del ISIN para que en casos como este, si lo encuentre?
+
+**Root Cause Analysis:**
+- Background ISIN enrichment relied on a very narrow DuckDuckGo query:
+  - `"fund name" ISIN LU OR IE site:morningstar OR site:moneycontroller OR site:justetf`
+- Many UCITS funds (including Janus Henderson Horizon Biotechnology Fund A2 USD, `F000011G2R`) have their ISINs clearly published on:
+  - Issuer websites (e.g. `janushenderson.com`)
+  - Data providers such as Financial Times (`markets.ft.com`)
+- Because those domains were not included, enrichment could miss valid ISINs that were actually easy to find on the web.
+
+**Implementation - Broadened ISIN enrichment search:**
+- Updated `IsinEnrichmentService.searchIsinByFundName` to use a richer DuckDuckGo query:
+  - Still anchors on the **exact fund name** (`"Janus Henderson Horizon Biotechnology Fund A2 USD"` style)
+  - Adds extra ISIN-related hints: `(ISIN OR "A2 USD" OR LU OR IE)`
+  - Expands domains to high-signal sources:
+    - `morningstar.com`, `morningstar.es`, `global.morningstar.com`
+    - Issuer site: `janushenderson.com`
+    - Data providers: `markets.ft.com`, `ft.com`
+    - Existing finance sites: `moneycontroller.it`, `justetf.com`
+- The HTML parsing logic is unchanged:
+  - Extracts all ISIN-shaped tokens from search result snippets
+  - Filters them by `VALID_ISIN_PREFIXES` and by full ISO-6166 checksum
+  - Returns the first valid ISIN (e.g. `LU1897414303` for the Janus Henderson fund).
+
+**Result:**
+- ISIN enrichment now has a significantly higher chance of resolving funds whose ISIN is available on issuer / data-provider sites even when Morningstar pages are JS-heavy.
+- The manual ISIN edit workflow remains as a fallback when no valid ISIN can be found.
+
+### Prompt 59.3
+despues de reiniciar la api y borrar el registro de la base de datos, sigue sin encontrarlo. Y antes en el chat fuiste capaz de encontrarlo
+
+**Root Cause Analysis:**
+- Even with the broader DuckDuckGo query, enrichment still relied only on the HTML of the search results page.
+- For some funds (including Janus Henderson Horizon Biotechnology Fund A2 USD), DuckDuckGo snippets do not contain the ISIN text, even though the underlying result pages (e.g. `markets.ft.com`) do.
+- As a consequence, `searchIsinByFundName` could not see `LU1897414303` in the DuckDuckGo HTML and returned `null`, leaving the asset without ISIN.
+
+**Implementation - Follow high-signal result pages:**
+- Extended `IsinEnrichmentService` with a second stage:
+  1. **Stage 1 (unchanged in spirit):**
+     - Parse DuckDuckGo HTML and:
+       - Extract text from `.result__body` and `.result__snippet`.
+       - Also read all `href` attributes from result links.
+       - Use a shared `extractIsinFromText` helper (prefix + checksum) over snippets and link URLs.
+  2. **Stage 2 (new):**
+     - If stage 1 finds no ISIN, collect up to 3 candidate URLs from `.result__a`.
+     - Normalize DuckDuckGo redirect links (`/l/?uddg=...`) to real URLs.
+     - Filter to trusted domains (`morningstar.com`, `global.morningstar.com`, `janushenderson.com`, `markets.ft.com`, `ft.com`, `moneycontroller.it`, `justetf.com`).
+     - Fetch each page via `HttpClientService` (HTML mode) and run `extractIsinFromText` on the full page body.
+     - Return the first valid ISIN found.
+
+**Result:**
+- Enrichment can now recover ISINs that only appear on the underlying result pages (for example, FT tear sheets where the ISIN is in the query string or page content but not in the DuckDuckGo snippet).
+- If no ISIN is found even after following these pages, the behavior remains unchanged: enrichment is marked complete and the frontend falls back to manual ISIN entry.
+
+### Prompt 59.3
+despues de reiniciar la api y borrar el registro de la base de datos, sigue sin encontrarlo. Y antes en el chat fuiste capaz de encontrarlo
+
+**Root Cause Analysis:**
+- Even with the broadened DuckDuckGo query, the enrichment code only searched for ISIN patterns in the *visible text* of the search results:
+  - `$('.result__body').text()` and `$('.result__snippet').text()`
+- In many search engines, especially for sites like Financial Times, the ISIN is not shown in the snippet text but **only inside the result URL**, e.g.:
+  - `https://markets.ft.com/data/funds/tearsheet/summary?s=LU1897414303:USD`
+- Because the enrichment logic never inspected `href` attributes, it could still miss valid ISINs that were clearly present in the links.
+
+**Implementation - Inspect result URLs for ISINs:**
+- Updated `IsinEnrichmentService.extractIsinFromHtml` to:
+  - Collect all anchor `href` values from the DuckDuckGo HTML: `$('a').map(...).attr('href')`
+  - Append this `linksText` to the existing `resultsText` before running the ISIN regex.
+- The ISIN detection now runs against `combinedText = resultsText + linksText`, so patterns like `LU1897414303` embedded in query parameters are picked up.
+- The same strict filters apply:
+  - Country prefix must be in `VALID_ISIN_PREFIXES`
+  - ISIN must pass full ISO-6166 checksum validation via `IdentifierClassifier.validateISINChecksum`.
+
+**Result:**
+- For funds where data providers expose the ISIN only in the URL (e.g. `LU1897414303` on `markets.ft.com`), enrichment now has a much higher chance of succeeding.
+- If DuckDuckGo still does not return such links for a given query, the manual ISIN entry flow remains the final fallback.
+
 **Root Cause Analysis:**
 - Fund `F000011OEO` exists in Morningstar but is not available in the Spanish (ES) market
 - The API was only querying the ES market endpoint (`/es/inversiones/fondos/`)
@@ -1906,3 +2002,21 @@ Users who signed in with Google have no password in the database (NULL). If they
 
 ### Prompt 120
 Update prompts, commit changes and push.
+
+### Prompt 121
+When the asset is found using any input that is **not** a strong identifier (ISIN or Morningstar ID) – for example, when the user types a free-text name like "gold" or a ticker like "NKE" – the app should always ask for confirmation instead of adding the asset directly. So when the resolve API matches by non-identifier input (FREE_TEXT or TICKER), it should return alternatives (even if there is a single match) so the user must confirm in the modal before the asset is added.
+
+### Prompt 122
+se esta resolviendo los stock mal, cumplimiento no es un isin valido
+
+**Implementation:**
+- Fixed ISIN enrichment to validate the ISO 6166 checksum before persisting any ISIN found via web search (previously it only filtered by country prefix).
+- Added a cleanup script to null-out invalid ISINs already stored in the `assets` cache table: `npm run cleanup:invalid-isins` (use `DRY_RUN=false` to apply changes).
+
+### Prompt 123
+para fondos y el etf, no hay que mostrar el ticker en el front, y fondos y etfs no hay que guardar el ticker en la base de datos
+
+**Implementation:**
+- Backend `AssetsService.resolve` now only persists `ticker` when the resolved asset type is `STOCK`; for `FUND` and `ETF` the ticker is omitted from the upsert payload so it is not stored in the `assets` table.
+- Backend `AssetsService.confirm` similarly only passes `ticker` to the repository when `type` is `STOCK`, ensuring manual confirmations for funds/ETFs never save tickers.
+- Frontend `AssetRow` component hides the ticker display for assets with type `FUND` or `ETF`, while keeping the editable ticker UX for stocks unchanged.

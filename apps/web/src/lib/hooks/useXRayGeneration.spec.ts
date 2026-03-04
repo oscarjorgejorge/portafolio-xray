@@ -24,6 +24,9 @@ describe('useXRayGeneration', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      window.sessionStorage.clear();
+    }
     mockGenerateXRay.mockResolvedValue({
       shareableUrl: '/xray?assets=...',
       morningstarUrl: 'https://lt.morningstar.com/...',

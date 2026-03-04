@@ -36,6 +36,7 @@
   },
   "portfolio": {
     "builder": "Portfolio Builder",
+    "currentPortfolioLabel": "Portfolio",
     "noAssets": "No assets added yet.",
     "noAssetsHint": "Enter an ISIN, Morningstar ID, or ticker above to get started.",
     "successToast": "X-Ray generated successfully!"
@@ -107,6 +108,10 @@
   },
   "language": {
     "switchLanguage": "Switch language"
+  },
+  "navigation": {
+    "home": "Home",
+    "myPortfolios": "My portfolios"
   },
   "auth": {
     "login": {
@@ -208,6 +213,50 @@
       "tooManyRequests": "Too many attempts. Please wait a moment before trying again."
     },
     "logout": "Logout"
+  },
+  "savePortfolio": {
+    "button": "Save portfolio",
+    "title": "Save portfolio",
+    "nameLabel": "Name",
+    "namePlaceholder": "e.g. My ETF Portfolio",
+    "nameRequired": "Name is required",
+    "descriptionLabel": "Description",
+    "descriptionPlaceholder": "Optional notes about this portfolio",
+    "isPublicLabel": "Public portfolio",
+    "isPublicHint": "Public portfolios can be discovered by others",
+    "save": "Save",
+    "saveError": "Failed to save portfolio. Please try again.",
+    "noAssets": "No valid assets to save.",
+    "successToast": "Portfolio saved successfully!",
+    "editCurrentButton": "Edit current portfolio",
+    "createNewButton": "Create new portfolio",
+    "saveChangesButton": "Save changes",
+    "saveChangesModeTitle": "How do you want to save your changes?",
+    "saveChangesModeDescription": "You can update the current portfolio with these changes or create a new portfolio from them.",
+    "saveChangesEditCurrentLabel": "Update current portfolio",
+    "saveChangesCreateNewLabel": "Create new portfolio"
+  },
+  "portfolios": {
+    "title": "My portfolios",
+    "backToBuilder": "Back to builder",
+    "empty": "You have no saved portfolios yet.",
+    "createFirst": "Create your first portfolio",
+    "openInBuilder": "Open in builder",
+    "viewXRay": "View X-Ray",
+    "edit": "Edit",
+    "public": "Public",
+    "private": "Private",
+    "updated": "Updated {date}",
+    "loadError": "Failed to load portfolios.",
+    "deleteConfirm": "Delete \"{name}\"? This cannot be undone.",
+    "editModalTitle": "Edit portfolio"
+  },
+  "authModal": {
+    "title": "Sign in or register",
+    "checkEmail": "Check your email",
+    "verifyEmailMessage": "We've sent a verification link to your email.",
+    "verifyEmailHint": "After verifying, you can save your portfolio from the builder.",
+    "goToVerify": "Go to verification"
   },
   "profile": {
     "title": "My Profile",

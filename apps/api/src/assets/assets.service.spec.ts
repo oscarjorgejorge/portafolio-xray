@@ -234,7 +234,7 @@ describe('AssetsService', () => {
         expect(repository.upsertByMorningstarId).toHaveBeenCalled();
       });
 
-      it('should trigger ISIN enrichment when no ISIN found', async () => {
+      it('should trigger ISIN enrichment when no ISIN found for Morningstar ID', async () => {
         cacheManager.get.mockResolvedValue(null);
         repository.findByIsin.mockResolvedValue(null);
         repository.findByMorningstarId.mockResolvedValue(null);
@@ -250,9 +250,9 @@ describe('AssetsService', () => {
           }),
           confidence: 0.9,
           allResults: [],
-          input: 'VWCE',
-          inputType: IdentifierType.TICKER,
-          normalizedInput: 'VWCE',
+          input: '0P0000YXJO',
+          inputType: IdentifierType.MORNINGSTAR_ID,
+          normalizedInput: '0P0000YXJO',
           timestamp: new Date().toISOString(),
         });
 
@@ -262,7 +262,7 @@ describe('AssetsService', () => {
         });
         repository.upsertByMorningstarId.mockResolvedValue(savedAsset);
 
-        const result = await service.resolve({ input: 'VWCE' });
+        const result = await service.resolve({ input: '0P0000YXJO' });
 
         expect(result.isinPending).toBe(true);
         expect(isinEnrichment.enrichIsinInBackground).toHaveBeenCalledWith(
@@ -271,7 +271,7 @@ describe('AssetsService', () => {
         );
       });
 
-      it('should reject invalid ISIN candidates (garbage from API)', async () => {
+      it('should reject invalid ISIN candidates (garbage from API) for Morningstar ID input', async () => {
         cacheManager.get.mockResolvedValue(null);
         repository.findByIsin.mockResolvedValue(null);
         repository.findByMorningstarId.mockResolvedValue(null);
@@ -287,9 +287,9 @@ describe('AssetsService', () => {
           }),
           confidence: 0.9,
           allResults: [],
-          input: 'AAPL',
-          inputType: IdentifierType.TICKER,
-          normalizedInput: 'AAPL',
+          input: '0P0000YXJO',
+          inputType: IdentifierType.MORNINGSTAR_ID,
+          normalizedInput: '0P0000YXJO',
           timestamp: new Date().toISOString(),
         });
 
@@ -299,7 +299,7 @@ describe('AssetsService', () => {
         });
         repository.upsertByMorningstarId.mockResolvedValue(savedAsset);
 
-        await service.resolve({ input: 'AAPL' });
+        await service.resolve({ input: '0P0000YXJO' });
 
         // Should save with null ISIN (rejecting the garbage)
         expect(repository.upsertByMorningstarId).toHaveBeenCalledWith(

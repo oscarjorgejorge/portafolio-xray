@@ -45,6 +45,7 @@ const WeightInput = memo<WeightInputProps>(function WeightInput({
       min={0}
       max={maxValue}
       step={0.01}
+      selectOnFocus
       label={isMobile ? undefined : label}
       placeholder="0"
       aria-label={label}
@@ -171,9 +172,11 @@ export const AssetRow = memo<AssetRowProps>(function AssetRow({
   const handleMouseLeave = useCallback(() => setShowTooltip(false), []);
 
   const isinPending = asset.isinPending || asset.asset?.isinPending || false;
+  const shouldPollIsin = asset.asset?.type !== 'STOCK' && isinPending;
+
   useIsinPolling({
-    assetId: asset.asset?.id,
-    isinPending,
+    assetId: shouldPollIsin ? asset.asset?.id : undefined,
+    isinPending: shouldPollIsin,
     onIsinResolved: handleIsinResolved,
   });
 
@@ -217,7 +220,9 @@ export const AssetRow = memo<AssetRowProps>(function AssetRow({
                     onTickerUpdated={handleIsinResolved}
                   />
                 ) : (
-                  asset.asset.ticker && (
+                  asset.asset.ticker &&
+                  asset.asset.type !== 'FUND' &&
+                  asset.asset.type !== 'ETF' && (
                     <span>
                       <span className="font-medium">{t('ticker')}</span> {asset.asset.ticker}
                     </span>

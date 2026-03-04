@@ -36,6 +36,7 @@
   },
   "portfolio": {
     "builder": "Constructor de Cartera",
+    "currentPortfolioLabel": "Cartera",
     "noAssets": "No hay activos añadidos aún.",
     "noAssetsHint": "Introduce un ISIN, ID de Morningstar o ticker arriba para comenzar.",
     "successToast": "¡X-Ray generado exitosamente!"
@@ -107,6 +108,10 @@
   },
   "language": {
     "switchLanguage": "Cambiar idioma"
+  },
+  "navigation": {
+    "home": "Inicio",
+    "myPortfolios": "Mis carteras"
   },
   "auth": {
     "login": {
@@ -208,6 +213,50 @@
       "tooManyRequests": "Demasiados intentos. Espera un momento antes de volver a intentar."
     },
     "logout": "Cerrar sesión"
+  },
+  "savePortfolio": {
+    "button": "Guardar cartera",
+    "title": "Guardar cartera",
+    "nameLabel": "Nombre",
+    "namePlaceholder": "ej. Mi cartera de ETF",
+    "nameRequired": "El nombre es obligatorio",
+    "descriptionLabel": "Descripción",
+    "descriptionPlaceholder": "Notas opcionales sobre esta cartera",
+    "isPublicLabel": "Cartera pública",
+    "isPublicHint": "Las carteras públicas pueden ser descubiertas por otros",
+    "save": "Guardar",
+    "saveError": "Error al guardar la cartera. Inténtalo de nuevo.",
+    "noAssets": "No hay activos válidos para guardar.",
+    "successToast": "¡Cartera guardada correctamente!",
+    "editCurrentButton": "Editar cartera actual",
+    "createNewButton": "Crear nueva cartera",
+    "saveChangesButton": "Guardar cambios",
+    "saveChangesModeTitle": "¿Cómo quieres guardar los cambios?",
+    "saveChangesModeDescription": "Puedes actualizar la cartera actual con estos cambios o crear una cartera nueva a partir de ellos.",
+    "saveChangesEditCurrentLabel": "Guardar cambios en la cartera actual",
+    "saveChangesCreateNewLabel": "Crear cartera nueva"
+  },
+  "portfolios": {
+    "title": "Mis carteras",
+    "backToBuilder": "Volver al constructor",
+    "empty": "Aún no tienes carteras guardadas.",
+    "createFirst": "Crea tu primera cartera",
+    "openInBuilder": "Abrir en constructor",
+    "viewXRay": "Ver X-Ray",
+    "edit": "Editar",
+    "public": "Pública",
+    "private": "Privada",
+    "updated": "Actualizado {date}",
+    "loadError": "Error al cargar las carteras.",
+    "deleteConfirm": "¿Eliminar \"{name}\"? No se puede deshacer.",
+    "editModalTitle": "Editar cartera"
+  },
+  "authModal": {
+    "title": "Iniciar sesión o registrarse",
+    "checkEmail": "Revisa tu correo",
+    "verifyEmailMessage": "Hemos enviado un enlace de verificación a tu correo.",
+    "verifyEmailHint": "Después de verificar, podrás guardar tu cartera desde el constructor.",
+    "goToVerify": "Ir a verificación"
   },
   "profile": {
     "title": "Mi perfil",

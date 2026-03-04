@@ -1,18 +1,19 @@
 import {
-  Controller,
-  Get,
-  Post,
-  Delete,
   Body,
-  Param,
+  Controller,
+  Delete,
+  Get,
   HttpCode,
   HttpStatus,
-  UseGuards,
   NotFoundException,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { PortfoliosService } from './portfolios.service';
-import { CreatePortfolioDto } from './dto';
+import { CreatePortfolioDto, UpdatePortfolioDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../auth/interfaces';
@@ -50,6 +51,23 @@ export class PortfoliosController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async findAll(@CurrentUser() user: AuthenticatedUser) {
     return this.portfoliosService.findAllByUser(user);
+  }
+
+  @Patch(':id')
+  @ApiOperation({
+    summary: 'Update a portfolio',
+    description:
+      'Update an existing portfolio for the current user. Only provided fields will be changed.',
+  })
+  @ApiResponse({ status: 200, description: 'Portfolio updated' })
+  @ApiResponse({ status: 404, description: 'Not found' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async update(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: UpdatePortfolioDto,
+  ) {
+    return this.portfoliosService.update(user.id, id, dto);
   }
 
   @Get(':id')

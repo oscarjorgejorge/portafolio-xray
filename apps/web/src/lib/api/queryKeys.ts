@@ -30,6 +30,16 @@ export const queryKeys = {
     generate: (assetIds: string[]) =>
       ['xray', 'generate', ...assetIds.sort()] as const,
   },
+
+  /**
+   * Portfolios (saved) query keys
+   */
+  portfolios: {
+    /** Root key for all portfolio queries */
+    all: ['portfolios'] as const,
+    /** Key for a specific portfolio by id */
+    byId: (id: string) => ['portfolios', id] as const,
+  },
 } as const;
 
 /**

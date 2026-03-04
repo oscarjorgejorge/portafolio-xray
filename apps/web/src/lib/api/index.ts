@@ -23,6 +23,17 @@ export {
 // X-Ray API
 export { generateXRay, type XRayAsset, type GenerateXRayRequest } from './xray';
 
+// Portfolios API
+export {
+  createPortfolio,
+  getPortfolios,
+  getPortfolio,
+  deletePortfolio,
+  type CreatePortfolioRequest,
+  type PortfolioListItem,
+  type PortfolioAsset,
+} from './portfolios';
+
 // Query Keys
 export { queryKeys, type QueryKeys } from './queryKeys';
 

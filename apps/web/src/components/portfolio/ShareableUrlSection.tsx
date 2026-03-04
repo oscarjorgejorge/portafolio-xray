@@ -13,6 +13,7 @@ interface ShareableUrlSectionProps {
   copied: boolean;
   copyError?: boolean;
   onCopyUrl: () => void;
+  onSavePortfolio?: () => void;
   onOpenPDF: () => void;
 }
 
@@ -25,6 +26,7 @@ export const ShareableUrlSection = memo<ShareableUrlSectionProps>(function Share
   copied,
   copyError = false,
   onCopyUrl,
+  onSavePortfolio,
   onOpenPDF,
 }) {
   const t = useTranslations('shareable');
@@ -46,7 +48,7 @@ export const ShareableUrlSection = memo<ShareableUrlSectionProps>(function Share
   const copyButtonVariant = copyState === 'error' ? 'danger' : 'secondary';
 
   return (
-    <div className="pt-4 border-t border-border">
+    <div className="mt-3 pt-4 border-t border-border">
       <div className="space-y-3">
         <div className="space-y-2">
           <label className="block text-sm font-medium text-muted-foreground">
@@ -68,6 +70,11 @@ export const ShareableUrlSection = memo<ShareableUrlSectionProps>(function Share
             >
               {copyButtonText}
             </Button>
+            {onSavePortfolio && (
+              <Button onClick={onSavePortfolio} variant="secondary" size="sm">
+                {tCommon('save')}
+              </Button>
+            )}
           </div>
           <p className="text-xs text-muted-foreground">
             {t('description')}

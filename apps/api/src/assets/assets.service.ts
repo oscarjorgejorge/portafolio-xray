@@ -196,6 +196,12 @@ export class AssetsService implements IAssetsService {
         const needsIsinEnrichment =
           !isin && identifierType !== IdentifierType.ISIN;
 
+        // For stocks, we persist the ticker when available.
+        // For funds and ETFs we do NOT store the ticker in the database.
+        const tickerForStock =
+          resolution.verification?.additionalInfo?.ticker ??
+          resolution.bestMatch?.ticker;
+
         const savedAsset = await this.assetsRepository.upsertByMorningstarId({
           isin: isin,
           morningstarId: resolution.morningstarId,
@@ -203,11 +209,7 @@ export class AssetsService implements IAssetsService {
           type: assetType,
           url: resolution.morningstarUrl || '',
           source: AssetSource.web_search,
-          // Prefer ticker from page verification (extracted from URL/title) over API ticker
-          // because Morningstar API sometimes returns garbage tickers (e.g., "cv" instead of "CELH")
-          ticker:
-            resolution.verification?.additionalInfo?.ticker ||
-            resolution.bestMatch?.ticker,
+          ticker: assetType === AssetType.STOCK ? tickerForStock : undefined,
           isinPending: needsIsinEnrichment,
         });
 
@@ -544,6 +546,8 @@ export class AssetsService implements IAssetsService {
       }
     }
 
+    const isStock = dto.type === AssetTypeDto.STOCK;
+
     // Create or update asset with manual source
     // Use upsertByMorningstarId since ISIN may be undefined (e.g., when found by ticker)
     const asset = await this.assetsRepository.upsertByMorningstarId({
@@ -553,7 +557,8 @@ export class AssetsService implements IAssetsService {
       type: dto.type as AssetType,
       url: dto.url,
       source: AssetSource.manual,
-      ticker,
+      // Only persist ticker for stocks; funds/ETFs should not store ticker in DB
+      ticker: isStock ? ticker : undefined,
       isinPending: !dto.isin, // Mark as pending if no ISIN provided
     });
 

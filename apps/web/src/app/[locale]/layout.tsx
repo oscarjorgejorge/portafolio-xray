@@ -5,6 +5,8 @@ import { getMessages, getTranslations } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { routing } from '@/i18n/routing';
 import { NavBar } from '@/components/navigation/NavBar';
+import { Sidebar } from '@/components/navigation/Sidebar';
+import { BottomNav } from '@/components/navigation/BottomNav';
 import { HtmlLangUpdater } from '@/components/layout/HtmlLangUpdater';
 
 interface LocaleLayoutProps {
@@ -77,7 +79,11 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
     <NextIntlClientProvider messages={messages}>
       <HtmlLangUpdater />
       <NavBar />
-      {children}
+      <Sidebar />
+      <main className="md:pl-56 pb-16 md:pb-0">
+        {children}
+      </main>
+      <BottomNav />
     </NextIntlClientProvider>
   );
 }

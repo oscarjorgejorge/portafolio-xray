@@ -151,6 +151,15 @@ class FetchApiClient {
 
       clearTimeout(timeoutId);
 
+      // 204 No Content has no body
+      if (response.status === 204) {
+        return {
+          data: undefined as T,
+          status: response.status,
+          headers: response.headers,
+        };
+      }
+
       // Parse response data
       let rawData: unknown;
       const contentType = response.headers.get('content-type');

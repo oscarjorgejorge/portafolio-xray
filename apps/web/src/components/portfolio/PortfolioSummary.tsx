@@ -13,6 +13,8 @@ interface PortfolioSummaryProps {
   isGenerating: boolean;
   onClearAll: () => void;
   onGenerate: () => void;
+  /** Called when user clicks "Save portfolio". Opens auth or save modal. */
+  onSavePortfolio?: () => void;
 }
 
 /**
@@ -26,8 +28,10 @@ export const PortfolioSummary = memo<PortfolioSummaryProps>(function PortfolioSu
   isGenerating,
   onClearAll,
   onGenerate,
+  onSavePortfolio,
 }) {
   const t = useTranslations('summary');
+  const tSave = useTranslations('savePortfolio');
   const isPercentageValid = Math.abs(totalWeight - 100) < 0.01;
   const remaining = 100 - totalWeight;
 
@@ -50,7 +54,16 @@ export const PortfolioSummary = memo<PortfolioSummaryProps>(function PortfolioSu
           </Alert>
         )}
       </div>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
+        {onSavePortfolio && (
+          <Button
+            variant="secondary"
+            onClick={onSavePortfolio}
+            disabled={!isValid}
+          >
+            {tSave('button')}
+          </Button>
+        )}
         <Button variant="secondary" onClick={onClearAll}>
           {t('clearAll')}
         </Button>
