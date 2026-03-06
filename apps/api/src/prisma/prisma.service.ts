@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
@@ -37,12 +37,8 @@ const CONNECTION_RETRY = {
  * - Graceful shutdown with proper connection cleanup
  */
 @Injectable()
-export class PrismaService
-  extends PrismaClient
-  implements OnModuleInit, OnModuleDestroy
-{
+export class PrismaService extends PrismaClient implements OnModuleInit {
   private readonly logger = createContextLogger(PrismaService.name);
-  private readonly pool: Pool;
   private readonly isProduction: boolean;
 
   constructor(private readonly configService: ConfigService<AppConfig, true>) {
@@ -60,7 +56,6 @@ export class PrismaService
     const adapter = new PrismaPg(pool);
     super({ adapter });
 
-    this.pool = pool;
     this.isProduction = configService.get('isProduction', { infer: true });
 
     // Log pool configuration at startup
@@ -139,11 +134,5 @@ export class PrismaService
 
   private delay(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
-  }
-
-  async onModuleDestroy(): Promise<void> {
-    await this.$disconnect();
-    await this.pool.end();
-    this.logger.log('Database connection and pool closed');
   }
 }

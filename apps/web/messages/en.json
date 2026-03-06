@@ -71,7 +71,9 @@
   "allocation": {
     "modeLabel": "Allocation Mode:",
     "percentage": "Percentage",
-    "amount": "Amount"
+    "amount": "Amount",
+    "amountInfoTitle": "How amounts are used",
+    "amountInfoBody": "In Amount mode we automatically calculate percentages from the total amount you enter. When you share or explore public portfolios we only show percentages, never the raw amounts. Your original amounts are saved and only visible to you in the portfolio builder."
   },
   "clearConfirm": {
     "title": "Clear All Assets",
@@ -111,7 +113,9 @@
   },
   "navigation": {
     "home": "Home",
-    "myPortfolios": "My portfolios"
+    "myPortfolios": "My portfolios",
+    "myFavorites": "My favorites",
+    "explorePortfolios": "Explore portfolios"
   },
   "auth": {
     "login": {
@@ -243,13 +247,24 @@
     "createFirst": "Create your first portfolio",
     "openInBuilder": "Open in builder",
     "viewXRay": "View X-Ray",
+    "viewDetails": "View portfolio",
     "edit": "Edit",
     "public": "Public",
     "private": "Private",
     "updated": "Updated {date}",
     "loadError": "Failed to load portfolios.",
     "deleteConfirm": "Delete \"{name}\"? This cannot be undone.",
-    "editModalTitle": "Edit portfolio"
+    "editModalTitle": "Edit portfolio",
+    "exploreTitle": "Explore public portfolios",
+    "exploreSubtitle": "Discover public portfolios created by other users and open them in the builder.",
+    "filterByNameLabel": "Filter by portfolio name",
+    "filterByUserLabel": "Filter by user",
+    "filterByNamePlaceholder": "e.g. Tech ETF portfolio",
+    "filterByUserPlaceholder": "e.g. Oscar",
+    "noPublicPortfolios": "No public portfolios found for these filters.",
+    "publicPortfolioByUser": "Portfolio by {userName}",
+    "thisIsYourPortfolio": "This is your portfolio",
+    "copyPortfolioLink": "Copy portfolio link"
   },
   "authModal": {
     "title": "Sign in or register",

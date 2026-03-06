@@ -59,4 +59,28 @@ export class UpdatePortfolioDto {
   @ValidateNested({ each: true })
   @Type(() => PortfolioAssetDto)
   assets?: PortfolioAssetDto[];
+
+  @ApiPropertyOptional({
+    description: 'Shareable X-Ray URL path',
+    example: '/share/abc123',
+  })
+  @IsOptional()
+  @IsString()
+  xrayShareableUrl?: string | null;
+
+  @ApiPropertyOptional({
+    description: 'Morningstar X-Ray URL',
+    example: 'https://www.morningstar.com/xray/...',
+  })
+  @IsOptional()
+  @IsString()
+  xrayMorningstarUrl?: string | null;
+
+  @ApiPropertyOptional({
+    description: 'When the X-Ray report was generated (ISO string)',
+    example: '2026-03-06T10:15:00.000Z',
+  })
+  @IsOptional()
+  @IsString()
+  xrayGeneratedAt?: string | null;
 }

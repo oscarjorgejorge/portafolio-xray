@@ -4,7 +4,12 @@ import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from '@/i18n/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getPortfolios, deletePortfolio, type PortfolioListItem } from '@/lib/api/portfolios';
+import {
+  getPortfolios,
+  deletePortfolio,
+  updatePortfolio,
+  type PortfolioListItem,
+} from '@/lib/api/portfolios';
 import { queryKeys } from '@/lib/api/queryKeys';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/Button';
@@ -15,8 +20,16 @@ import { VALIDATION } from '@/lib/constants';
 import { TrashIcon, EditIcon } from '@/components/ui/Icons';
 import { EditPortfolioModal } from '@/components/portfolio/EditPortfolioModal';
 
-function buildAssetsParam(assets: { morningstarId: string; weight: number }[]): string {
-  const param = assets.map((a) => `${a.morningstarId}:${a.weight}`).join(',');
+function buildAssetsParam(
+  assets: { morningstarId: string; weight: number; amount?: number }[],
+  useAmount: boolean,
+): string {
+  const param = assets
+    .map((a) => {
+      const value = useAmount && typeof a.amount === 'number' ? a.amount : a.weight;
+      return `${a.morningstarId}:${value}`;
+    })
+    .join(',');
   return encodeURIComponent(param);
 }
 
@@ -60,8 +73,12 @@ export default function PortfoliosPage() {
   }, [authLoading, isAuthenticated, user?.emailVerified, router]);
 
   const handleOpenInBuilder = (portfolio: PortfolioListItem) => {
-    const assetsParam = buildAssetsParam(portfolio.assets);
-    router.push(`/?assets=${assetsParam}&portfolioId=${portfolio.id}`);
+    const hasAmounts = portfolio.assets.some(
+      (asset) => typeof asset.amount === 'number' && !Number.isNaN(asset.amount),
+    );
+    const assetsParam = buildAssetsParam(portfolio.assets, hasAmounts);
+    const allocationModeParam = hasAmounts ? '&allocationMode=amount' : '';
+    router.push(`/?assets=${assetsParam}&portfolioId=${portfolio.id}${allocationModeParam}`);
   };
 
   const handleOpenXRay = async (portfolio: PortfolioListItem) => {
@@ -69,6 +86,23 @@ export default function PortfoliosPage() {
     setActiveXRayPortfolioId(portfolio.id);
     try {
       const result = await generateXRay(portfolio.assets);
+
+      // Persist X-Ray URLs on the portfolio so they are available in public views
+      try {
+        await updatePortfolio(portfolio.id, {
+          xrayShareableUrl: result.shareableUrl,
+          xrayMorningstarUrl: result.morningstarUrl,
+          xrayGeneratedAt: new Date().toISOString(),
+        });
+
+        // Refresh cached portfolios so UI stays in sync
+        queryClient.invalidateQueries({ queryKey: queryKeys.portfolios.all });
+      } catch (updateErr) {
+        // Non-fatal: we still open the X-Ray even if saving fails
+        // eslint-disable-next-line no-console
+        console.warn('Failed to persist X-Ray URLs on portfolio', updateErr);
+      }
+
       if (result.morningstarUrl) {
         window.open(result.morningstarUrl, '_blank', 'noopener,noreferrer');
       }
@@ -157,45 +191,47 @@ export default function PortfoliosPage() {
                     })}
                   </p>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex flex-col items-end gap-2 shrink-0">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => handleOpenXRay(portfolio)}
+                      disabled={
+                        activeXRayPortfolioId !== null ||
+                        !isPortfolioWeightValid(portfolio.assets)
+                      }
+                    >
+                      {t('viewXRay')}
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="px-2"
+                      onClick={() => handleEdit(portfolio)}
+                      aria-label={t('edit')}
+                      title={t('edit')}
+                    >
+                      <EditIcon className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-600 hover:bg-red-50 px-2"
+                      onClick={() => handleDelete(portfolio.id, portfolio.name)}
+                      disabled={deleteMutation.isPending}
+                      aria-label={tCommon('remove')}
+                      title={tCommon('remove')}
+                    >
+                      <TrashIcon className="h-4 w-4" />
+                    </Button>
+                  </div>
                   <Button
                     variant="secondary"
                     size="sm"
                     onClick={() => handleOpenInBuilder(portfolio)}
                   >
                     {t('openInBuilder')}
-                  </Button>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => handleOpenXRay(portfolio)}
-                    disabled={
-                      activeXRayPortfolioId !== null ||
-                      !isPortfolioWeightValid(portfolio.assets)
-                    }
-                  >
-                    {t('viewXRay')}
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="px-2"
-                    onClick={() => handleEdit(portfolio)}
-                    aria-label={t('edit')}
-                    title={t('edit')}
-                  >
-                    <EditIcon className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-red-600 hover:bg-red-50 px-2"
-                    onClick={() => handleDelete(portfolio.id, portfolio.name)}
-                    disabled={deleteMutation.isPending}
-                    aria-label={tCommon('remove')}
-                    title={tCommon('remove')}
-                  >
-                    <TrashIcon className="h-4 w-4" />
                   </Button>
                 </div>
               </div>

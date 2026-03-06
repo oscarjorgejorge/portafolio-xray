@@ -34,7 +34,7 @@ interface UseXRayGenerationReturn {
   /** Generate X-Ray report */
   generate: () => void;
   /** Copy shareable URL to clipboard - returns true if successful */
-  copyUrl: () => Promise<boolean>;
+  copyUrl: (urlOverride?: string) => Promise<boolean>;
   /** Open Morningstar PDF in new tab */
   openPdf: () => void;
   /** Clear all URLs */
@@ -106,9 +106,10 @@ export function useXRayGeneration({
     generateMutation.mutate(xrayAssets);
   }, [isValid, allocationMode, assets, generateMutation]);
 
-  const copyUrl = useCallback(() => {
-    return copyToClipboard();
-  }, [copyToClipboard]);
+  const copyUrl = useCallback(
+    (urlOverride?: string) => copyToClipboard(urlOverride),
+    [copyToClipboard],
+  );
 
   const openPdf = useCallback(() => {
     openMorningstarPdf();

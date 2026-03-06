@@ -9,15 +9,22 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { PortfoliosService } from './portfolios.service';
-import { CreatePortfolioDto, UpdatePortfolioDto } from './dto';
+import {
+  CreatePortfolioDto,
+  UpdatePortfolioDto,
+  FindPublicPortfoliosDto,
+} from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { JwtOptionalGuard } from '../auth/guards/jwt-optional.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../auth/interfaces';
 import { ApiCommonResponses } from '../common/decorators';
+import { Public } from '../auth/decorators/public.decorator';
 
 @ApiTags('portfolios')
 @Controller('portfolios')
@@ -51,6 +58,45 @@ export class PortfoliosController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async findAll(@CurrentUser() user: AuthenticatedUser) {
     return this.portfoliosService.findAllByUser(user);
+  }
+
+  @Get('public')
+  @Public()
+  @UseGuards(JwtOptionalGuard)
+  @ApiOperation({
+    summary: 'List public portfolios',
+    description:
+      'Returns public portfolios across all users. Accessible without authentication. When authenticated, response includes isOwnedByCurrentUser and isFavoritedByCurrentUser.',
+  })
+  @ApiResponse({ status: 200, description: 'List of public portfolios' })
+  async findPublic(
+    @Query() query: FindPublicPortfoliosDto,
+    @CurrentUser() user?: AuthenticatedUser | null,
+  ) {
+    return this.portfoliosService.findPublic(query, user?.id);
+  }
+
+  @Get('public/:id')
+  @Public()
+  @UseGuards(JwtOptionalGuard)
+  @ApiOperation({
+    summary: 'Get one public portfolio',
+    description:
+      'Returns a single public portfolio by id. Accessible without authentication. Only fully allocated portfolios are returned.',
+  })
+  @ApiResponse({ status: 200, description: 'Public portfolio' })
+  @ApiResponse({ status: 404, description: 'Not found' })
+  async findPublicById(
+    @Param('id') id: string,
+    @CurrentUser() user?: AuthenticatedUser | null,
+  ) {
+    const portfolio = await this.portfoliosService.findPublicById(id, user?.id);
+
+    if (!portfolio) {
+      throw new NotFoundException('Portfolio not found');
+    }
+
+    return portfolio;
   }
 
   @Patch(':id')

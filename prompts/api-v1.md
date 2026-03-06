@@ -2020,3 +2020,29 @@ para fondos y el etf, no hay que mostrar el ticker en el front, y fondos y etfs 
 - Backend `AssetsService.resolve` now only persists `ticker` when the resolved asset type is `STOCK`; for `FUND` and `ETF` the ticker is omitted from the upsert payload so it is not stored in the `assets` table.
 - Backend `AssetsService.confirm` similarly only passes `ticker` to the repository when `type` is `STOCK`, ensuring manual confirmations for funds/ETFs never save tickers.
 - Frontend `AssetRow` component hides the ticker display for assets with type `FUND` or `ETF`, while keeping the editable ticker UX for stocks unchanged.
+
+### Prompt 124
+necesito ahora en el menu de la derecha, otra pestanha que sea explorar carteras, y hay salgan todas las carteras publicas que hay en la base de datos, en el ese listado de cateras aparecera el nombre de la cartera, el usuario (y podra filtrarse por estos parametros)
+
+### Prompt 125
+desde esta vista al escribir en los filtros tiene que haber un debounce cada x tiempo para que no haya una peticion cada vez que el usuario inserta un caracter
+
+### Prompt 126
+solo podre ver carteras que tengan el peso asignado al 100%, no carteras que estan en construccion
+
+### Prompt 127
+tambien tengo que ser capaza de ver la cartera sin estar logueado, en modo invitado. Si entro en modo invitado (este logueado o no, pero no soy el duenho de la cartera, solo puedo ver la cartera, sin opcion de editarla (puedo tambien la url generada). Tambien necesito mostrar el nombre de la cartera y la descripcion.
+
+### Prompt 128
+When building a portfolio in Amount mode, percentages must always be calculated from the total amount, and public views (shareable URLs and explore pages) must only expose percentages, never raw amounts. The raw amounts that the user enters should still be stored with the portfolio and always shown back to the owner in the Portfolio Builder, and there should be an info icon next to the Amount option explaining this behaviour.
+
+### Prompt 129
+After upgrading Prisma and introducing the `@prisma/adapter-pg` driver adapter with a shared `pg` connection pool, I am getting runtime errors like `Cannot use a pool after calling end on the pool` when calling `/portfolios/public`. Please adjust the PrismaService lifecycle so that the pool is not closed while the NestJS app is still serving requests (long-running process), following Prisma's recommendation not to call `$disconnect()`/`pool.end()` on every shutdown hook, and update the prompts to reflect the change.
+
+**Implementation:**
+- Updated `PrismaService` to implement only `OnModuleInit` and removed the `OnModuleDestroy` hook.
+- Removed explicit calls to `$disconnect()` and `pool.end()` so the `pg` connection pool remains alive for the lifetime of the NestJS process.
+- Relied on Prisma's documented behavior for long-running applications (no explicit `$disconnect()` needed), which prevents the `Cannot use a pool after calling end on the pool` error during normal API usage.
+
+### Prompt 130
+Add portfolio favorites: heart to add/remove public portfolios from favorites (only when not owner); pencil to open portfolio in builder when owner. If not logged in, show auth modal on heart click, then after login either add favorite or open builder if now owner. On explore list show heart/pencil and favorites count; allow sorting by favorites. Add "My favorites" page in sidebar (like My portfolios) with list of favorited portfolios and ability to unfavorite. When portfolio owner deletes a portfolio, use hard delete with FK cascade so favorites disappear and detail URL shows "portfolio no longer available".

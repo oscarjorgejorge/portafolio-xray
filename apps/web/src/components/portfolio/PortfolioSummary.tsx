@@ -11,6 +11,10 @@ interface PortfolioSummaryProps {
   allocationMode: AllocationMode;
   isValid: boolean;
   isGenerating: boolean;
+  /** Whether there is already a generated X-Ray for the current state */
+  hasGeneratedXRay: boolean;
+  /** Whether the portfolio has unsaved changes compared to its initial state */
+  isDirty: boolean;
   onClearAll: () => void;
   onGenerate: () => void;
   /** Called when user clicks "Save portfolio". Opens auth or save modal. */
@@ -26,6 +30,8 @@ export const PortfolioSummary = memo<PortfolioSummaryProps>(function PortfolioSu
   allocationMode,
   isValid,
   isGenerating,
+  hasGeneratedXRay,
+  isDirty,
   onClearAll,
   onGenerate,
   onSavePortfolio,
@@ -69,7 +75,7 @@ export const PortfolioSummary = memo<PortfolioSummaryProps>(function PortfolioSu
         </Button>
         <Button
           onClick={onGenerate}
-          disabled={!isValid}
+          disabled={!isValid || (!isDirty && hasGeneratedXRay)}
           isLoading={isGenerating}
         >
           {t('generateXray')}

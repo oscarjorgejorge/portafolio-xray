@@ -14,6 +14,7 @@ import { HealthModule } from './health/health.module';
 import { AuthModule } from './auth/auth.module';
 import { MailModule } from './mail/mail.module';
 import { PortfoliosModule } from './portfolios/portfolios.module';
+import { FavoritesModule } from './favorites/favorites.module';
 import { HttpClientModule } from './common/http';
 import { LoggerModule } from './common/logger';
 import {
@@ -69,6 +70,7 @@ import { RequestLoggerMiddleware } from './common/middleware';
     AssetsModule,
     XRayModule,
     PortfoliosModule,
+    FavoritesModule,
   ],
   controllers: [AppController],
   providers: [

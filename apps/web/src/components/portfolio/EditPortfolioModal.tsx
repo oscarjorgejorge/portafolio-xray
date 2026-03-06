@@ -139,9 +139,9 @@ export function EditPortfolioModal({
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder={tSave('descriptionPlaceholder')}
-            rows={3}
+            rows={6}
             maxLength={2000}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-h-[8rem]"
           />
         </div>
         <div className="flex gap-2 justify-end pt-2">

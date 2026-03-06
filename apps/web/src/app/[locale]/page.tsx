@@ -30,6 +30,7 @@ function HomePageContent() {
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const portfolioId = searchParams.get('portfolioId');
+  const initialAllocationModeParam = searchParams.get('allocationMode');
   const resetBuilder = searchParams.get('resetBuilder') === 'true';
 
   const {
@@ -275,6 +276,11 @@ function HomePageContent() {
             initialDescription={portfolio?.description}
             initialIsPublic={portfolio?.isPublic}
             resetBuilder={resetBuilder}
+            initialAllocationMode={
+              initialAllocationModeParam === 'amount' || initialAllocationModeParam === 'percentage'
+                ? (initialAllocationModeParam as 'amount' | 'percentage')
+                : undefined
+            }
           />
         )}
       </div>

@@ -121,3 +121,81 @@ export const SpinnerIcon: React.FC<IconProps> = ({ className = 'h-4 w-4 animate-
     />
   </svg>
 );
+
+/**
+ * Arrow right icon (used for navigation/actions)
+ */
+export const ArrowRightIcon: React.FC<IconProps> = ({ className = 'h-4 w-4' }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+    strokeWidth={2}
+  >
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7M5 12h10" />
+  </svg>
+);
+
+/**
+ * Info icon (circle with \"i\")
+ */
+export const InfoIcon: React.FC<IconProps> = ({ className = 'h-4 w-4' }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+    strokeWidth={2}
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M12 9v6m0-8h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+    />
+  </svg>
+);
+
+/**
+ * Heart outline (favorite not added)
+ */
+export const HeartOutlineIcon: React.FC<IconProps> = ({
+  className = 'h-5 w-5',
+}) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+    strokeWidth={2}
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+    />
+  </svg>
+);
+
+/**
+ * Heart filled (favorited)
+ */
+export const HeartFilledIcon: React.FC<IconProps> = ({
+  className = 'h-5 w-5',
+}) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+    viewBox="0 0 24 24"
+    fill="currentColor"
+  >
+    <path
+      fillRule="evenodd"
+      d="M3.172 5.172a4 4 0 015.656 0L12 6.343l3.172-3.171a4 4 0 115.656 5.656L12 17.657l-8.828-8.829a4 4 0 010-5.656z"
+      clipRule="evenodd"
+    />
+  </svg>
+);

@@ -66,6 +66,7 @@ model User {
   passwordResets     PasswordReset[]
   emailVerifications EmailVerification[]
   portfolios         Portfolio[]
+  favorites         Favorite[]
 
   @@map("users")
 }
@@ -133,7 +134,7 @@ model Portfolio {
   name              String
   description       String?
   isPublic          Boolean  @default(true) @map("is_public")
-  assets            Json     // Array of { morningstarId: string, weight: number }
+  assets            Json     // Array of { morningstarId: string, weight: number, amount?: number }
   xrayShareableUrl  String?  @map("xray_shareable_url")
   xrayMorningstarUrl String? @map("xray_morningstar_url")
   xrayGeneratedAt   DateTime? @map("xray_generated_at")
@@ -141,7 +142,27 @@ model Portfolio {
   updatedAt         DateTime @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  favorites Favorite[]
 
   @@index([userId])
   @@map("portfolios")
+}
+
+// ==========================================
+// V3 Entities - Favorites
+// ==========================================
+
+model Favorite {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  portfolioId String   @map("portfolio_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, portfolioId])
+  @@index([userId])
+  @@index([portfolioId])
+  @@map("favorites")
 }

@@ -11,6 +11,7 @@ const PORTFOLIO_BUILDER_STORAGE_KEY = 'portfolioBuilderState';
 interface UsePortfolioBuilderOptions {
   initialAssets?: PortfolioAsset[];
   reset?: boolean;
+  initialAllocationMode?: AllocationMode;
 }
 
 interface UsePortfolioBuilderReturn {
@@ -56,7 +57,7 @@ interface UsePortfolioBuilderReturn {
     url: string
   ) => void;
   handleGenerate: () => void;
-  handleCopyUrl: () => void;
+  handleCopyUrl: (urlOverride?: string) => void;
   handleClearAll: () => void;
   handleConfirmClearAll: () => void;
   handleOpenPDF: () => void;
@@ -74,6 +75,7 @@ interface UsePortfolioBuilderReturn {
 export function usePortfolioBuilder({
   initialAssets = [],
   reset = false,
+  initialAllocationMode,
 }: UsePortfolioBuilderOptions = {}): UsePortfolioBuilderReturn {
   const [initialState] = useState<{
     assets: PortfolioAsset[];
@@ -89,7 +91,7 @@ export function usePortfolioBuilder({
     if (initialAssets.length > 0) {
       return {
         assets: initialAssets,
-        allocationMode: 'percentage',
+        allocationMode: initialAllocationMode || 'percentage',
       };
     }
 

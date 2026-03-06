@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import dynamic from 'next/dynamic';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { AssetInput } from './AssetInput';
 import { AssetRow } from './AssetRow';
 import { AllocationModeToggle } from './AllocationModeToggle';
@@ -10,13 +10,14 @@ import { PortfolioSummary } from './PortfolioSummary';
 import { ShareableUrlSection } from './ShareableUrlSection';
 import { Card } from '@/components/ui/Card';
 import { Toast } from '@/components/ui/Toast';
-import type { PortfolioAsset } from '@/types';
+import type { PortfolioAsset, AllocationMode } from '@/types';
 import { usePortfolioBuilder } from '@/lib/hooks/usePortfolioBuilder';
 import { useAuth } from '@/lib/auth';
 import { AuthModal, getPendingSavePortfolio, clearPendingSavePortfolio, setPendingSavePortfolio } from '@/components/auth/AuthModal';
 import { SavePortfolioModal } from './SavePortfolioModal';
 import { Button } from '@/components/ui/Button';
 import { SaveChangesModeModal } from './SaveChangesModeModal';
+import { updatePortfolio } from '@/lib/api/portfolios';
 
 // Lazy load modal components - they are only rendered when needed
 const AssetAlternatives = dynamic(
@@ -41,6 +42,7 @@ interface PortfolioBuilderProps {
   initialDescription?: string | null;
   initialIsPublic?: boolean;
   resetBuilder?: boolean;
+  initialAllocationMode?: 'percentage' | 'amount';
 }
 
 type SaveMode = 'create' | 'editCurrent' | 'createNew';
@@ -52,14 +54,17 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
   initialDescription,
   initialIsPublic = true,
   resetBuilder = false,
+  initialAllocationMode,
 }) => {
   const t = useTranslations('portfolio');
   const tSave = useTranslations('savePortfolio');
+  const locale = useLocale();
   const { isAuthenticated, user } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showSavePortfolioModal, setShowSavePortfolioModal] = useState(false);
   const [showSaveSuccessToast, setShowSaveSuccessToast] = useState(false);
   const [saveMode, setSaveMode] = useState<SaveMode>('create');
+  const [hasUserChanges, setHasUserChanges] = useState(false);
 
   const canSavePortfolio = isAuthenticated && user?.emailVerified;
 
@@ -115,13 +120,40 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
     handleCopyUrl,
     handleClearAll,
     handleConfirmClearAll,
-    handleOpenPDF,
     setSelectedAssetForAlternatives,
     setSelectedAssetForManual,
     setShowClearAllConfirmation,
     setShowSuccessToast,
     getAssetById,
-  } = usePortfolioBuilder({ initialAssets, reset: resetBuilder });
+  } = usePortfolioBuilder({ initialAssets, reset: resetBuilder, initialAllocationMode });
+
+  const handleAllocationModeChange = useCallback(
+    (mode: AllocationMode) => {
+      if (mode !== allocationMode) {
+        setHasUserChanges(true);
+      }
+      setAllocationMode(mode);
+    },
+    [allocationMode, setAllocationMode],
+  );
+
+  const handleOpenXRayReport = useCallback(async () => {
+    if (!morningstarUrl) return;
+
+    if (portfolioId && isAuthenticated && user?.emailVerified) {
+      try {
+        await updatePortfolio(portfolioId, {
+          xrayShareableUrl: shareableUrl ?? null,
+          xrayMorningstarUrl: morningstarUrl,
+          xrayGeneratedAt: new Date().toISOString(),
+        });
+      } catch {
+        // Ignore persistence errors; still open the report
+      }
+    }
+
+    window.open(morningstarUrl, '_blank', 'noopener,noreferrer');
+  }, [morningstarUrl, shareableUrl, portfolioId, isAuthenticated, user?.emailVerified]);
 
   const [showSaveModeModal, setShowSaveModeModal] = useState(false);
 
@@ -148,16 +180,19 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
             <div className="flex flex-wrap gap-2 justify-end">
               {portfolioId ? (
                 <Button
-                  variant="secondary"
+                  variant="primary"
                   size="sm"
-                  disabled={!isDirty}
+                  disabled={!hasUserChanges}
+                  className={`focus:ring-0 focus:ring-offset-0 ${
+                    hasUserChanges ? 'animate-pulse' : ''
+                  }`}
                   onClick={() => setShowSaveModeModal(true)}
                 >
                   {tSave('saveChangesButton')}
                 </Button>
               ) : (
                 <Button
-                  variant="secondary"
+                  variant="primary"
                   size="sm"
                   onClick={() => openSaveModal('create')}
                 >
@@ -168,11 +203,14 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
           )}
         </div>
 
-        <AllocationModeToggle mode={allocationMode} onChange={setAllocationMode} />
+        <AllocationModeToggle mode={allocationMode} onChange={handleAllocationModeChange} />
 
         <div className="mb-6">
           <AssetInput
-            onAssetResolved={handleAssetResolved}
+            onAssetResolved={(asset) => {
+              setHasUserChanges(true);
+              handleAssetResolved(asset);
+            }}
             existingAssets={assets}
           />
         </div>
@@ -185,8 +223,15 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
                   key={asset.id}
                   asset={asset}
                   allocationMode={allocationMode}
-                  onWeightChange={handleWeightChange}
-                  onRemove={handleRemove}
+                  totalWeight={totalWeight}
+                  onWeightChange={(id, weight) => {
+                    setHasUserChanges(true);
+                    handleWeightChange(id, weight);
+                  }}
+                  onRemove={(id) => {
+                    setHasUserChanges(true);
+                    handleRemove(id);
+                  }}
                   onAssetUpdated={handleAssetUpdated}
                   onOpenManualInput={(id) => {
                     const assetToEdit = getAssetById(id);
@@ -208,6 +253,8 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
               allocationMode={allocationMode}
               isValid={isValid}
               isGenerating={isGenerating}
+              hasGeneratedXRay={Boolean(shareableUrl || morningstarUrl)}
+              isDirty={isDirty}
               onClearAll={handleClearAll}
               onGenerate={handleGenerate}
             />
@@ -215,12 +262,22 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
             {/* Shareable URL Section - Show after successful generation */}
             {shareableUrl && fullShareableUrl && (
               <ShareableUrlSection
-                fullShareableUrl={fullShareableUrl}
+                fullShareableUrl={
+                  portfolioId && typeof window !== 'undefined'
+                    ? `${window.location.origin}/${locale}/explore/${portfolioId}`
+                    : fullShareableUrl
+                }
                 morningstarUrl={morningstarUrl}
                 copied={copied}
                 copyError={copyError}
-                onCopyUrl={handleCopyUrl}
-                onOpenPDF={handleOpenPDF}
+                onCopyUrl={() => {
+                  const urlToCopy =
+                    portfolioId && typeof window !== 'undefined'
+                      ? `${window.location.origin}/${locale}/explore/${portfolioId}`
+                      : fullShareableUrl;
+                  handleCopyUrl(urlToCopy);
+                }}
+                onOpenPDF={handleOpenXRayReport}
               />
             )}
           </>
@@ -273,7 +330,10 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
       {/* Clear All Confirmation Modal */}
       {showClearAllConfirmation && (
         <ClearAllConfirmation
-          onConfirm={handleConfirmClearAll}
+          onConfirm={() => {
+            setHasUserChanges(true);
+            handleConfirmClearAll();
+          }}
           onCancel={() => setShowClearAllConfirmation(false)}
         />
       )}
@@ -311,7 +371,10 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
       <SavePortfolioModal
         isOpen={showSavePortfolioModal}
         onClose={() => setShowSavePortfolioModal(false)}
-        onSuccess={() => setShowSaveSuccessToast(true)}
+        onSuccess={() => {
+          setHasUserChanges(false);
+          setShowSaveSuccessToast(true);
+        }}
         assets={assets}
         allocationMode={allocationMode}
         portfolioId={portfolioId}

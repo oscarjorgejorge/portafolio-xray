@@ -5,9 +5,10 @@ import {
   Max,
   MaxLength,
   IsNotEmpty,
+  IsOptional,
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { trimUppercase } from '../../common/transforms';
 import { WEIGHT_VALIDATION, INPUT_VALIDATION } from '../../common/constants';
 
@@ -36,4 +37,16 @@ export class PortfolioAssetDto {
   @Max(WEIGHT_VALIDATION.MAX_WEIGHT)
   @Type(() => Number)
   weight!: number;
+
+  @ApiPropertyOptional({
+    description:
+      'Original amount entered by the user (raw value, not a percentage)',
+    example: 1000,
+    minimum: 0,
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Type(() => Number)
+  amount?: number;
 }

@@ -25,6 +25,8 @@ interface InputNumberProps
   suffix?: string;
   /** Select the full value when the input receives focus */
   selectOnFocus?: boolean;
+  /** Maximum number of decimal places (e.g. 2 limits to 33.33) */
+  maxDecimals?: number;
 }
 
 /**
@@ -44,6 +46,7 @@ export const InputNumber = forwardRef<HTMLInputElement, InputNumberProps>(
       size = 'md',
       suffix,
       selectOnFocus = false,
+      maxDecimals,
       className,
       id,
       value,
@@ -88,9 +91,14 @@ export const InputNumber = forwardRef<HTMLInputElement, InputNumberProps>(
           numValue = max;
         }
 
+        if (maxDecimals !== undefined) {
+          const factor = 10 ** maxDecimals;
+          numValue = Math.round(numValue * factor) / factor;
+        }
+
         onChange?.(numValue);
       },
-      [onChange, min, max, allowNegative]
+      [onChange, min, max, allowNegative, maxDecimals]
     );
 
     const sizeClasses = {

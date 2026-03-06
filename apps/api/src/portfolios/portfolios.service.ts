@@ -1,20 +1,34 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreatePortfolioDto, UpdatePortfolioDto } from './dto';
+import {
+  CreatePortfolioDto,
+  UpdatePortfolioDto,
+  FindPublicPortfoliosDto,
+} from './dto';
 import type { AuthenticatedUser } from '../auth/interfaces';
+import { WEIGHT_VALIDATION } from '../common/constants';
 
 export interface PortfolioListItem {
   id: string;
   name: string;
   description: string | null;
   isPublic: boolean;
-  assets: { morningstarId: string; weight: number }[];
+  assets: { morningstarId: string; weight: number; amount?: number }[];
   xrayShareableUrl: string | null;
   xrayMorningstarUrl: string | null;
   xrayGeneratedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface PublicPortfolioListItem extends PortfolioListItem {
+  userName: string;
+  favoritesCount: number;
+  isOwnedByCurrentUser?: boolean;
+  isFavoritedByCurrentUser?: boolean;
+  /** When isFavoritedByCurrentUser is true, the id of the Favorite record for DELETE */
+  favoriteId?: string;
 }
 
 @Injectable()
@@ -68,6 +82,20 @@ export class PortfoliosService {
       updateData.assets = dto.assets as unknown as Prisma.InputJsonValue;
     }
 
+    if (dto.xrayShareableUrl !== undefined) {
+      updateData.xrayShareableUrl = dto.xrayShareableUrl;
+    }
+
+    if (dto.xrayMorningstarUrl !== undefined) {
+      updateData.xrayMorningstarUrl = dto.xrayMorningstarUrl;
+    }
+
+    if (dto.xrayGeneratedAt !== undefined) {
+      updateData.xrayGeneratedAt = dto.xrayGeneratedAt
+        ? new Date(dto.xrayGeneratedAt)
+        : null;
+    }
+
     const portfolio = await this.prisma.portfolio.update({
       where: { id: existing.id },
       data: updateData,
@@ -82,6 +110,157 @@ export class PortfoliosService {
       orderBy: { updatedAt: 'desc' },
     });
     return portfolios.map((p) => this.toListItem(p));
+  }
+
+  async findPublic(
+    filters: FindPublicPortfoliosDto,
+    currentUserId?: string | null,
+  ): Promise<PublicPortfolioListItem[]> {
+    const { name, userName, sortBy = 'recent' } = filters;
+
+    const where: Prisma.PortfolioWhereInput = {
+      isPublic: true,
+    };
+
+    if (name) {
+      where.name = {
+        contains: name,
+        mode: 'insensitive',
+      };
+    }
+
+    if (userName) {
+      where.user = {
+        name: {
+          contains: userName,
+          mode: 'insensitive',
+        },
+      };
+    }
+
+    const orderBy: Prisma.PortfolioOrderByWithRelationInput[] =
+      sortBy === 'favorites'
+        ? [{ favorites: { _count: 'desc' } }, { updatedAt: 'desc' }]
+        : [{ updatedAt: 'desc' }];
+
+    const portfolios = await this.prisma.portfolio.findMany({
+      where,
+      orderBy,
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        _count: {
+          select: { favorites: true },
+        },
+        favorites:
+          currentUserId != null
+            ? {
+                where: { userId: currentUserId },
+                select: { id: true },
+                take: 1,
+              }
+            : false,
+      },
+    });
+
+    const validPortfolios = portfolios.filter((portfolio) =>
+      this.isTotalWeightValid(
+        portfolio.assets as { morningstarId: string; weight: number }[],
+      ),
+    );
+
+    return validPortfolios.map((portfolio) => {
+      const row = portfolio as typeof portfolio & {
+        _count: { favorites: number };
+        favorites?: { id: string }[];
+      };
+      return {
+        ...this.toListItem(portfolio),
+        userName: portfolio.user.name,
+        favoritesCount: row._count?.favorites ?? 0,
+        isOwnedByCurrentUser:
+          currentUserId != null
+            ? portfolio.user.id === currentUserId
+            : undefined,
+        isFavoritedByCurrentUser:
+          currentUserId != null && Array.isArray(row.favorites)
+            ? row.favorites.length > 0
+            : undefined,
+        favoriteId:
+          currentUserId != null &&
+          Array.isArray(row.favorites) &&
+          row.favorites.length > 0
+            ? row.favorites[0].id
+            : undefined,
+      };
+    });
+  }
+
+  async findPublicById(
+    id: string,
+    currentUserId?: string | null,
+  ): Promise<PublicPortfolioListItem | null> {
+    const portfolio = await this.prisma.portfolio.findFirst({
+      where: { id, isPublic: true },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        _count: {
+          select: { favorites: true },
+        },
+        favorites:
+          currentUserId != null
+            ? {
+                where: { userId: currentUserId },
+                select: { id: true },
+              }
+            : false,
+      },
+    });
+
+    if (!portfolio) {
+      return null;
+    }
+
+    const assets = portfolio.assets as {
+      morningstarId: string;
+      weight: number;
+    }[];
+
+    if (!this.isTotalWeightValid(assets)) {
+      return null;
+    }
+
+    const row = portfolio as typeof portfolio & {
+      _count: { favorites: number };
+      favorites?: { id: string }[];
+    };
+
+    return {
+      ...this.toListItem(portfolio),
+      userName: portfolio.user.name,
+      favoritesCount: row._count?.favorites ?? 0,
+      isOwnedByCurrentUser:
+        currentUserId != null ? portfolio.user.id === currentUserId : undefined,
+      isFavoritedByCurrentUser:
+        currentUserId != null && Array.isArray(row.favorites)
+          ? row.favorites.length > 0
+          : undefined,
+      favoriteId:
+        currentUserId != null &&
+        Array.isArray(row.favorites) &&
+        row.favorites.length > 0
+          ? row.favorites[0].id
+          : undefined,
+    };
   }
 
   async findOne(id: string, userId: string): Promise<PortfolioListItem | null> {
@@ -115,12 +294,34 @@ export class PortfoliosService {
       name: portfolio.name,
       description: portfolio.description,
       isPublic: portfolio.isPublic,
-      assets: portfolio.assets as { morningstarId: string; weight: number }[],
+      assets: portfolio.assets as {
+        morningstarId: string;
+        weight: number;
+        amount?: number;
+      }[],
       xrayShareableUrl: portfolio.xrayShareableUrl,
       xrayMorningstarUrl: portfolio.xrayMorningstarUrl,
       xrayGeneratedAt: portfolio.xrayGeneratedAt,
       createdAt: portfolio.createdAt,
       updatedAt: portfolio.updatedAt,
     };
+  }
+
+  private isTotalWeightValid(
+    assets: { morningstarId: string; weight: number; amount?: number }[],
+  ): boolean {
+    if (!assets.length) {
+      return false;
+    }
+
+    const totalWeight = assets.reduce(
+      (sum, asset) => sum + (asset.weight || 0),
+      0,
+    );
+
+    return (
+      Math.abs(totalWeight - WEIGHT_VALIDATION.TARGET_TOTAL) <=
+      WEIGHT_VALIDATION.TOLERANCE
+    );
   }
 }

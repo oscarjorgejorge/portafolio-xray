@@ -28,10 +28,13 @@ export {
   createPortfolio,
   getPortfolios,
   getPortfolio,
+  getPublicPortfolios,
+  getPublicPortfolio,
   deletePortfolio,
   type CreatePortfolioRequest,
   type PortfolioListItem,
   type PortfolioAsset,
+  type PublicPortfolioListItem,
 } from './portfolios';
 
 // Query Keys

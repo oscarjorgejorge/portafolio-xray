@@ -71,7 +71,9 @@
   "allocation": {
     "modeLabel": "Modo de Asignación:",
     "percentage": "Porcentaje",
-    "amount": "Importe"
+    "amount": "Importe",
+    "amountInfoTitle": "Cómo se usan los importes",
+    "amountInfoBody": "En modo Importe calculamos automáticamente los porcentajes a partir del importe total introducido. Al compartir o explorar carteras públicas solo mostramos los porcentajes, nunca los importes. Tus importes originales se guardan y solo tú los ves en el constructor de cartera."
   },
   "clearConfirm": {
     "title": "Limpiar Todos los Activos",
@@ -111,7 +113,9 @@
   },
   "navigation": {
     "home": "Inicio",
-    "myPortfolios": "Mis carteras"
+    "myPortfolios": "Mis carteras",
+    "myFavorites": "Mis favoritos",
+    "explorePortfolios": "Explorar carteras"
   },
   "auth": {
     "login": {
@@ -243,13 +247,32 @@
     "createFirst": "Crea tu primera cartera",
     "openInBuilder": "Abrir en constructor",
     "viewXRay": "Ver X-Ray",
+    "viewDetails": "Ver cartera",
     "edit": "Editar",
     "public": "Pública",
     "private": "Privada",
     "updated": "Actualizado {date}",
     "loadError": "Error al cargar las carteras.",
     "deleteConfirm": "¿Eliminar \"{name}\"? No se puede deshacer.",
-    "editModalTitle": "Editar cartera"
+    "editModalTitle": "Editar cartera",
+    "exploreTitle": "Explorar carteras públicas",
+    "exploreSubtitle": "Descubre carteras públicas creadas por otros usuarios y ábrelas en el constructor.",
+    "filterByNameLabel": "Filtrar por nombre de cartera",
+    "filterByUserLabel": "Filtrar por usuario",
+    "filterByNamePlaceholder": "ej. Cartera ETF tecnológica",
+    "filterByUserPlaceholder": "ej. Oscar",
+    "noPublicPortfolios": "No se encontraron carteras públicas que coincidan con estos filtros.",
+    "publicPortfolioByUser": "Cartera de {userName}",
+    "thisIsYourPortfolio": "Esta es tu cartera",
+    "copyPortfolioLink": "Copiar link de la cartera",
+    "sortByLabel": "Ordenar por",
+    "sortByRecent": "Más recientes",
+    "sortByFavorites": "Más favoritos",
+    "addToFavorites": "Añadir a favoritos",
+    "removeFromFavorites": "Quitar de favoritos",
+    "myFavorites": "Mis favoritos",
+    "noFavorites": "Aún no tienes carteras en favoritos.",
+    "portfolioUnavailable": "Esta cartera ya no está disponible."
   },
   "authModal": {
     "title": "Iniciar sesión o registrarse",

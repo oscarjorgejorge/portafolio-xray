@@ -32,7 +32,7 @@ export interface SavePortfolioModalProps {
 function buildAssetsPayload(
   assets: BuilderPortfolioAsset[],
   allocationMode: AllocationMode
-): { morningstarId: string; weight: number }[] {
+): { morningstarId: string; weight: number; amount?: number }[] {
   const withResolved = assets.filter((a) => a.asset);
   if (allocationMode === 'amount') {
     const totalAmount = withResolved.reduce((sum, a) => sum + (a.weight || 0), 0);
@@ -42,6 +42,7 @@ function buildAssetsPayload(
         totalAmount > 0
           ? (a.weight / totalAmount) * VALIDATION.PERCENTAGE_TOTAL
           : 0,
+      amount: a.weight,
     }));
   }
   return withResolved.map((a) => ({
