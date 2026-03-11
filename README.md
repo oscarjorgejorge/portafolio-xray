@@ -184,6 +184,20 @@ npm run dev
 
 ---
 
+## Example Inputs for Portfolio Construction
+
+You can build a portfolio by combining different identifiers — **ISINs**, **tickers**, or **names**. For example:
+
+- `GB0007716078`
+- `IE00B8449Z10`
+- `NKE` (Nike)
+- `ADBE` (Adobe)
+- `IE00B3XXRP09`
+
+The system will resolve each input to the correct Morningstar ID, validate the assets, and then generate the Morningstar X-Ray URL and a shareable application URL for the resulting portfolio.
+
+---
+
 ## License
 
 MIT License - See `LICENSE` for details.

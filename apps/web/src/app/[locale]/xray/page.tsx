@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, Suspense, useRef } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
+import { useRouter } from '@/i18n/navigation';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
@@ -12,6 +14,8 @@ import { useShareableUrl } from '@/lib/hooks/useShareableUrl';
 import { captureException } from '@/lib/services/errorReporting';
 
 function XRayPageContent() {
+  const t = useTranslations('xray');
+  const tCommon = useTranslations('common');
   const router = useRouter();
   const searchParams = useSearchParams();
   const hasGeneratedRef = useRef(false);
@@ -71,7 +75,7 @@ function XRayPageContent() {
   }, [searchParams, mutate]);
 
   if (generateMutation.isPending) {
-    return <PageLoading message="Generating X-Ray URL..." />;
+    return <PageLoading message={t('generating')} />;
   }
 
   if (generateMutation.isError) {
@@ -80,16 +84,16 @@ function XRayPageContent() {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl lg:max-w-6xl xl:max-w-7xl">
           <Card>
             <Alert variant="error">
-              <p className="font-medium">Error generating X-Ray</p>
+              <p className="font-medium">{t('error')}</p>
               <p className="text-sm mt-1">
                 {generateMutation.error instanceof Error
                   ? generateMutation.error.message
-                  : 'An unexpected error occurred'}
+                  : t('unexpectedError')}
               </p>
             </Alert>
             <div className="mt-4">
               <Button onClick={() => router.push('/')} variant="secondary">
-                Back to Portfolio Builder
+                {t('backToBuilder')}
               </Button>
             </div>
           </Card>
@@ -104,11 +108,11 @@ function XRayPageContent() {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl lg:max-w-6xl xl:max-w-7xl">
           <Card>
             <Alert variant="warning">
-              <p>No portfolio data found in URL.</p>
+              <p>{t('noPortfolioData')}</p>
             </Alert>
             <div className="mt-4">
               <Button onClick={() => router.push('/')} variant="secondary">
-                Back to Portfolio Builder
+                {t('backToBuilder')}
               </Button>
             </div>
           </Card>
@@ -122,20 +126,19 @@ function XRayPageContent() {
       <div className="container mx-auto px-4 max-w-4xl">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-slate-900 mb-2">
-            X-Ray Generated
+            {t('title')}
           </h1>
           <p className="text-slate-700">
-            Your Morningstar X-Ray report is ready. Open the PDF or share the
-            link with others.
+            {t('subtitle')}
           </p>
         </div>
 
         <div className="space-y-6">
-          <Card title="Morningstar X-Ray PDF">
+          <Card title={t('pdfCard.title')}>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Morningstar URL
+                  {t('pdfCard.urlLabel')}
                 </label>
                 <div className="flex gap-2">
                   <input
@@ -149,21 +152,21 @@ function XRayPageContent() {
                     variant="secondary"
                     size="sm"
                   >
-                    {copied ? 'Copied!' : 'Copy'}
+                    {copied ? tCommon('copied') : tCommon('copy')}
                   </Button>
                 </div>
               </div>
               <Button onClick={openMorningstarPdf} className="w-full">
-                Open X-Ray PDF
+                {t('pdfCard.openPdf')}
               </Button>
             </div>
           </Card>
 
-          <Card title="Shareable Link">
+          <Card title={t('shareCard.title')}>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Share this link to recreate the portfolio
+                  {t('shareCard.description')}
                 </label>
                 <div className="flex gap-2">
                   <input
@@ -177,7 +180,7 @@ function XRayPageContent() {
                     variant="secondary"
                     size="sm"
                   >
-                    {copied ? 'Copied!' : 'Copy'}
+                    {copied ? tCommon('copied') : tCommon('copy')}
                   </Button>
                 </div>
               </div>
@@ -189,7 +192,7 @@ function XRayPageContent() {
               onClick={() => router.push('/')}
               variant="secondary"
             >
-              Create New Portfolio
+              {t('createNew')}
             </Button>
           </div>
         </div>
@@ -199,8 +202,10 @@ function XRayPageContent() {
 }
 
 export default function XRayPage() {
+  const tCommon = useTranslations('common');
+  
   return (
-    <Suspense fallback={<PageLoading />}>
+    <Suspense fallback={<PageLoading message={tCommon('loading')} />}>
       <XRayPageContent />
     </Suspense>
   );

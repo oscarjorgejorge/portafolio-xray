@@ -3,13 +3,15 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { ConfigService } from '@nestjs/config';
 import { Cache } from 'cache-manager';
 import { AssetsRepository } from './assets.repository';
-import { MorningstarResolverService } from './resolver';
+import { MorningstarResolverService, PageVerifierService } from './resolver';
 import { IsinEnrichmentService } from './isin-enrichment.service';
+import { MS_ASSET_TYPES } from './resolver/utils/constants';
 import {
   ResolveAssetDto,
   ConfirmAssetDto,
   BatchResolveAssetDto,
   BatchResolveAssetItemDto,
+  AssetTypeDto,
 } from './dto';
 import { Asset, AssetSource, AssetType } from '@prisma/client';
 import {
@@ -42,6 +44,7 @@ export class AssetsService implements IAssetsService {
     private readonly assetsRepository: AssetsRepository,
     private readonly morningstarResolver: MorningstarResolverService,
     private readonly isinEnrichmentService: IsinEnrichmentService,
+    private readonly pageVerifier: PageVerifierService,
     private readonly configService: ConfigService<AppConfig, true>,
   ) {
     const resolutionConfig = this.configService.get('resolution', {
@@ -57,9 +60,16 @@ export class AssetsService implements IAssetsService {
     const identifierType = IdentifierClassifier.classify(input);
     const cacheKey = `${CACHE_CONFIG.ASSET_KEY_PREFIX}${input}`;
 
-    // Step 0: Check in-memory cache first (fastest)
-    const memoryCached =
-      await this.cacheManager.get<ResolveAssetResponse>(cacheKey);
+    // Step 0: Check in-memory cache first (fastest) ONLY for strong identifiers
+    // (ISIN and Morningstar ID). For tickers or free-text we always require
+    // explicit user confirmation, so we skip the cache.
+    const shouldUseCacheForIdentifier =
+      identifierType === IdentifierType.ISIN ||
+      identifierType === IdentifierType.MORNINGSTAR_ID;
+
+    const memoryCached = shouldUseCacheForIdentifier
+      ? await this.cacheManager.get<ResolveAssetResponse>(cacheKey)
+      : null;
     if (memoryCached) {
       this.logger.debug(`[MEMORY CACHE] Hit for: ${input}`);
       return memoryCached;
@@ -104,7 +114,30 @@ export class AssetsService implements IAssetsService {
       const resolution = await this.morningstarResolver.resolve(input);
 
       if (resolution.status === 'resolved' && resolution.morningstarId) {
-        // Auto-save to cache for future lookups
+        // For any input that is NOT a strong identifier (ISIN or Morningstar ID)
+        // - e.g. ticker or free-text like "gold" - always require user confirmation
+        // instead of auto-adding the asset.
+        if (
+          identifierType !== IdentifierType.ISIN &&
+          identifierType !== IdentifierType.MORNINGSTAR_ID
+        ) {
+          const alternatives = this.buildAlternativesFromResults(
+            resolution.allResults,
+            resolution.bestMatch,
+          );
+          this.logger.log(
+            `Match for non-identifier input "${input}" -> requiring confirmation (${alternatives.length} option(s))`,
+          );
+          return {
+            success: false,
+            source: ResolutionSource.MANUAL_REQUIRED,
+            errorCode: ResolutionErrorCode.AMBIGUOUS_MATCH,
+            alternatives,
+            error: `Asset found by name for "${input}". Please confirm it is the correct one.`,
+          };
+        }
+
+        // Auto-save to cache for future lookups (ISIN, Morningstar ID, or Ticker)
         const assetType = this.mapAssetType(
           resolution.bestMatch?.assetType,
           dto.assetType,
@@ -147,6 +180,12 @@ export class AssetsService implements IAssetsService {
         const needsIsinEnrichment =
           !isin && identifierType !== IdentifierType.ISIN;
 
+        // For stocks, we persist the ticker when available.
+        // For funds and ETFs we do NOT store the ticker in the database.
+        const tickerForStock =
+          resolution.verification?.additionalInfo?.ticker ??
+          resolution.bestMatch?.ticker;
+
         const savedAsset = await this.assetsRepository.upsertByMorningstarId({
           isin: isin,
           morningstarId: resolution.morningstarId,
@@ -154,11 +193,7 @@ export class AssetsService implements IAssetsService {
           type: assetType,
           url: resolution.morningstarUrl || '',
           source: AssetSource.web_search,
-          // Prefer ticker from page verification (extracted from URL/title) over API ticker
-          // because Morningstar API sometimes returns garbage tickers (e.g., "cv" instead of "CELH")
-          ticker:
-            resolution.verification?.additionalInfo?.ticker ||
-            resolution.bestMatch?.ticker,
+          ticker: assetType === AssetType.STOCK ? tickerForStock : undefined,
           isinPending: needsIsinEnrichment,
         });
 
@@ -199,16 +234,10 @@ export class AssetsService implements IAssetsService {
         resolution.status === 'needs_review' &&
         resolution.allResults.length > 0
       ) {
-        // Return alternatives for user to pick
-        const alternatives = resolution.allResults
-          .filter((r) => r.morningstarId)
-          .slice(0, this.maxAlternatives)
-          .map((r) => ({
-            morningstarId: r.morningstarId!,
-            name: r.title,
-            url: r.url,
-            score: r.score,
-          }));
+        const alternatives = this.buildAlternativesFromResults(
+          resolution.allResults,
+          resolution.bestMatch,
+        );
 
         return {
           success: false,
@@ -467,22 +496,51 @@ export class AssetsService implements IAssetsService {
   }
 
   async confirm(dto: ConfirmAssetDto): Promise<ResolvedAssetDto> {
+    // If no ticker provided and it's a STOCK, try to extract from page
+    let ticker = dto.ticker;
+    if (!ticker && dto.type === AssetTypeDto.STOCK) {
+      this.logger.log(
+        `[CONFIRM] No ticker provided for STOCK ${dto.morningstarId}, attempting extraction...`,
+      );
+      try {
+        const { verification } =
+          await this.pageVerifier.verifyFundPageWithFallback(
+            dto.morningstarId,
+            '',
+            MS_ASSET_TYPES.STOCK,
+          );
+        if (verification.additionalInfo?.ticker) {
+          ticker = verification.additionalInfo.ticker;
+          this.logger.log(`[CONFIRM] Extracted ticker from page: ${ticker}`);
+        }
+      } catch (error) {
+        this.logger.warn(
+          `[CONFIRM] Failed to extract ticker for ${dto.morningstarId}: ${error}`,
+        );
+      }
+    }
+
+    const isStock = dto.type === AssetTypeDto.STOCK;
+
     // Create or update asset with manual source
-    const asset = await this.assetsRepository.upsertByIsin({
-      isin: dto.isin,
+    // Use upsertByMorningstarId since ISIN may be undefined (e.g., when found by ticker)
+    const asset = await this.assetsRepository.upsertByMorningstarId({
+      isin: dto.isin ?? null,
       morningstarId: dto.morningstarId,
       name: dto.name,
       type: dto.type as AssetType,
       url: dto.url,
       source: AssetSource.manual,
-      ticker: dto.ticker,
+      // Only persist ticker for stocks; funds/ETFs should not store ticker in DB
+      ticker: isStock ? ticker : undefined,
+      isinPending: !dto.isin, // Mark as pending if no ISIN provided
     });
 
     // Invalidate cache for all identifiers (ISIN, Morningstar ID, and ticker)
     await this.invalidateAssetCache({
-      isin: dto.isin,
+      isin: dto.isin ?? undefined,
       morningstarId: dto.morningstarId,
-      ticker: dto.ticker,
+      ticker: asset.ticker,
     });
 
     return toResolvedAssetDto(asset);
@@ -511,6 +569,35 @@ export class AssetsService implements IAssetsService {
       isin,
       morningstarId: asset.morningstarId,
       ticker: asset.ticker,
+    });
+
+    return toResolvedAssetDto(asset);
+  }
+
+  /**
+   * Update ticker for an existing asset (manual entry by user)
+   * Primarily used for stocks where ticker is not automatically resolved
+   * Uses transactional method to ensure atomicity between existence check and update
+   * @param id - Asset UUID
+   * @param ticker - New ticker value
+   * @throws EntityNotFoundException if asset not found (returns 404 automatically)
+   */
+  async updateTicker(id: string, ticker: string): Promise<ResolvedAssetDto> {
+    this.logger.log(`Manually updating ticker for asset ${id}: ${ticker}`);
+
+    // Repository throws EntityNotFoundException (extends NotFoundException)
+    // which is automatically handled by NestJS and returns 404
+    const asset = await this.assetsRepository.updateTickerWithVerification(
+      id,
+      ticker,
+      true, // Mark as manually entered
+    );
+
+    // Invalidate cache for all identifiers
+    await this.invalidateAssetCache({
+      isin: asset.isin,
+      morningstarId: asset.morningstarId,
+      ticker,
     });
 
     return toResolvedAssetDto(asset);
@@ -581,6 +668,60 @@ export class AssetsService implements IAssetsService {
    * @param input - The input that was being resolved
    * @returns Error code and user-friendly message
    */
+  /**
+   * Detect market/exchange from Morningstar URL
+   * Extracts market ID from URL patterns like:
+   * - /es/inversiones/... (Spanish market)
+   * - /en-eu/investments/...?marketID=us (EU market with marketID param)
+   * - /en/investments/... (English market, likely US)
+   */
+  private detectMarketFromUrl(url: string): string | undefined {
+    try {
+      const urlObj = new URL(url);
+
+      // Check for marketID parameter (e.g., ?marketID=us)
+      const marketIdParam = urlObj.searchParams.get('marketID');
+      if (marketIdParam) {
+        return marketIdParam.toUpperCase();
+      }
+
+      // Check URL path for market indicators
+      const path = urlObj.pathname.toLowerCase();
+
+      // Spanish market: /es/inversiones/...
+      if (path.includes('/es/inversiones/')) {
+        return 'ES';
+      }
+
+      // EU market: /en-eu/investments/...
+      if (path.includes('/en-eu/investments/')) {
+        // Try to infer from domain or default to EU
+        return 'EU';
+      }
+
+      // English market: /en/investments/... (often US)
+      if (path.includes('/en/investments/')) {
+        // Check if it's a US domain
+        if (
+          urlObj.hostname.includes('morningstar.com') &&
+          !urlObj.hostname.includes('morningstar.es')
+        ) {
+          return 'US';
+        }
+        return 'GB'; // Default to UK for English
+      }
+
+      // Check domain for market hints
+      if (urlObj.hostname.includes('morningstar.es')) {
+        return 'ES';
+      }
+
+      return undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
   private categorizeResolutionError(
     error: unknown,
     input: string,
@@ -628,5 +769,42 @@ export class AssetsService implements IAssetsService {
       errorCode: ResolutionErrorCode.UNKNOWN,
       message: `Error resolving asset "${input}". Please try again or provide Morningstar ID manually.`,
     };
+  }
+
+  private buildAlternativesFromResults(
+    allResults: {
+      morningstarId: string | null;
+      title: string;
+      url: string;
+      score: number;
+      ticker?: string | null;
+      assetType?: string | null;
+    }[],
+    bestMatch?: {
+      morningstarId: string | null;
+      title: string;
+      url: string;
+      score: number;
+      ticker?: string | null;
+      assetType?: string | null;
+    } | null,
+  ) {
+    const resultsWithId = allResults.filter((r) => r.morningstarId);
+    const sourceResults =
+      resultsWithId.length > 0
+        ? resultsWithId
+        : bestMatch && bestMatch.morningstarId
+          ? [bestMatch]
+          : [];
+
+    return sourceResults.slice(0, this.maxAlternatives).map((r) => ({
+      morningstarId: r.morningstarId!,
+      name: r.title,
+      url: r.url,
+      score: r.score,
+      ticker: r.ticker ?? undefined,
+      assetType: this.mapAssetType(r.assetType ?? undefined),
+      market: this.detectMarketFromUrl(r.url),
+    }));
   }
 }

@@ -46,6 +46,15 @@ export interface IAssetsService {
    * @throws NotFoundException if asset not found
    */
   updateIsin(id: string, isin: string): Promise<ResolvedAssetDto>;
+
+  /**
+   * Update ticker for an existing asset
+   * Used for manual ticker entry, primarily for stocks
+   * @param id - Asset UUID
+   * @param ticker - New ticker value
+   * @throws NotFoundException if asset not found
+   */
+  updateTicker(id: string, ticker: string): Promise<ResolvedAssetDto>;
 }
 
 /**

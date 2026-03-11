@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { UI_FEEDBACK } from '@/lib/constants';
 import { captureException } from '@/lib/services/errorReporting';
 
+const SHAREABLE_URL_STORAGE_KEY = 'shareableUrlState';
+
 interface UseShareableUrlOptions {
   /** Initial shareable URL path (without origin) */
   initialShareableUrl?: string | null;
@@ -57,6 +59,28 @@ export function useShareableUrl({
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState(false);
 
+  // Hydrate from sessionStorage on mount
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    try {
+      const stored = window.sessionStorage.getItem(SHAREABLE_URL_STORAGE_KEY);
+      if (!stored) return;
+
+      const parsed = JSON.parse(stored) as {
+        shareableUrl?: string | null;
+        morningstarUrl?: string | null;
+      };
+
+      if (parsed.shareableUrl || parsed.morningstarUrl) {
+        setShareableUrl(parsed.shareableUrl ?? null);
+        setMorningstarUrl(parsed.morningstarUrl ?? null);
+      }
+    } catch {
+      // Ignore storage errors
+    }
+  }, []);
+
   // Build full URL when shareableUrl changes (client-side only)
   useEffect(() => {
     if (shareableUrl && typeof window !== 'undefined') {
@@ -65,6 +89,28 @@ export function useShareableUrl({
       setFullShareableUrl('');
     }
   }, [shareableUrl]);
+
+  // Persist URLs in sessionStorage so they survive redirects within the session
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    if (!shareableUrl && !morningstarUrl) {
+      window.sessionStorage.removeItem(SHAREABLE_URL_STORAGE_KEY);
+      return;
+    }
+
+    try {
+      window.sessionStorage.setItem(
+        SHAREABLE_URL_STORAGE_KEY,
+        JSON.stringify({
+          shareableUrl,
+          morningstarUrl,
+        })
+      );
+    } catch {
+      // Ignore storage errors
+    }
+  }, [shareableUrl, morningstarUrl]);
 
   // Set both URLs at once
   const setUrls = useCallback(
@@ -142,6 +188,9 @@ export function useShareableUrl({
     setShareableUrl(null);
     setMorningstarUrl(null);
     setFullShareableUrl('');
+    if (typeof window !== 'undefined') {
+      window.sessionStorage.removeItem(SHAREABLE_URL_STORAGE_KEY);
+    }
   }, []);
 
   return {

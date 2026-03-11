@@ -11,6 +11,12 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AssetsModule } from './assets/assets.module';
 import { XRayModule } from './xray/xray.module';
 import { HealthModule } from './health/health.module';
+import { AuthModule } from './auth/auth.module';
+import { MailModule } from './mail/mail.module';
+import { PortfoliosModule } from './portfolios/portfolios.module';
+import { FavoritesModule } from './favorites/favorites.module';
+import { CommentsModule } from './comments/comments.module';
+import { ContactModule } from './contact/contact.module';
 import { HttpClientModule } from './common/http';
 import { LoggerModule } from './common/logger';
 import {
@@ -60,9 +66,15 @@ import { RequestLoggerMiddleware } from './common/middleware';
       },
     ]),
     PrismaModule,
+    MailModule,
     HealthModule,
+    AuthModule,
     AssetsModule,
     XRayModule,
+    PortfoliosModule,
+    FavoritesModule,
+    ContactModule,
+    CommentsModule,
   ],
   controllers: [AppController],
   providers: [

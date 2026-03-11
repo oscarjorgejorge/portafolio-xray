@@ -65,6 +65,25 @@ export class AssetAlternativeDto {
     example: 85,
   })
   score!: number;
+
+  @ApiPropertyOptional({
+    description: 'Asset ticker symbol (if available)',
+    example: 'OPTT',
+  })
+  ticker?: string;
+
+  @ApiPropertyOptional({
+    description: 'Detected asset type (ETF, FUND, STOCK, ETC)',
+    enum: ['ETF', 'FUND', 'STOCK', 'ETC'],
+    example: 'STOCK',
+  })
+  assetType?: string;
+
+  @ApiPropertyOptional({
+    description: 'Primary market/exchange code (e.g., "US", "ES", "LU")',
+    example: 'US',
+  })
+  market?: string;
 }
 
 /**
@@ -121,6 +140,24 @@ export class ResolvedAssetDto {
     example: 'web_search',
   })
   source!: string;
+
+  @ApiPropertyOptional({
+    description: 'Whether ISIN enrichment is pending in the background',
+    example: false,
+  })
+  isinPending?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Whether ISIN was manually entered by user',
+    example: false,
+  })
+  isinManual?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Whether ticker was manually entered by user',
+    example: false,
+  })
+  tickerManual?: boolean;
 }
 
 /**

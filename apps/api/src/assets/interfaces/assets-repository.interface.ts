@@ -92,6 +92,21 @@ export interface IAssetsRepository {
    * @param assetId - Asset UUID
    */
   markIsinEnrichmentComplete(assetId: string): Promise<Asset>;
+
+  /**
+   * Verify asset exists and update ticker atomically using a transaction
+   * This method ensures no race conditions between checking existence and updating
+   * @param assetId - Asset UUID
+   * @param ticker - New ticker value
+   * @param isManual - Whether the ticker was manually entered by user
+   * @returns Updated asset
+   * @throws EntityNotFoundException if asset not found
+   */
+  updateTickerWithVerification(
+    assetId: string,
+    ticker: string,
+    isManual?: boolean,
+  ): Promise<Asset>;
 }
 
 /**
@@ -148,6 +163,7 @@ export interface UpdateAssetData {
   source?: AssetSource;
   isinPending?: boolean;
   isinManual?: boolean;
+  tickerManual?: boolean;
 }
 
 /**

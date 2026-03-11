@@ -61,8 +61,14 @@ export function useIsinPolling({
       // Check if we've reached max attempts
       if (attemptCountRef.current >= maxAttempts) {
         stopPolling();
-        // Still notify with the current state
-        onIsinResolved(updatedAsset);
+        // Notify with a safe snapshot that disables frontend "pending" state
+        // If the backend still reports isinPending=true but we exhausted retries,
+        // force isinPending=false so the UI stops showing the loading spinner
+        // and allows manual ISIN entry instead.
+        onIsinResolved({
+          ...updatedAsset,
+          isinPending: false,
+        });
       }
     } catch (error) {
       captureException(error instanceof Error ? error : new Error('ISIN polling failed'), {

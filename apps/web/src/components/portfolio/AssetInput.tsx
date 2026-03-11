@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { useMutation } from '@tanstack/react-query';
@@ -20,6 +21,7 @@ export const AssetInput: React.FC<AssetInputProps> = ({
   assetTypeHint,
   existingAssets = [],
 }) => {
+  const t = useTranslations('assetInput');
   const [input, setInput] = useState('');
   const [error, setError] = useState<string | null>(null);
   const { checkDuplicate } = useDuplicateCheck(existingAssets);
@@ -33,7 +35,7 @@ export const AssetInput: React.FC<AssetInputProps> = ({
       if (data.success && data.asset) {
         // Check for duplicate before adding
         if (checkDuplicate(trimmedIdentifier, data.asset)) {
-          setError('This asset is already in your portfolio');
+          setError(t('duplicateError'));
           return;
         }
 
@@ -52,7 +54,7 @@ export const AssetInput: React.FC<AssetInputProps> = ({
       } else if (data.alternatives && data.alternatives.length > 0) {
         // Check for duplicate by identifier before adding
         if (checkDuplicate(trimmedIdentifier)) {
-          setError('This asset is already in your portfolio');
+          setError(t('duplicateError'));
           return;
         }
 
@@ -71,7 +73,7 @@ export const AssetInput: React.FC<AssetInputProps> = ({
       } else {
         // Check for duplicate by identifier before adding
         if (checkDuplicate(trimmedIdentifier)) {
-          setError('This asset is already in your portfolio');
+          setError(t('duplicateError'));
           return;
         }
 
@@ -97,13 +99,13 @@ export const AssetInput: React.FC<AssetInputProps> = ({
     e.preventDefault();
     const trimmedInput = input.trim();
     if (!trimmedInput) {
-      setError('Please enter an ISIN, Morningstar ID, or ticker');
+      setError(t('emptyError'));
       return;
     }
 
     // Check for duplicate by identifier before making API call
     if (checkDuplicate(trimmedInput.toUpperCase())) {
-      setError('This asset is already in your portfolio');
+      setError(t('duplicateError'));
       return;
     }
 
@@ -120,7 +122,7 @@ export const AssetInput: React.FC<AssetInputProps> = ({
     >
       <div className="flex-1">
         <Input
-          placeholder="Enter ISIN, Morningstar ID, or ticker (e.g., IE00B4L5Y983)"
+          placeholder={t('placeholder')}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           error={error || undefined}
@@ -130,10 +132,11 @@ export const AssetInput: React.FC<AssetInputProps> = ({
       </div>
       <Button
         type="submit"
+        variant="secondary"
         isLoading={resolveMutation.isPending}
         disabled={!input.trim() || resolveMutation.isPending}
       >
-        Add Asset
+        {t('addAsset')}
       </Button>
     </form>
   );

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen } from '@/test/test-utils';
 import userEvent from '@testing-library/user-event';
 import { PortfolioSummary } from './PortfolioSummary';
 
@@ -9,6 +9,8 @@ describe('PortfolioSummary', () => {
     allocationMode: 'percentage' as const,
     isValid: true,
     isGenerating: false,
+    hasGeneratedXRay: false,
+    isDirty: false,
     onClearAll: vi.fn(),
     onGenerate: vi.fn(),
   };

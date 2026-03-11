@@ -15,6 +15,7 @@ import {
   ResolveAssetDto,
   ConfirmAssetDto,
   UpdateIsinDto,
+  UpdateTickerDto,
   BatchResolveAssetDto,
 } from './dto';
 import {
@@ -152,5 +153,37 @@ export class AssetsController {
     @Body() dto: UpdateIsinDto,
   ): Promise<ResolvedAssetDto> {
     return this.assetsService.updateIsin(id, dto.isin);
+  }
+
+  @Patch(':id/ticker')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Update ticker for an asset',
+    description:
+      'Manually update the ticker symbol for an existing asset. Primarily used for stocks where ticker is not automatically resolved.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Internal asset UUID',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Ticker updated successfully',
+    type: ResolvedAssetDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid UUID format or invalid ticker format',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Asset not found',
+  })
+  async updateTicker(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateTickerDto,
+  ): Promise<ResolvedAssetDto> {
+    return this.assetsService.updateTicker(id, dto.ticker);
   }
 }

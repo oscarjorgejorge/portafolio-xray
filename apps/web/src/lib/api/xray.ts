@@ -23,7 +23,11 @@ export type { GenerateXRayResponse };
 export async function generateXRay(
   assets: XRayAsset[]
 ): Promise<GenerateXRayResponse> {
-  const response = await apiClient.post('/xray/generate', { assets });
+  const response = await apiClient.post<GenerateXRayResponse>(
+    '/xray/generate',
+    { assets }
+  );
+
   return GenerateXRayResponseSchema.parse(response.data);
 }
 

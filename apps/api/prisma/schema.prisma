@@ -21,6 +21,7 @@ model Asset {
   source        AssetSource
   isinPending   Boolean     @default(false) @map("isin_pending") // True when ISIN enrichment is in progress
   isinManual    Boolean     @default(false) @map("isin_manual")  // True when ISIN was manually entered by user
+  tickerManual  Boolean     @default(false) @map("ticker_manual") // True when ticker was manually entered by user
   createdAt     DateTime    @default(now()) @map("created_at")
   updatedAt     DateTime    @updatedAt @map("updated_at")
 
@@ -42,4 +43,161 @@ enum AssetSource {
   manual
   web_search
   imported
+}
+
+// ==========================================
+// V2 Entities - Authentication & Users
+// ==========================================
+
+model User {
+  id            String       @id @default(uuid())
+  email         String       @unique
+  userName      String       @unique @map("user_name")
+  name          String
+  password      String?      // null for OAuth users
+  avatarUrl     String?      @map("avatar_url")
+  provider      AuthProvider
+  emailVerified Boolean      @default(false) @map("email_verified")
+  locale        String       @default("es") // User language preference: 'es' or 'en'
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+  deletedAt     DateTime?    @map("deleted_at")
+  isDeleted     Boolean      @default(false) @map("is_deleted")
+
+  refreshTokens      RefreshToken[]
+  passwordResets     PasswordReset[]
+  emailVerifications EmailVerification[]
+  portfolios         Portfolio[]
+  favorites          Favorite[]
+  comments           Comment[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  token     String    @unique
+  userId    String    @map("user_id")
+  userAgent String?   @map("user_agent") // Browser/device info
+  ipAddress String?   @map("ip_address")
+  expiresAt DateTime  @map("expires_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  revokedAt DateTime? @map("revoked_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+model PasswordReset {
+  id        String    @id @default(uuid())
+  token     String    @unique
+  userId    String    @map("user_id")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@map("password_resets")
+}
+
+model EmailVerification {
+  id        String    @id @default(uuid())
+  token     String    @unique
+  userId    String    @map("user_id")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@map("email_verifications")
+}
+
+enum AuthProvider {
+  email
+  google
+}
+
+// ==========================================
+// V2 Entities - Saved Portfolios
+// ==========================================
+
+model Portfolio {
+  id                String   @id @default(uuid())
+  userId            String   @map("user_id")
+  name              String
+  description       String?
+  isPublic          Boolean  @default(true) @map("is_public")
+  assets            Json     // Array of { morningstarId: string, weight: number, amount?: number }
+  xrayShareableUrl  String?  @map("xray_shareable_url")
+  xrayMorningstarUrl String? @map("xray_morningstar_url")
+  xrayGeneratedAt   DateTime? @map("xray_generated_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  deletedAt         DateTime? @map("deleted_at")
+  isDeleted         Boolean   @default(false) @map("is_deleted")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  favorites Favorite[]
+  comments  Comment[]
+
+  @@index([userId])
+  @@map("portfolios")
+}
+
+// ==========================================
+// V3 Entities - Favorites
+// ==========================================
+
+model Favorite {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  portfolioId String   @map("portfolio_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, portfolioId])
+  @@index([userId])
+  @@index([portfolioId])
+  @@map("favorites")
+}
+
+model Comment {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  portfolioId String   @map("portfolio_id")
+  content     String
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@index([portfolioId])
+  @@index([userId])
+  @@map("comments")
+}
+
+// ==========================================
+// V4 Entities - System Counters
+// ==========================================
+
+model AnonymizedUserSequence {
+  id        Int      @id @default(1)
+  nextValue Int      @default(0) @map("next_value")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("anonymized_user_sequence")
 }

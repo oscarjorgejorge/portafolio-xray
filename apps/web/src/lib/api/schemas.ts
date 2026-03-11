@@ -17,8 +17,11 @@ export const AssetSchema = z.object({
   source: z.enum(['manual', 'web_search', 'imported']),
   isinPending: z.boolean().optional(),
   isinManual: z.boolean().optional(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
+  tickerManual: z.boolean().optional(),
+  // Note: createdAt/updatedAt are intentionally excluded from API responses
+  // by the backend mapper to avoid exposing internal database fields
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
 });
 
 export const AlternativeAssetSchema = z.object({
@@ -26,6 +29,9 @@ export const AlternativeAssetSchema = z.object({
   name: z.string(),
   url: z.string(),
   score: z.number(),
+  ticker: z.string().optional(),
+  assetType: AssetTypeSchema.optional(),
+  market: z.string().optional(),
 });
 
 // ============================================

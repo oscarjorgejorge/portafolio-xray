@@ -19,6 +19,9 @@ export function toResolvedAssetDto(asset: Asset): ResolvedAssetDto {
     type: asset.type,
     url: asset.url,
     source: asset.source,
+    isinPending: asset.isinPending,
+    isinManual: asset.isinManual,
+    tickerManual: asset.tickerManual,
   };
 }
 

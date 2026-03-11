@@ -48,6 +48,35 @@ export const envSchema = z.object({
   CIRCUIT_RESET_TIMEOUT_MS: z.coerce.number().min(1000).default(30000),
   /** Number of successes in half-open state before closing the circuit */
   CIRCUIT_SUCCESS_THRESHOLD: z.coerce.number().min(1).max(10).default(2),
+
+  // ==========================================
+  // Authentication (V2)
+  // ==========================================
+
+  // JWT Configuration
+  JWT_SECRET: z
+    .string()
+    .min(32, 'JWT_SECRET must be at least 32 characters for security'),
+  JWT_ACCESS_EXPIRATION: z.string().default('15m'), // 15 minutes
+  JWT_REFRESH_EXPIRATION: z.string().default('7d'), // 7 days
+
+  // Google OAuth (optional - only required if using Google login)
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
+  GOOGLE_CALLBACK_URL: z.string().url().optional(),
+
+  // Email Service (Resend)
+  RESEND_API_KEY: z.string().optional(),
+  EMAIL_FROM: z.string().email().default('noreply@xrayportfolio.com'),
+  RESEND_TEMPLATE_VERIFICATION_ID: z.string().default('email-verification'),
+  RESEND_TEMPLATE_PASSWORD_RESET_ID: z.string().default('password-reset'),
+  RESEND_TEMPLATE_CONTACT_ID: z.string().default('contacto'),
+
+  // Contact form recipient (defaults to product owner email)
+  CONTACT_EMAIL: z.string().email().default('oscar.jorge.jorge@gmail.com'),
+
+  // Frontend URL (for email links)
+  FRONTEND_URL: z.string().url().default('http://localhost:3000'),
 });
 
 /**

@@ -13,6 +13,10 @@ import { IdentifierClassifier } from '../utils/identifier-classifier';
 @ValidatorConstraint({ name: 'isValidIsin', async: false })
 export class IsValidIsinConstraint implements ValidatorConstraintInterface {
   validate(value: unknown): boolean {
+    // undefined/null are not valid ISINs; optionality is handled by @IsOptional() which skips this validator
+    if (value === undefined || value === null) {
+      return false;
+    }
     if (typeof value !== 'string') {
       return false;
     }

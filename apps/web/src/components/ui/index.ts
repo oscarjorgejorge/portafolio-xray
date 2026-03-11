@@ -5,6 +5,7 @@ export { Card } from './Card';
 export { ErrorBoundary } from './ErrorBoundary';
 export { Input } from './Input';
 export { InputNumber } from './InputNumber';
+export { PasswordInput } from './PasswordInput';
 export { Modal } from './Modal';
 export { PageLoading } from './PageLoading';
 export { ScreenReaderAnnounce, useScreenReaderAnnounce } from './ScreenReaderAnnounce';

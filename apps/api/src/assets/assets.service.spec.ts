@@ -4,7 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { Cache } from 'cache-manager';
 import { AssetsService } from './assets.service';
 import { AssetsRepository } from './assets.repository';
-import { MorningstarResolverService } from './resolver';
+import { MorningstarResolverService, PageVerifierService } from './resolver';
 import { IsinEnrichmentService } from './isin-enrichment.service';
 import { AssetSource, AssetType } from '@prisma/client';
 import { ResolutionSource, ResolutionErrorCode } from './types';
@@ -25,6 +25,7 @@ const createMockAsset = (overrides = {}) => ({
   source: AssetSource.web_search,
   isinPending: false,
   isinManual: false,
+  tickerManual: false,
   createdAt: new Date(),
   updatedAt: new Date(),
   ...overrides,
@@ -96,6 +97,10 @@ describe('AssetsService', () => {
       enrichIsinInBackground: jest.fn(),
     } as unknown as jest.Mocked<IsinEnrichmentService>;
 
+    const pageVerifier = {
+      verifyFundPageWithFallback: jest.fn(),
+    } as unknown as jest.Mocked<PageVerifierService>;
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AssetsService,
@@ -103,6 +108,7 @@ describe('AssetsService', () => {
         { provide: AssetsRepository, useValue: repository },
         { provide: MorningstarResolverService, useValue: morningstarResolver },
         { provide: IsinEnrichmentService, useValue: isinEnrichment },
+        { provide: PageVerifierService, useValue: pageVerifier },
         {
           provide: ConfigService,
           useValue: {
@@ -212,23 +218,23 @@ describe('AssetsService', () => {
           }),
           confidence: 0.95,
           allResults: [],
-          input: 'Vanguard Global',
-          inputType: IdentifierType.FREE_TEXT,
-          normalizedInput: 'VANGUARD GLOBAL',
+          input: 'IE00B4L5Y983',
+          inputType: IdentifierType.ISIN,
+          normalizedInput: 'IE00B4L5Y983',
           timestamp: new Date().toISOString(),
         });
 
         const savedAsset = createMockAsset({ morningstarId: 'F00000THA5' });
         repository.upsertByMorningstarId.mockResolvedValue(savedAsset);
 
-        const result = await service.resolve({ input: 'Vanguard Global' });
+        const result = await service.resolve({ input: 'IE00B4L5Y983' });
 
         expect(result.success).toBe(true);
         expect(result.source).toBe(ResolutionSource.RESOLVED);
         expect(repository.upsertByMorningstarId).toHaveBeenCalled();
       });
 
-      it('should trigger ISIN enrichment when no ISIN found', async () => {
+      it('should trigger ISIN enrichment when no ISIN found for Morningstar ID', async () => {
         cacheManager.get.mockResolvedValue(null);
         repository.findByIsin.mockResolvedValue(null);
         repository.findByMorningstarId.mockResolvedValue(null);
@@ -244,9 +250,9 @@ describe('AssetsService', () => {
           }),
           confidence: 0.9,
           allResults: [],
-          input: 'Some Fund',
-          inputType: IdentifierType.FREE_TEXT,
-          normalizedInput: 'SOME FUND',
+          input: '0P0000YXJO',
+          inputType: IdentifierType.MORNINGSTAR_ID,
+          normalizedInput: '0P0000YXJO',
           timestamp: new Date().toISOString(),
         });
 
@@ -256,7 +262,7 @@ describe('AssetsService', () => {
         });
         repository.upsertByMorningstarId.mockResolvedValue(savedAsset);
 
-        const result = await service.resolve({ input: 'Some Fund' });
+        const result = await service.resolve({ input: '0P0000YXJO' });
 
         expect(result.isinPending).toBe(true);
         expect(isinEnrichment.enrichIsinInBackground).toHaveBeenCalledWith(
@@ -265,7 +271,7 @@ describe('AssetsService', () => {
         );
       });
 
-      it('should reject invalid ISIN candidates (garbage from API)', async () => {
+      it('should reject invalid ISIN candidates (garbage from API) for Morningstar ID input', async () => {
         cacheManager.get.mockResolvedValue(null);
         repository.findByIsin.mockResolvedValue(null);
         repository.findByMorningstarId.mockResolvedValue(null);
@@ -281,9 +287,9 @@ describe('AssetsService', () => {
           }),
           confidence: 0.9,
           allResults: [],
-          input: 'Some Stock',
-          inputType: IdentifierType.FREE_TEXT,
-          normalizedInput: 'SOME STOCK',
+          input: '0P0000YXJO',
+          inputType: IdentifierType.MORNINGSTAR_ID,
+          normalizedInput: '0P0000YXJO',
           timestamp: new Date().toISOString(),
         });
 
@@ -293,7 +299,7 @@ describe('AssetsService', () => {
         });
         repository.upsertByMorningstarId.mockResolvedValue(savedAsset);
 
-        await service.resolve({ input: 'Some Stock' });
+        await service.resolve({ input: '0P0000YXJO' });
 
         // Should save with null ISIN (rejecting the garbage)
         expect(repository.upsertByMorningstarId).toHaveBeenCalledWith(
@@ -494,7 +500,7 @@ describe('AssetsService', () => {
   describe('confirm', () => {
     it('should create/update asset with manual source', async () => {
       const mockAsset = createMockAsset({ source: AssetSource.manual });
-      repository.upsertByIsin.mockResolvedValue(mockAsset);
+      repository.upsertByMorningstarId.mockResolvedValue(mockAsset);
 
       const result = await service.confirm({
         isin: 'IE00B4L5Y983',
@@ -505,6 +511,7 @@ describe('AssetsService', () => {
       });
 
       expect(result.source).toBe(AssetSource.manual);
+      expect(repository.upsertByMorningstarId).toHaveBeenCalled();
       expect(cacheManager.del).toHaveBeenCalled();
     });
   });

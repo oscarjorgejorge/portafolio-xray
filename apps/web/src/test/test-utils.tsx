@@ -1,6 +1,8 @@
 import React, { ReactElement } from 'react';
 import { render, RenderOptions } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { NextIntlClientProvider } from 'next-intl';
+import enMessages from '../../messages/en.json';
 
 /**
  * Create a fresh QueryClient for testing
@@ -27,10 +29,12 @@ interface AllProvidersProps {
   children: React.ReactNode;
 }
 
-function AllProviders({ children }: AllProvidersProps) {
+export function AllProviders({ children }: AllProvidersProps) {
   const queryClient = createTestQueryClient();
   return (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    <NextIntlClientProvider locale="en" messages={enMessages}>
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    </NextIntlClientProvider>
   );
 }
 
