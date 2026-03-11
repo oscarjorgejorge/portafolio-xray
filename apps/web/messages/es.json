@@ -26,7 +26,7 @@
     "error": "Error al generar X-Ray",
     "unexpectedError": "Ocurrió un error inesperado",
     "noPortfolioData": "No se encontraron datos de cartera en la URL.",
-    "backToBuilder": "Volver al Constructor de Cartera",
+    "backToBuilder": "Crea tu cartera",
     "createNew": "Crear Nueva Cartera",
     "pdfCard": {
       "title": "PDF X-Ray de Morningstar",
@@ -116,7 +116,7 @@
     "switchLanguage": "Cambiar idioma"
   },
   "navigation": {
-    "home": "Inicio",
+    "home": "Crea tu cartera",
     "myPortfolios": "Mis carteras",
     "myFavorites": "Mis favoritos",
     "explorePortfolios": "Explorar carteras",
@@ -264,7 +264,7 @@
   },
   "portfolios": {
     "title": "Mis carteras",
-    "backToBuilder": "Volver al constructor",
+    "backToBuilder": "Crea tu cartera",
     "empty": "Aún no tienes carteras guardadas.",
     "signInToViewPortfolios": "Inicia sesión para ver tus carteras.",
     "createFirst": "Crea tu primera cartera",
