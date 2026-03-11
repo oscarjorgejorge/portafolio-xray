@@ -70,7 +70,8 @@
   "shareable": {
     "title": "Enlace Compartible",
     "description": "Comparte este enlace para recrear la cartera",
-    "viewReport": "Ver Informe X-Ray"
+    "viewReport": "Ver Informe X-Ray",
+    "privateHint": "Haz pública la cartera para obtener un enlace compartible."
   },
   "allocation": {
     "modeLabel": "Modo de Asignación:",

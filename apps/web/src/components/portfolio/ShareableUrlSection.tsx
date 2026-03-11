@@ -10,6 +10,8 @@ type CopyState = 'idle' | 'copied' | 'error';
 interface ShareableUrlSectionProps {
   fullShareableUrl: string;
   morningstarUrl: string | null;
+  /** Whether the portfolio is public (controls share availability) */
+  isPublic: boolean;
   copied: boolean;
   copyError?: boolean;
   onCopyUrl: () => void;
@@ -23,6 +25,7 @@ interface ShareableUrlSectionProps {
 export const ShareableUrlSection = memo<ShareableUrlSectionProps>(function ShareableUrlSection({
   fullShareableUrl,
   morningstarUrl,
+  isPublic,
   copied,
   copyError = false,
   onCopyUrl,
@@ -46,6 +49,7 @@ export const ShareableUrlSection = memo<ShareableUrlSectionProps>(function Share
   }[copyState];
 
   const copyButtonVariant = copyState === 'error' ? 'danger' : 'secondary';
+  const isShareDisabled = !isPublic;
 
   return (
     <div className="mt-3 pt-4 border-t border-border">
@@ -66,6 +70,7 @@ export const ShareableUrlSection = memo<ShareableUrlSectionProps>(function Share
               onClick={onCopyUrl}
               variant={copyButtonVariant}
               size="sm"
+              disabled={isShareDisabled}
               aria-live="polite"
             >
               {copyButtonText}
@@ -79,6 +84,11 @@ export const ShareableUrlSection = memo<ShareableUrlSectionProps>(function Share
           <p className="text-xs text-muted-foreground">
             {t('description')}
           </p>
+          {isShareDisabled && (
+            <p className="text-xs text-amber-600 mt-1">
+              {t('privateHint')}
+            </p>
+          )}
         </div>
         <Button
           onClick={onOpenPDF}
