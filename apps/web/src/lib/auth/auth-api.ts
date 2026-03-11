@@ -93,6 +93,15 @@ export const authApi = {
   },
 
   /**
+   * Delete current user account (soft delete + anonymization on server).
+   * Clears tokens locally after successful deletion.
+   */
+  async deleteAccount(): Promise<void> {
+    await apiClient.delete('/auth/me');
+    tokenStorage.clearTokens();
+  },
+
+  /**
    * Logout from all devices
    */
   async logoutAll(): Promise<void> {

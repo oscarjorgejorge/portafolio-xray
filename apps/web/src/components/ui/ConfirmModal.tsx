@@ -36,7 +36,14 @@ export function ConfirmModal({
 }: ConfirmModalProps) {
   if (!isOpen) return null;
 
-  const confirmVariant = variant === 'danger' ? 'danger' : variant === 'primary' ? 'primary' : 'secondary';
+  let confirmVariant: ConfirmModalVariant;
+  if (variant === 'danger') {
+    confirmVariant = 'danger';
+  } else if (variant === 'primary') {
+    confirmVariant = 'primary';
+  } else {
+    confirmVariant = 'secondary';
+  }
 
   return (
     <Modal

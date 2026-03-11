@@ -36,6 +36,8 @@ const mockUser = {
   locale: 'es',
   createdAt: new Date(),
   updatedAt: new Date(),
+  deletedAt: null,
+  isDeleted: false,
 };
 
 const mockUnverifiedUser = {

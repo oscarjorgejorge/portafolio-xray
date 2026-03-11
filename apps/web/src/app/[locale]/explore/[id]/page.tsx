@@ -516,14 +516,16 @@ function CommentsSection({
         </div>
       </form>
 
-      {isLoading ? (
+      {isLoading && (
         <div className="flex items-center gap-2 text-sm text-slate-500">
           <Spinner size="sm" className="text-slate-400" />
           <span>{tCommon('loading')}</span>
         </div>
-      ) : comments.length === 0 ? (
+      )}
+      {!isLoading && comments.length === 0 && (
         <p className="text-sm text-slate-500">{tComments('empty')}</p>
-      ) : (
+      )}
+      {!isLoading && comments.length > 0 && (
         <ul className="space-y-3">
           {comments.map((comment) => (
             <li

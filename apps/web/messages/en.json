@@ -333,7 +333,13 @@
     "setPasswordError": "Failed to set password.",
     "logout": "Log out",
     "signInToViewProfile": "Sign in to view your profile.",
-    "backToHome": "Back to Home"
+    "backToHome": "Back to Home",
+    "deleteAccount": "Delete account",
+    "deleteAccountTitle": "Delete your account",
+    "deleteAccountMessage": "If you delete your account, you will permanently lose access to your saved portfolios and any associated data. This action cannot be undone.",
+    "deleteAccountWarning": "All your portfolios will stop being visible to anyone and your personal data will be anonymized, but some technical records may remain for internal purposes.",
+    "deleteAccountConfirm": "Yes, delete my account",
+    "deleteAccountError": "Failed to delete your account. Please try again."
   },
   "password": {
     "title": "Password requirements",

@@ -107,7 +107,7 @@ export function AuthModal({ isOpen, onClose, onAuthSuccess, initialTab: initialT
         setIsLoading(false);
       }
     },
-    [login, loginEmail, loginPassword, onAuthSuccess, tLogin, user?.emailVerified]
+    [login, loginEmail, loginPassword, onAuthSuccess, tLogin, tValidation, user?.emailVerified]
   );
 
   const handleRegisterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -161,7 +161,7 @@ export function AuthModal({ isOpen, onClose, onAuthSuccess, initialTab: initialT
         setIsLoading(false);
       }
     },
-    [getRegisterErrorMessage, register, registerData, tRegister]
+    [getRegisterErrorMessage, register, registerData, tRegister, tValidation]
   );
 
   const handleGoogleLogin = () => {
@@ -431,11 +431,14 @@ export function AuthModal({ isOpen, onClose, onAuthSuccess, initialTab: initialT
     );
   };
 
-  const modalTitle = registerSuccess
-    ? tAuthModal('checkEmail')
-    : tab === 'forgotPassword'
-      ? tForgot('title')
-      : tAuthModal('title');
+  let modalTitle: string;
+  if (registerSuccess) {
+    modalTitle = tAuthModal('checkEmail');
+  } else if (tab === 'forgotPassword') {
+    modalTitle = tForgot('title');
+  } else {
+    modalTitle = tAuthModal('title');
+  }
 
   return (
     <Modal

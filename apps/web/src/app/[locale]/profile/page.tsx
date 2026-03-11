@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { Link, useRouter } from '@/i18n/navigation';
 import { useAuth } from '@/lib/auth';
 import { useAuthModal } from '@/lib/auth/AuthModalContext';
+import { clearPendingSavePortfolio } from '@/components/auth/AuthModal';
 import { ApiError } from '@/lib/api/client';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -26,6 +27,7 @@ export default function ProfilePage() {
     setPassword,
     changePassword,
     logout,
+    deleteAccount,
   } = useAuth();
   const { openAuthModal } = useAuthModal();
   const didOpenAuthRef = useRef(false);
@@ -46,6 +48,10 @@ export default function ProfilePage() {
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   // Sync form from user
   useEffect(() => {
@@ -159,6 +165,22 @@ export default function ProfilePage() {
   const handleLogout = async () => {
     await logout();
     router.push('/');
+  };
+
+  const handleConfirmDeleteAccount = async () => {
+    setDeleteError('');
+    setIsDeletingAccount(true);
+    try {
+      await deleteAccount();
+      clearPendingSavePortfolio();
+      setShowDeleteModal(false);
+      router.replace('/');
+    } catch (err) {
+      setDeleteError(
+        err instanceof Error ? err.message : t('deleteAccountError'),
+      );
+      setIsDeletingAccount(false);
+    }
   };
 
   if (authLoading || !user) {
@@ -300,6 +322,14 @@ export default function ProfilePage() {
           >
             {t('logout')}
           </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => setShowDeleteModal(true)}
+            className="w-full text-red-700 hover:text-red-800 hover:bg-red-50 font-semibold"
+          >
+            {t('deleteAccount')}
+          </Button>
         </div>
       </div>
 
@@ -363,6 +393,44 @@ export default function ProfilePage() {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          if (isDeletingAccount) return;
+          setShowDeleteModal(false);
+          setDeleteError('');
+        }}
+        title={t('deleteAccountTitle')}
+        showCloseButton
+      >
+        <div className="space-y-4">
+          {deleteError && <Alert variant="error">{deleteError}</Alert>}
+          <p className="text-sm text-gray-700">
+            {t('deleteAccountMessage')}
+          </p>
+          <div className="flex gap-2 justify-end pt-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setShowDeleteModal(false)}
+              disabled={isDeletingAccount}
+            >
+              {tCommon('cancel')}
+            </Button>
+            <Button
+              type="button"
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={handleConfirmDeleteAccount}
+              disabled={isDeletingAccount}
+            >
+              {isDeletingAccount
+                ? tCommon('loading')
+                : t('deleteAccountConfirm')}
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

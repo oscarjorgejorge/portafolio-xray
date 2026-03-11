@@ -4,6 +4,7 @@ import {
   Get,
   Put,
   Patch,
+  Delete,
   Body,
   UseGuards,
   Req,
@@ -683,5 +684,20 @@ export class AuthController {
       message: 'Language preference updated successfully',
       user: updatedUser,
     };
+  }
+
+  @Delete('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: 'Delete current user account',
+    description:
+      'Soft deletes the current user account, anonymizes personal data, and hides all associated portfolios. From the user perspective this is irreversible.',
+  })
+  @ApiResponse({ status: 204, description: 'Account deleted' })
+  @ApiResponse({ status: 401, description: 'Not authenticated' })
+  async deleteAccount(@CurrentUser() user: AuthenticatedUser) {
+    await this.authService.deleteAccount(user.id);
   }
 }

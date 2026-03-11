@@ -51,14 +51,14 @@ export class AuthRepository {
   // ==========================================
 
   async findUserById(id: string): Promise<User | null> {
-    return this.prisma.user.findUnique({
-      where: { id },
+    return this.prisma.user.findFirst({
+      where: { id, isDeleted: false },
     });
   }
 
   async findUserByEmail(email: string): Promise<User | null> {
-    return this.prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
+    return this.prisma.user.findFirst({
+      where: { email: email.toLowerCase(), isDeleted: false },
     });
   }
 
@@ -79,8 +79,8 @@ export class AuthRepository {
       return null;
     }
 
-    return this.prisma.user.findUnique({
-      where: { userName: normalizedUserName },
+    return this.prisma.user.findFirst({
+      where: { userName: normalizedUserName, isDeleted: false },
     });
   }
 
@@ -155,6 +155,48 @@ export class AuthRepository {
     return this.prisma.user.update({
       where: { id: userId },
       data: { emailVerified: true },
+    });
+  }
+
+  /**
+   * Soft delete a user and hide all their portfolios.
+   * - Marks user as isDeleted=true and anonymizes personal data.
+   * - Marks all portfolios for that user as isDeleted=true and isPublic=false.
+   */
+  async softDeleteUserAndPortfolios(userId: string): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      // Get global anonymized user index
+      const seq = await tx.anonymizedUserSequence.upsert({
+        where: { id: 1 },
+        update: { nextValue: { increment: 1 } },
+        create: { id: 1, nextValue: 1 },
+      });
+      const anonymizedIndex = seq.nextValue;
+
+      // Anonymize and soft delete user
+      await tx.user.update({
+        where: { id: userId },
+        data: {
+          email: `anonymous_email_${anonymizedIndex}@mail.com`,
+          userName: `anonymous_user_name_${anonymizedIndex}`,
+          name: `anonymous_name_${anonymizedIndex}`,
+          avatarUrl: null,
+          password: null,
+          emailVerified: false,
+          isDeleted: true,
+          deletedAt: new Date(),
+        },
+      });
+
+      // Soft delete and hide all portfolios of this user
+      await tx.portfolio.updateMany({
+        where: { userId },
+        data: {
+          isPublic: false,
+          isDeleted: true,
+          deletedAt: new Date(),
+        },
+      });
     });
   }
 

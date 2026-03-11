@@ -730,6 +730,27 @@ export class AuthService {
   }
 
   // ==========================================
+  // Account Deletion
+  // ==========================================
+
+  /**
+   * Soft delete a user account and anonymize personal data.
+   * From the user's perspective this is irreversible.
+   */
+  async deleteAccount(userId: string): Promise<void> {
+    const user = await this.authRepository.findUserById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Soft delete user and hide portfolios
+    await this.authRepository.softDeleteUserAndPortfolios(userId);
+
+    // Revoke all refresh tokens so tokens cannot be reused
+    await this.authRepository.revokeAllUserRefreshTokens(userId);
+  }
+
+  // ==========================================
   // Private Helper Methods
   // ==========================================
 

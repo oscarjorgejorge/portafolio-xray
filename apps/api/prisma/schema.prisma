@@ -61,6 +61,8 @@ model User {
   locale        String       @default("es") // User language preference: 'es' or 'en'
   createdAt     DateTime     @default(now()) @map("created_at")
   updatedAt     DateTime     @updatedAt @map("updated_at")
+  deletedAt     DateTime?    @map("deleted_at")
+  isDeleted     Boolean      @default(false) @map("is_deleted")
 
   refreshTokens      RefreshToken[]
   passwordResets     PasswordReset[]
@@ -141,6 +143,8 @@ model Portfolio {
   xrayGeneratedAt   DateTime? @map("xray_generated_at")
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
+  deletedAt         DateTime? @map("deleted_at")
+  isDeleted         Boolean   @default(false) @map("is_deleted")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   favorites Favorite[]
@@ -183,4 +187,17 @@ model Comment {
   @@index([portfolioId])
   @@index([userId])
   @@map("comments")
+}
+
+// ==========================================
+// V4 Entities - System Counters
+// ==========================================
+
+model AnonymizedUserSequence {
+  id        Int      @id @default(1)
+  nextValue Int      @default(0) @map("next_value")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("anonymized_user_sequence")
 }

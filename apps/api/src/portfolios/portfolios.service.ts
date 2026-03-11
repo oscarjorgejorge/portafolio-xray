@@ -106,7 +106,7 @@ export class PortfoliosService {
 
   async findAllByUser(user: AuthenticatedUser): Promise<PortfolioListItem[]> {
     const portfolios = await this.prisma.portfolio.findMany({
-      where: { userId: user.id },
+      where: { userId: user.id, isDeleted: false },
       orderBy: { updatedAt: 'desc' },
     });
     return portfolios.map((p) => this.toListItem(p));
@@ -118,23 +118,28 @@ export class PortfoliosService {
   ): Promise<PublicPortfolioListItem[]> {
     const { name, userName, sortBy = 'recent' } = filters;
 
+    // Base user filter: only non-deleted users
+    const userWhere: Prisma.UserWhereInput = {
+      isDeleted: false,
+    };
+
+    if (userName) {
+      userWhere.name = {
+        contains: userName,
+        mode: 'insensitive',
+      };
+    }
+
     const where: Prisma.PortfolioWhereInput = {
       isPublic: true,
+      isDeleted: false,
+      user: { is: userWhere },
     };
 
     if (name) {
       where.name = {
         contains: name,
         mode: 'insensitive',
-      };
-    }
-
-    if (userName) {
-      where.user = {
-        name: {
-          contains: userName,
-          mode: 'insensitive',
-        },
       };
     }
 
@@ -205,7 +210,16 @@ export class PortfoliosService {
     currentUserId?: string | null,
   ): Promise<PublicPortfolioListItem | null> {
     const portfolio = await this.prisma.portfolio.findFirst({
-      where: { id, isPublic: true },
+      where: {
+        id,
+        isPublic: true,
+        isDeleted: false,
+        user: {
+          is: {
+            isDeleted: false,
+          },
+        },
+      },
       include: {
         user: {
           select: {
@@ -265,7 +279,7 @@ export class PortfoliosService {
 
   async findOne(id: string, userId: string): Promise<PortfolioListItem | null> {
     const portfolio = await this.prisma.portfolio.findFirst({
-      where: { id, userId },
+      where: { id, userId, isDeleted: false },
     });
     return portfolio ? this.toListItem(portfolio) : null;
   }

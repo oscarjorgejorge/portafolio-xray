@@ -22,6 +22,7 @@ interface AuthContextValue extends AuthState {
   register: (data: RegisterData) => Promise<void>;
   logout: () => Promise<void>;
   logoutAll: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
   
   // Token management
   refreshAuth: () => Promise<void>;
@@ -130,6 +131,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    */
   const logoutAll = useCallback(async () => {
     await authApi.logoutAll();
+    setUser(null);
+  }, []);
+
+  /**
+   * Delete current user account (soft delete + anonymization on server)
+   */
+  const deleteAccount = useCallback(async () => {
+    await authApi.deleteAccount();
     setUser(null);
   }, []);
 
@@ -270,6 +279,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       register,
       logout,
       logoutAll,
+      deleteAccount,
       refreshAuth,
       verifyEmail,
       resendVerification,
@@ -291,6 +301,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       register,
       logout,
       logoutAll,
+      deleteAccount,
       refreshAuth,
       verifyEmail,
       resendVerification,

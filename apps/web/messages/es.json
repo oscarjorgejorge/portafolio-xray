@@ -333,7 +333,13 @@
     "setPasswordError": "Error al establecer la contraseña.",
     "logout": "Cerrar sesión",
     "signInToViewProfile": "Inicia sesión para ver tu perfil.",
-    "backToHome": "Volver al inicio"
+    "backToHome": "Volver al inicio",
+    "deleteAccount": "Eliminar cuenta",
+    "deleteAccountTitle": "Eliminar tu cuenta",
+    "deleteAccountMessage": "Si eliminas tu cuenta, perderás de forma permanente el acceso a tus carteras guardadas y a cualquier dato asociado. Esta acción no se puede deshacer.",
+    "deleteAccountWarning": "Todas tus carteras dejarán de ser visibles para cualquier persona y tus datos personales se anonimizarán, aunque algunos registros técnicos pueden permanecer para fines internos.",
+    "deleteAccountConfirm": "Sí, eliminar mi cuenta",
+    "deleteAccountError": "No se pudo eliminar tu cuenta. Inténtalo de nuevo."
   },
   "password": {
     "title": "Requisitos de la contraseña",
