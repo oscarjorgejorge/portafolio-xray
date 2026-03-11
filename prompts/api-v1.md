@@ -2045,4 +2045,10 @@ After upgrading Prisma and introducing the `@prisma/adapter-pg` driver adapter w
 - Relied on Prisma's documented behavior for long-running applications (no explicit `$disconnect()` needed), which prevents the `Cannot use a pool after calling end on the pool` error during normal API usage.
 
 ### Prompt 130
+
+Describe and implement a public contact endpoint in the API (POST /contact) that accepts name, email, subject and message, sends the message via Resend to the configured CONTACT_EMAIL, and wire a localized Contact page in the frontend (including navigation changes for desktop and mobile) that posts to this endpoint.
 Add portfolio favorites: heart to add/remove public portfolios from favorites (only when not owner); pencil to open portfolio in builder when owner. If not logged in, show auth modal on heart click, then after login either add favorite or open builder if now owner. On explore list show heart/pencil and favorites count; allow sorting by favorites. Add "My favorites" page in sidebar (like My portfolios) with list of favorited portfolios and ability to unfavorite. When portfolio owner deletes a portfolio, use hard delete with FK cascade so favorites disappear and detail URL shows "portfolio no longer available".
+
+### Prompt 131
+
+quiero que en el visualizador de la cartera se puedan dejar comentarios, si un usuario no esta logueado al darle a 'enviar comentario' (o el copy que mejor se entienda), le aparecera el pop de registro sin navegacion a otra pagina (despues del registrarse el comentario que escribio debe seguir ahi, que no se pierda)

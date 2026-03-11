@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
@@ -8,13 +8,13 @@ import { useRouter } from '@/i18n/navigation';
 import { getPublicPortfolios, type PublicPortfolioListItem } from '@/lib/api/portfolios';
 import { queryKeys } from '@/lib/api/queryKeys';
 import { useAuth } from '@/lib/auth';
+import { useAuthModal } from '@/lib/auth/AuthModalContext';
 import { useFavoritePortfolio } from '@/lib/hooks/useFavoritePortfolio';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Alert } from '@/components/ui/Alert';
 import { Input } from '@/components/ui/Input';
 import { ArrowRightIcon, EditIcon, HeartFilledIcon, HeartOutlineIcon } from '@/components/ui/Icons';
-import { AuthModal } from '@/components/auth/AuthModal';
 import { VALIDATION } from '@/lib/constants';
 
 function isPortfolioWeightValid(assets: { morningstarId: string; weight: number }[]): boolean {
@@ -132,8 +132,7 @@ export default function ExplorePortfoliosPage() {
   const [sortBy, setSortBy] = useState<SortBy>(initialSort);
   const [debouncedName, setDebouncedName] = useState(initialName);
   const [debouncedUserName, setDebouncedUserName] = useState(initialUserName);
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const authResolveRef = useRef<(() => void) | null>(null);
+  const { openAuthModalAndWait } = useAuthModal();
 
   const filters = useMemo(
     () => ({
@@ -196,21 +195,6 @@ export default function ExplorePortfoliosPage() {
     const assetsParam = buildAssetsParam(portfolio.assets);
     router.push(`/?assets=${assetsParam}&portfolioId=${portfolio.id}`);
   }, [router]);
-
-  const openAuthModalAndWait = useCallback(
-    () =>
-      new Promise<void>((resolve) => {
-        authResolveRef.current = resolve;
-        setShowAuthModal(true);
-      }),
-    []
-  );
-
-  const handleAuthSuccess = useCallback(() => {
-    setShowAuthModal(false);
-    authResolveRef.current?.();
-    authResolveRef.current = null;
-  }, []);
 
   const validPortfolios = useMemo(
     () =>
@@ -309,16 +293,6 @@ export default function ExplorePortfoliosPage() {
 
         {content}
       </div>
-
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => {
-          setShowAuthModal(false);
-          authResolveRef.current?.();
-          authResolveRef.current = null;
-        }}
-        onAuthSuccess={handleAuthSuccess}
-      />
     </main>
   );
 }

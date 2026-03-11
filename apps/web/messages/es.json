@@ -1,4 +1,8 @@
 {
+  "validation": {
+    "emailInvalid": "Introduce una dirección de correo válida (debe incluir @ y un dominio, por ejemplo nombre@ejemplo.com).",
+    "fieldRequired": "Este campo es obligatorio."
+  },
   "common": {
     "loading": "Cargando...",
     "cancel": "Cancelar",
@@ -115,7 +119,20 @@
     "home": "Inicio",
     "myPortfolios": "Mis carteras",
     "myFavorites": "Mis favoritos",
-    "explorePortfolios": "Explorar carteras"
+    "explorePortfolios": "Explorar carteras",
+    "contact": "Contacto"
+  },
+  "contact": {
+    "title": "Contacto",
+    "description": "Portfolio X-Ray te ayuda a generar informes Morningstar X-Ray para tus carteras de inversión. Si tienes feedback, ideas o preguntas sobre el producto, puedes ponerte en contacto a través del siguiente formulario.",
+    "emailLabel": "Correo de contacto",
+    "emailValue": "oscar.jorge.jorge@gmail.com",
+    "nameLabel": "Nombre",
+    "subjectLabel": "Asunto",
+    "messageLabel": "Mensaje",
+    "submitLabel": "Enviar mensaje",
+    "successMessage": "Tu mensaje se ha enviado correctamente. Te responderé lo antes posible.",
+    "errorGeneric": "No hemos podido enviar tu mensaje. Inténtalo de nuevo en unos minutos."
   },
   "auth": {
     "login": {
@@ -128,7 +145,8 @@
       "continueWithGoogle": "Continuar con Google",
       "noAccount": "¿No tienes una cuenta?",
       "signUp": "Regístrate",
-      "loginFailed": "Error al iniciar sesión"
+      "loginFailed": "Error al iniciar sesión",
+      "invalidCredentials": "Correo o contraseña incorrectos"
     },
     "forgotPassword": {
       "title": "Restablecer tu contraseña",
@@ -149,7 +167,7 @@
       "title": "Establecer nueva contraseña",
       "newPassword": "Nueva contraseña",
       "confirmPassword": "Confirmar nueva contraseña",
-      "passwordHint": "Al menos 8 caracteres con mayúsculas, minúsculas y números",
+      "passwordHint": "Usa al menos 6 caracteres.",
       "resetting": "Restableciendo...",
       "submit": "Restablecer contraseña",
       "rememberPassword": "¿Recuerdas tu contraseña?",
@@ -158,7 +176,7 @@
       "invalidLinkMessage": "Enlace de restablecimiento no válido. Solicita un nuevo restablecimiento de contraseña.",
       "requestNewLink": "Solicitar nuevo enlace",
       "passwordsNoMatch": "Las contraseñas no coinciden",
-      "passwordTooShort": "La contraseña debe tener al menos 8 caracteres",
+      "passwordTooShort": "La contraseña debe tener al menos 6 caracteres",
       "resetError": "Error al restablecer la contraseña",
       "successTitle": "¡Contraseña restablecida!",
       "successMessage": "Tu contraseña se ha restablecido correctamente. Ya puedes iniciar sesión con tu nueva contraseña.",
@@ -171,7 +189,7 @@
       "userNameHint": "Solo letras, números, guiones bajos y guiones",
       "name": "Nombre completo",
       "password": "Contraseña",
-      "passwordHint": "Al menos 8 caracteres con mayúsculas, minúsculas y números",
+      "passwordHint": "Usa al menos 6 caracteres.",
       "confirmPassword": "Confirmar contraseña",
       "createAccount": "Crear cuenta",
       "creatingAccount": "Creando cuenta...",
@@ -179,7 +197,7 @@
       "hasAccount": "¿Ya tienes una cuenta?",
       "signIn": "Iniciar sesión",
       "passwordsNoMatch": "Las contraseñas no coinciden",
-      "passwordTooShort": "La contraseña debe tener al menos 8 caracteres",
+      "passwordTooShort": "La contraseña debe tener al menos 6 caracteres",
       "registrationFailed": "Error al registrarse",
       "emailAlreadyRegistered": "El correo electrónico ya está registrado",
       "usernameAlreadyTaken": "El nombre de usuario ya está en uso",
@@ -244,6 +262,7 @@
     "title": "Mis carteras",
     "backToBuilder": "Volver al constructor",
     "empty": "Aún no tienes carteras guardadas.",
+    "signInToViewPortfolios": "Inicia sesión para ver tus carteras.",
     "createFirst": "Crea tu primera cartera",
     "openInBuilder": "Abrir en constructor",
     "viewXRay": "Ver X-Ray",
@@ -253,7 +272,9 @@
     "private": "Privada",
     "updated": "Actualizado {date}",
     "loadError": "Error al cargar las carteras.",
-    "deleteConfirm": "¿Eliminar \"{name}\"? No se puede deshacer.",
+    "deleteConfirmTitle": "Eliminar cartera",
+    "deleteConfirm": "¿Estás seguro de que quieres eliminar la cartera \"{name}\"? Esta acción no se puede deshacer.",
+    "deleting": "Eliminando...",
     "editModalTitle": "Editar cartera",
     "exploreTitle": "Explorar carteras públicas",
     "exploreSubtitle": "Descubre carteras públicas creadas por otros usuarios y ábrelas en el constructor.",
@@ -272,6 +293,10 @@
     "removeFromFavorites": "Quitar de favoritos",
     "myFavorites": "Mis favoritos",
     "noFavorites": "Aún no tienes carteras en favoritos.",
+    "signInToViewFavorites": "Inicia sesión para ver tus favoritos.",
+    "removeFromFavoritesConfirmTitle": "Quitar de favoritos",
+    "removeFromFavoritesConfirm": "¿Estás seguro de que quieres quitar \"{name}\" de favoritos?",
+    "removingFromFavorites": "Quitando...",
     "portfolioUnavailable": "Esta cartera ya no está disponible."
   },
   "authModal": {
@@ -299,12 +324,39 @@
     "confirmNewPassword": "Confirmar nueva contraseña",
     "changePasswordSuccess": "Contraseña cambiada correctamente.",
     "changePasswordError": "Error al cambiar la contraseña.",
+    "passwordTooShort": "La contraseña debe tener al menos 6 caracteres.",
+    "passwordsNoMatch": "Las contraseñas no coinciden.",
     "setPassword": "Establecer contraseña",
     "setPasswordTitle": "Establecer contraseña",
     "setPasswordHint": "Iniciaste sesión con Google. Puedes establecer una contraseña aquí para también iniciar sesión con correo.",
     "setPasswordSuccess": "Contraseña establecida correctamente. Ahora puedes iniciar sesión con correo y contraseña.",
     "setPasswordError": "Error al establecer la contraseña.",
     "logout": "Cerrar sesión",
+    "signInToViewProfile": "Inicia sesión para ver tu perfil.",
     "backToHome": "Volver al inicio"
+  },
+  "password": {
+    "title": "Requisitos de la contraseña",
+    "minLength": "Al menos {length} caracteres"
+  },
+  "comments": {
+    "title": "Comentarios",
+    "placeholder": "Escribe un comentario sobre esta cartera...",
+    "submit": "Publicar comentario",
+    "submitting": "Publicando...",
+    "empty": "Aún no hay comentarios. Sé el primero en comentar.",
+    "edit": "Editar",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "deleting": "Eliminando...",
+    "deleteConfirmTitle": "Eliminar comentario",
+    "deleteConfirm": "¿Estás seguro de que quieres eliminar el comentario? Esta acción no se puede deshacer.",
+    "loadError": "No se pudieron cargar los comentarios.",
+    "createError": "No se pudo publicar el comentario.",
+    "updateError": "No se pudo actualizar el comentario.",
+    "deleteError": "No se pudo eliminar el comentario.",
+    "loginRequiredShort": "Debes iniciar sesión para comentar.",
+    "loginHint": "Al continuar se abrirá el registro/inicio de sesión; tu comentario no se perderá."
   }
 }

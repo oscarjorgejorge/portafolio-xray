@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from '@/i18n/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -12,9 +12,11 @@ import {
 } from '@/lib/api/portfolios';
 import { queryKeys } from '@/lib/api/queryKeys';
 import { useAuth } from '@/lib/auth';
+import { useAuthModal } from '@/lib/auth/AuthModalContext';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Alert } from '@/components/ui/Alert';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { generateXRay } from '@/lib/api/xray';
 import { VALIDATION } from '@/lib/constants';
 import { TrashIcon, EditIcon } from '@/components/ui/Icons';
@@ -48,9 +50,12 @@ export default function PortfoliosPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { isAuthenticated, user, isLoading: authLoading } = useAuth();
+  const { openAuthModal } = useAuthModal();
+  const didOpenAuthRef = useRef(false);
   const [activeXRayPortfolioId, setActiveXRayPortfolioId] = useState<string | null>(null);
   const [xrayError, setXrayError] = useState<string | null>(null);
   const [editingPortfolio, setEditingPortfolio] = useState<PortfolioListItem | null>(null);
+  const [portfolioToDelete, setPortfolioToDelete] = useState<{ id: string; name: string } | null>(null);
 
   const { data: portfolios = [], isLoading, error } = useQuery({
     queryKey: queryKeys.portfolios.all,
@@ -68,9 +73,14 @@ export default function PortfoliosPage() {
   useEffect(() => {
     if (authLoading) return;
     if (!isAuthenticated || !user?.emailVerified) {
-      router.replace('/login');
+      if (!didOpenAuthRef.current) {
+        didOpenAuthRef.current = true;
+        openAuthModal({ tab: 'signin', onCloseWithoutAuth: () => router.replace('/') });
+      }
+    } else {
+      didOpenAuthRef.current = false;
     }
-  }, [authLoading, isAuthenticated, user?.emailVerified, router]);
+  }, [authLoading, isAuthenticated, user?.emailVerified, openAuthModal, router]);
 
   const handleOpenInBuilder = (portfolio: PortfolioListItem) => {
     const hasAmounts = portfolio.assets.some(
@@ -115,13 +125,16 @@ export default function PortfoliosPage() {
     }
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!window.confirm(t('deleteConfirm', { name }))) return;
-    try {
-      await deleteMutation.mutateAsync(id);
-    } catch {
-      // Error handled by mutation
-    }
+  const handleDeleteClick = (id: string, name: string) => {
+    setPortfolioToDelete({ id, name });
+  };
+
+  const handleDeleteConfirm = () => {
+    if (!portfolioToDelete) return;
+    deleteMutation.mutate(portfolioToDelete.id, {
+      onSuccess: () => setPortfolioToDelete(null),
+      onSettled: () => setPortfolioToDelete(null),
+    });
   };
 
   const handleEdit = (portfolio: PortfolioListItem) => {
@@ -137,7 +150,16 @@ export default function PortfoliosPage() {
   }
 
   if (!isAuthenticated || !user?.emailVerified) {
-    return null;
+    return (
+      <main className="min-h-screen bg-slate-100 py-8 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-3xl mx-auto">
+          <h1 className="text-2xl font-bold text-slate-900 mb-4">{t('title')}</h1>
+          <Card>
+            <p className="text-slate-600 text-center py-8">{t('signInToViewPortfolios')}</p>
+          </Card>
+        </div>
+      </main>
+    );
   }
 
   let content: React.ReactNode;
@@ -218,7 +240,7 @@ export default function PortfoliosPage() {
                       variant="ghost"
                       size="sm"
                       className="text-red-600 hover:bg-red-50 px-2"
-                      onClick={() => handleDelete(portfolio.id, portfolio.name)}
+                      onClick={() => handleDeleteClick(portfolio.id, portfolio.name)}
                       disabled={deleteMutation.isPending}
                       aria-label={tCommon('remove')}
                       title={tCommon('remove')}
@@ -244,6 +266,18 @@ export default function PortfoliosPage() {
 
   return (
     <main className="min-h-screen bg-slate-100 py-8 px-4 sm:px-6 lg:px-8">
+      <ConfirmModal
+        isOpen={portfolioToDelete !== null}
+        onClose={() => setPortfolioToDelete(null)}
+        onConfirm={handleDeleteConfirm}
+        title={t('deleteConfirmTitle')}
+        message={portfolioToDelete ? t('deleteConfirm', { name: portfolioToDelete.name }) : ''}
+        confirmLabel={deleteMutation.isPending ? t('deleting') : tCommon('remove')}
+        cancelLabel={tCommon('cancel')}
+        variant="danger"
+        isLoading={deleteMutation.isPending}
+      />
+
       <div className="max-w-3xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-slate-900">{t('title')}</h1>

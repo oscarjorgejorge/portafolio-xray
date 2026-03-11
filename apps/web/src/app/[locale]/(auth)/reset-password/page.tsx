@@ -7,6 +7,7 @@ import { Link, useRouter } from '@/i18n/navigation';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/Button';
 import { PasswordInput } from '@/components/ui/PasswordInput';
+import { PasswordRequirements } from '@/components/ui/PasswordRequirements';
 import { Alert } from '@/components/ui/Alert';
 
 export default function ResetPasswordPage() {
@@ -23,7 +24,7 @@ export default function ResetPasswordPage() {
   const token = searchParams.get('token');
 
   const isValid =
-    password.length >= 8 && password === confirmPassword && confirmPassword.length > 0;
+    password.length >= 6 && password === confirmPassword && confirmPassword.length > 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,7 +43,7 @@ export default function ResetPasswordPage() {
       return;
     }
 
-    if (password.length < 8) {
+    if (password.length < 6) {
       setStatus('error');
       setError(t('passwordTooShort'));
       return;
@@ -131,12 +132,10 @@ export default function ResetPasswordPage() {
               }}
               autoComplete="new-password"
               required
-              minLength={8}
+              minLength={6}
               className="mt-1"
             />
-            <p className="mt-1 text-xs text-gray-500">
-              {t('passwordHint')}
-            </p>
+            <PasswordRequirements password={password} />
             <PasswordInput
               id="confirmPassword"
               label={t('confirmPassword')}
@@ -150,7 +149,7 @@ export default function ResetPasswordPage() {
               }}
               autoComplete="new-password"
               required
-              minLength={8}
+              minLength={6}
               className="mt-1"
             />
           </div>

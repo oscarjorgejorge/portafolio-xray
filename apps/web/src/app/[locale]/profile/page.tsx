@@ -1,13 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { Link, useRouter } from '@/i18n/navigation';
 import { useAuth } from '@/lib/auth';
+import { useAuthModal } from '@/lib/auth/AuthModalContext';
 import { ApiError } from '@/lib/api/client';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { PasswordInput } from '@/components/ui/PasswordInput';
+import { PasswordRequirements } from '@/components/ui/PasswordRequirements';
 import { Alert } from '@/components/ui/Alert';
 import { Modal } from '@/components/ui/Modal';
 
@@ -25,6 +27,8 @@ export default function ProfilePage() {
     changePassword,
     logout,
   } = useAuth();
+  const { openAuthModal } = useAuthModal();
+  const didOpenAuthRef = useRef(false);
 
   /** OAuth-only users (e.g. Google) have no password; they use "Set password" instead of "Change password" */
   const isSetPasswordFlow = Boolean(user && user.hasPassword === false);
@@ -52,13 +56,18 @@ export default function ProfilePage() {
     }
   }, [user]);
 
-  // Redirect if not authenticated or email not verified
+  // Open auth modal if not authenticated; redirect to home when modal closed without logging in
   useEffect(() => {
     if (authLoading) return;
     if (!isAuthenticated || !user?.emailVerified) {
-      router.replace('/login');
+      if (!didOpenAuthRef.current) {
+        didOpenAuthRef.current = true;
+        openAuthModal({ tab: 'signin', onCloseWithoutAuth: () => router.replace('/') });
+      }
+    } else {
+      didOpenAuthRef.current = false;
     }
-  }, [authLoading, isAuthenticated, user?.emailVerified, router]);
+  }, [authLoading, isAuthenticated, user?.emailVerified, openAuthModal, router]);
 
   const handleSubmitProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,7 +105,11 @@ export default function ProfilePage() {
     e.preventDefault();
     setPasswordError('');
     if (newPassword !== confirmNewPassword) {
-      setPasswordError(t('confirmNewPassword').toLowerCase() + ' do not match');
+      setPasswordError(t('passwordsNoMatch'));
+      return;
+    }
+    if (newPassword.length < 6) {
+      setPasswordError(t('passwordTooShort'));
       return;
     }
     setIsChangingPassword(true);
@@ -119,7 +132,11 @@ export default function ProfilePage() {
     e.preventDefault();
     setPasswordError('');
     if (newPassword !== confirmNewPassword) {
-      setPasswordError(t('confirmNewPassword').toLowerCase() + ' do not match');
+      setPasswordError(t('passwordsNoMatch'));
+      return;
+    }
+    if (newPassword.length < 6) {
+      setPasswordError(t('passwordTooShort'));
       return;
     }
     setIsChangingPassword(true);
@@ -153,7 +170,16 @@ export default function ProfilePage() {
   }
 
   if (!isAuthenticated || !user.emailVerified) {
-    return null;
+    return (
+      <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-lg mx-auto space-y-6">
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <div className="bg-white shadow rounded-lg p-6">
+            <p className="text-gray-600 text-center py-8">{t('signInToViewProfile')}</p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -312,9 +338,10 @@ export default function ProfilePage() {
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
             required
-            minLength={8}
+            minLength={6}
             autoComplete="new-password"
           />
+          <PasswordRequirements password={newPassword} />
           <PasswordInput
             id="confirmNewPassword"
             label={t('confirmNewPassword')}

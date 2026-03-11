@@ -23,6 +23,7 @@ export class MailService {
   private readonly isConfigured: boolean;
   private readonly templateVerificationId: string;
   private readonly templatePasswordResetId: string;
+  private readonly templateContactId: string;
 
   constructor(private readonly configService: ConfigService<AppConfig, true>) {
     const emailConfig = this.configService.get('email', { infer: true });
@@ -30,6 +31,7 @@ export class MailService {
     this.frontendUrl = this.configService.get('frontendUrl', { infer: true });
     this.templateVerificationId = emailConfig.templateVerificationId;
     this.templatePasswordResetId = emailConfig.templatePasswordResetId;
+    this.templateContactId = emailConfig.templateContactId;
 
     if (emailConfig.resendApiKey) {
       this.resend = new Resend(emailConfig.resendApiKey);
@@ -204,6 +206,60 @@ export class MailService {
     } catch (error) {
       this.logger.error(
         `Error sending password reset email to ${email}: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`,
+      );
+      return false;
+    }
+  }
+
+  /**
+   * Send contact form notification using Resend template
+   */
+  async sendContactEmail(
+    to: string,
+    name: string,
+    email: string,
+    subject: string,
+    message: string,
+  ): Promise<boolean> {
+    if (!this.resend) {
+      this.logger.warn(
+        `Mail not sent (service not configured): contact email to ${to}`,
+      );
+      return false;
+    }
+
+    try {
+      const result = await this.resend.emails.send({
+        from: this.from,
+        to,
+        subject: `[Contacto] ${subject}`,
+        template: {
+          id: this.templateContactId,
+          variables: {
+            name,
+            email,
+            subject,
+            message,
+          },
+        },
+      });
+
+      if (result.error) {
+        this.logger.error(
+          `Failed to send contact email: ${result.error.message}`,
+        );
+        return false;
+      }
+
+      this.logger.log(
+        `Contact email sent successfully to ${to}: ${subject}`,
+      );
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `Error sending contact email to ${to}: ${
           error instanceof Error ? error.message : 'Unknown error'
         }`,
       );

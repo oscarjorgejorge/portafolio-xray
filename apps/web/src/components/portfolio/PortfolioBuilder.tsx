@@ -13,7 +13,8 @@ import { Toast } from '@/components/ui/Toast';
 import type { PortfolioAsset, AllocationMode } from '@/types';
 import { usePortfolioBuilder } from '@/lib/hooks/usePortfolioBuilder';
 import { useAuth } from '@/lib/auth';
-import { AuthModal, getPendingSavePortfolio, clearPendingSavePortfolio, setPendingSavePortfolio } from '@/components/auth/AuthModal';
+import { useAuthModal } from '@/lib/auth/AuthModalContext';
+import { getPendingSavePortfolio, clearPendingSavePortfolio, setPendingSavePortfolio } from '@/components/auth/AuthModal';
 import { SavePortfolioModal } from './SavePortfolioModal';
 import { Button } from '@/components/ui/Button';
 import { SaveChangesModeModal } from './SaveChangesModeModal';
@@ -60,7 +61,7 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
   const tSave = useTranslations('savePortfolio');
   const locale = useLocale();
   const { isAuthenticated, user } = useAuth();
-  const [showAuthModal, setShowAuthModal] = useState(false);
+  const { openAuthModal } = useAuthModal();
   const [showSavePortfolioModal, setShowSavePortfolioModal] = useState(false);
   const [showSaveSuccessToast, setShowSaveSuccessToast] = useState(false);
   const [saveMode, setSaveMode] = useState<SaveMode>('create');
@@ -75,16 +76,11 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
         setShowSavePortfolioModal(true);
       } else {
         setPendingSavePortfolio();
-        setShowAuthModal(true);
+        openAuthModal({ tab: 'signin' });
       }
     },
-    [canSavePortfolio],
+    [canSavePortfolio, openAuthModal],
   );
-
-  const handleAuthSuccess = useCallback(() => {
-    setShowAuthModal(false);
-    setShowSavePortfolioModal(true);
-  }, []);
 
   useEffect(() => {
     if (getPendingSavePortfolio() && canSavePortfolio) {
@@ -359,13 +355,6 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
           onClose={() => setShowSuccessToast(false)}
         />
       )}
-
-      {/* Auth Modal (when user clicks Save portfolio and is not logged in) */}
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        onAuthSuccess={handleAuthSuccess}
-      />
 
       {/* Save Portfolio Modal */}
       <SavePortfolioModal

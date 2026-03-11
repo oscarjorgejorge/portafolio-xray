@@ -57,6 +57,17 @@ export const queryKeys = {
     /** Root key for current user favorites list */
     all: ['favorites'] as const,
   },
+
+  /**
+   * Comments query keys
+   */
+  comments: {
+    /** Root key for all comments */
+    all: ['comments'] as const,
+    /** Comments for a specific portfolio */
+    byPortfolio: (portfolioId: string) =>
+      ['comments', 'byPortfolio', portfolioId] as const,
+  },
 } as const;
 
 /**

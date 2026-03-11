@@ -66,7 +66,8 @@ model User {
   passwordResets     PasswordReset[]
   emailVerifications EmailVerification[]
   portfolios         Portfolio[]
-  favorites         Favorite[]
+  favorites          Favorite[]
+  comments           Comment[]
 
   @@map("users")
 }
@@ -143,6 +144,7 @@ model Portfolio {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   favorites Favorite[]
+  comments  Comment[]
 
   @@index([userId])
   @@map("portfolios")
@@ -165,4 +167,20 @@ model Favorite {
   @@index([userId])
   @@index([portfolioId])
   @@map("favorites")
+}
+
+model Comment {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  portfolioId String   @map("portfolio_id")
+  content     String
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@index([portfolioId])
+  @@index([userId])
+  @@map("comments")
 }

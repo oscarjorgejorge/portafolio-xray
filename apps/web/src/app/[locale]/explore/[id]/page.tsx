@@ -1,9 +1,9 @@
 'use client';
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from '@/i18n/navigation';
 import {
   getPublicPortfolio,
@@ -11,13 +11,21 @@ import {
 } from '@/lib/api/portfolios';
 import { queryKeys } from '@/lib/api/queryKeys';
 import { resolveAsset } from '@/lib/api/assets';
+import {
+  createComment,
+  deleteComment,
+  getPortfolioComments,
+  updateComment,
+  type CommentItem,
+} from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { useAuthModal } from '@/lib/auth/AuthModalContext';
 import { useFavoritePortfolio } from '@/lib/hooks/useFavoritePortfolio';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { Spinner } from '@/components/ui/Spinner';
-import { EditIcon, ExternalLinkIcon, HeartFilledIcon, HeartOutlineIcon } from '@/components/ui/Icons';
-import { AuthModal } from '@/components/auth/AuthModal';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { EditIcon, ExternalLinkIcon, HeartFilledIcon, HeartOutlineIcon, TrashIcon } from '@/components/ui/Icons';
 
 function buildAssetsParam(assets: { morningstarId: string; weight: number }[]): string {
   const param = assets.map((a) => `${a.morningstarId}:${a.weight}`).join(',');
@@ -49,17 +57,7 @@ export default function PublicPortfolioDetailPage() {
   });
 
   const [copied, setCopied] = useState(false);
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const authResolveRef = useRef<(() => void) | null>(null);
-
-  const openAuthModalAndWait = useCallback(
-    () =>
-      new Promise<void>((resolve) => {
-        authResolveRef.current = resolve;
-        setShowAuthModal(true);
-      }),
-    []
-  );
+  const { openAuthModalAndWait } = useAuthModal();
 
   const handleOpenInBuilder = useCallback(
     (p: PublicPortfolioListItem) => {
@@ -68,12 +66,6 @@ export default function PublicPortfolioDetailPage() {
     },
     [router]
   );
-
-  const handleAuthSuccess = useCallback(() => {
-    setShowAuthModal(false);
-    authResolveRef.current?.();
-    authResolveRef.current = null;
-  }, []);
 
   if (!id) {
     return (
@@ -126,13 +118,6 @@ export default function PublicPortfolioDetailPage() {
       isAuthenticated={isAuthenticated}
       onOpenInBuilder={handleOpenInBuilder}
       openAuthModalAndWait={openAuthModalAndWait}
-      onAuthSuccess={handleAuthSuccess}
-      showAuthModal={showAuthModal}
-      onCloseAuthModal={() => {
-        setShowAuthModal(false);
-        authResolveRef.current?.();
-        authResolveRef.current = null;
-      }}
     />
   );
 }
@@ -142,9 +127,6 @@ interface PublicPortfolioContentProps {
   isAuthenticated: boolean;
   onOpenInBuilder: (p: PublicPortfolioListItem) => void;
   openAuthModalAndWait: () => Promise<void>;
-  onAuthSuccess: () => void;
-  showAuthModal: boolean;
-  onCloseAuthModal: () => void;
 }
 
 function PublicPortfolioContent({
@@ -152,12 +134,10 @@ function PublicPortfolioContent({
   isAuthenticated,
   onOpenInBuilder,
   openAuthModalAndWait,
-  onAuthSuccess,
-  showAuthModal,
-  onCloseAuthModal,
 }: PublicPortfolioContentProps) {
   const t = useTranslations('portfolios');
   const tCommon = useTranslations('common');
+  const tComments = useTranslations('comments');
   const tNav = useTranslations('navigation');
   const router = useRouter();
   const [copied, setCopied] = useState(false);
@@ -276,13 +256,13 @@ function PublicPortfolioContent({
               />
             ))}
         </div>
-      </div>
 
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={onCloseAuthModal}
-        onAuthSuccess={onAuthSuccess}
-      />
+        <CommentsSection
+          portfolioId={portfolio.id}
+          isAuthenticated={isAuthenticated}
+          openAuthModalAndWait={openAuthModalAndWait}
+        />
+      </div>
     </main>
   );
 }
@@ -360,3 +340,278 @@ function PublicPortfolioAssetRow({ asset }: PublicPortfolioAssetRowProps) {
   );
 }
 
+interface CommentsSectionProps {
+  portfolioId: string;
+  isAuthenticated: boolean;
+  openAuthModalAndWait: () => Promise<void>;
+}
+
+function CommentsSection({
+  portfolioId,
+  isAuthenticated,
+  openAuthModalAndWait,
+}: CommentsSectionProps) {
+  const tComments = useTranslations('comments');
+  const tCommon = useTranslations('common');
+  const queryClient = useQueryClient();
+
+  const [newComment, setNewComment] = useState('');
+  const [localError, setLocalError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingContent, setEditingContent] = useState('');
+  const [commentToDeleteId, setCommentToDeleteId] = useState<string | null>(null);
+
+  const {
+    data: comments = [],
+    isLoading,
+    error,
+  } = useQuery<CommentItem[]>({
+    queryKey: queryKeys.comments.byPortfolio(portfolioId),
+    queryFn: () => getPortfolioComments(portfolioId),
+  });
+
+  const invalidateComments = useCallback(() => {
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.comments.byPortfolio(portfolioId),
+    });
+  }, [portfolioId, queryClient]);
+
+  const createMutation = useMutation({
+    mutationFn: (content: string) => createComment(portfolioId, content),
+    onSuccess: () => {
+      setNewComment('');
+      invalidateComments();
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: (payload: { id: string; content: string }) =>
+      updateComment(portfolioId, payload.id, payload.content),
+    onSuccess: () => {
+      setEditingId(null);
+      setEditingContent('');
+      invalidateComments();
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteComment(portfolioId, id),
+    onSuccess: () => {
+      invalidateComments();
+    },
+  });
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const trimmed = newComment.trim();
+    if (!trimmed) {
+      setLocalError(tComments('createError'));
+      return;
+    }
+    setLocalError(null);
+
+    if (!isAuthenticated) {
+      await openAuthModalAndWait();
+    }
+
+    try {
+      await createMutation.mutateAsync(trimmed);
+    } catch {
+      setLocalError(tComments('createError'));
+    }
+  };
+
+  const startEdit = (comment: CommentItem) => {
+    setEditingId(comment.id);
+    setEditingContent(comment.content);
+    setLocalError(null);
+  };
+
+  const handleEditSave = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!editingId) return;
+    const trimmed = editingContent.trim();
+    if (!trimmed) {
+      setLocalError(tComments('updateError'));
+      return;
+    }
+    setLocalError(null);
+    try {
+      await updateMutation.mutateAsync({ id: editingId, content: trimmed });
+    } catch {
+      setLocalError(tComments('updateError'));
+    }
+  };
+
+  const handleDeleteClick = (id: string) => {
+    setLocalError(null);
+    setCommentToDeleteId(id);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (!commentToDeleteId) return;
+    deleteMutation.mutate(commentToDeleteId, {
+      onSuccess: () => setCommentToDeleteId(null),
+      onError: () => setLocalError(tComments('deleteError')),
+      onSettled: () => setCommentToDeleteId(null),
+    });
+  };
+
+  return (
+    <section className="mt-8 border-t border-slate-200 pt-6">
+      <ConfirmModal
+        isOpen={commentToDeleteId !== null}
+        onClose={() => setCommentToDeleteId(null)}
+        onConfirm={handleDeleteConfirm}
+        title={tComments('deleteConfirmTitle')}
+        message={tComments('deleteConfirm')}
+        confirmLabel={deleteMutation.isPending ? tComments('deleting') : tComments('delete')}
+        cancelLabel={tCommon('cancel')}
+        variant="danger"
+        isLoading={deleteMutation.isPending}
+      />
+
+      <h2 className="text-lg font-semibold text-slate-900 mb-3">
+        {tComments('title')}
+      </h2>
+
+      {(error || localError) && (
+        <Alert variant="error" className="mb-3">
+          {localError ||
+            (error instanceof Error
+              ? error.message
+              : tComments('loadError'))}
+        </Alert>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-2 mb-6">
+        <textarea
+          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 min-h-[80px]"
+          value={newComment}
+          onChange={(e) => setNewComment(e.target.value)}
+          placeholder={tComments('placeholder')}
+        />
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          {!isAuthenticated && (
+            <p className="text-xs text-slate-500">
+              {tComments('loginHint')}
+            </p>
+          )}
+          <div className="flex items-center gap-2 sm:justify-end">
+            {createMutation.isPending && (
+              <Spinner size="sm" className="text-slate-400" />
+            )}
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              disabled={createMutation.isPending || !newComment.trim()}
+              className="inline-flex items-center gap-2 shadow-sm"
+            >
+              {createMutation.isPending
+                ? tComments('submitting')
+                : tComments('submit')}
+            </Button>
+          </div>
+        </div>
+      </form>
+
+      {isLoading ? (
+        <div className="flex items-center gap-2 text-sm text-slate-500">
+          <Spinner size="sm" className="text-slate-400" />
+          <span>{tCommon('loading')}</span>
+        </div>
+      ) : comments.length === 0 ? (
+        <p className="text-sm text-slate-500">{tComments('empty')}</p>
+      ) : (
+        <ul className="space-y-3">
+          {comments.map((comment) => (
+            <li
+              key={comment.id}
+              className="border border-slate-200 rounded-lg p-3 bg-white"
+            >
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-slate-900 truncate">
+                    {comment.user.userName || comment.user.name}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {new Date(comment.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+                {comment.isOwnedByCurrentUser && editingId !== comment.id && (
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => startEdit(comment)}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1"
+                    >
+                      <EditIcon className="w-4 h-4" />
+                      <span>{tComments('edit')}</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="danger"
+                      size="sm"
+                      disabled={deleteMutation.isPending}
+                      onClick={() => handleDeleteClick(comment.id)}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1"
+                    >
+                      <TrashIcon className="w-4 h-4" />
+                      <span>
+                        {deleteMutation.isPending
+                          ? tComments('deleting')
+                          : tComments('delete')}
+                      </span>
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {editingId === comment.id ? (
+                <form onSubmit={handleEditSave} className="space-y-2">
+                  <textarea
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 min-h-[60px]"
+                    value={editingContent}
+                    onChange={(e) => setEditingContent(e.target.value)}
+                  />
+                  <div className="flex items-center justify-end gap-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        setEditingId(null);
+                        setEditingContent('');
+                      }}
+                      className="inline-flex items-center gap-1.5"
+                    >
+                      {tComments('cancel')}
+                    </Button>
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      size="sm"
+                      disabled={updateMutation.isPending}
+                      className="inline-flex items-center gap-1.5"
+                    >
+                      {updateMutation.isPending
+                        ? tComments('submitting')
+                        : tComments('save')}
+                    </Button>
+                  </div>
+                </form>
+              ) : (
+                <p className="text-sm text-slate-700 whitespace-pre-wrap">
+                  {comment.content}
+                </p>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}

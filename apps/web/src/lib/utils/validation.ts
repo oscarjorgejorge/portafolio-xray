@@ -2,6 +2,17 @@
  * Validation utilities for the web application.
  */
 
+/** Email: local part @ domain with at least one dot in domain */
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * Checks if a string is a valid email format (includes @ and domain).
+ * Use with translated error messages from validation.emailInvalid for UI.
+ */
+export function isValidEmail(value: string): boolean {
+  return value.length > 0 && EMAIL_REGEX.test(value.trim());
+}
+
 /** ISIN validation: 2 uppercase letters + 10 alphanumeric characters */
 const ISIN_REGEX = /^[A-Z]{2}[A-Z0-9]{10}$/;
 

@@ -5,9 +5,10 @@ import { getMessages, getTranslations } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { routing } from '@/i18n/routing';
 import { NavBar } from '@/components/navigation/NavBar';
-import { Sidebar } from '@/components/navigation/Sidebar';
+import { MainWithSidebar } from '@/components/layout/MainWithSidebar';
 import { BottomNav } from '@/components/navigation/BottomNav';
 import { HtmlLangUpdater } from '@/components/layout/HtmlLangUpdater';
+import { AuthModalProvider } from '@/lib/auth/AuthModalContext';
 
 interface LocaleLayoutProps {
   children: ReactNode;
@@ -78,12 +79,11 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
   return (
     <NextIntlClientProvider messages={messages}>
       <HtmlLangUpdater />
-      <NavBar />
-      <Sidebar />
-      <main className="md:pl-56 pb-16 md:pb-0">
-        {children}
-      </main>
-      <BottomNav />
+      <AuthModalProvider>
+        <NavBar />
+        <MainWithSidebar>{children}</MainWithSidebar>
+        <BottomNav />
+      </AuthModalProvider>
     </NextIntlClientProvider>
   );
 }

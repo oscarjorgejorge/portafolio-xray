@@ -3,15 +3,19 @@
 import { useTranslations } from 'next-intl';
 import { Link, usePathname } from '@/i18n/navigation';
 import { useAuth } from '@/lib/auth';
+import { useAuthModal } from '@/lib/auth/AuthModalContext';
 
 /**
  * Mobile-only sticky bar at the bottom with icon link to My portfolios (and Home).
  */
 export function BottomNav() {
-  const t = useTranslations('navigation');
+  const tNav = useTranslations('navigation');
+  const tLogin = useTranslations('auth.login');
   const pathname = usePathname();
   const { isAuthenticated, user } = useAuth();
+  const { openAuthModal } = useAuthModal();
   const showPortfolios = isAuthenticated && user?.emailVerified;
+  const isLoggedIn = showPortfolios;
 
   return (
     <nav
@@ -24,45 +28,69 @@ export function BottomNav() {
           className={`flex flex-col items-center justify-center flex-1 py-2 text-xs font-medium ${
             pathname === '/' ? 'text-blue-600' : 'text-gray-500'
           }`}
-          aria-label={t('home')}
+          aria-label={tNav('home')}
         >
           <HomeIcon className="w-6 h-6 mb-0.5" />
-          {t('home')}
+          {tNav('home')}
         </Link>
-        {showPortfolios && (
+        {isLoggedIn ? (
           <>
+            <Link
+              href="/explore"
+              className={`flex flex-col items-center justify-center flex-1 py-2 text-xs font-medium ${
+                pathname === '/explore' ? 'text-blue-600' : 'text-gray-500'
+              }`}
+              aria-label={tNav('explorePortfolios')}
+            >
+              <ExploreIcon className="w-6 h-6 mb-0.5" />
+              {tNav('explorePortfolios')}
+            </Link>
             <Link
               href="/portfolios"
               className={`flex flex-col items-center justify-center flex-1 py-2 text-xs font-medium ${
                 pathname === '/portfolios' ? 'text-blue-600' : 'text-gray-500'
               }`}
-              aria-label={t('myPortfolios')}
+              aria-label={tNav('myPortfolios')}
             >
               <PortfoliosIcon className="w-6 h-6 mb-0.5" />
-              {t('myPortfolios')}
+              {tNav('myPortfolios')}
             </Link>
             <Link
               href="/favorites"
               className={`flex flex-col items-center justify-center flex-1 py-2 text-xs font-medium ${
                 pathname === '/favorites' ? 'text-blue-600' : 'text-gray-500'
               }`}
-              aria-label={t('myFavorites')}
+              aria-label={tNav('myFavorites')}
             >
               <HeartIcon className="w-6 h-6 mb-0.5" />
-              {t('myFavorites')}
+              {tNav('myFavorites')}
             </Link>
           </>
+        ) : (
+          <>
+            <Link
+              href="/explore"
+              className={`flex flex-col items-center justify-center flex-1 py-2 text-xs font-medium ${
+                pathname === '/explore' ? 'text-blue-600' : 'text-gray-500'
+              }`}
+              aria-label={tNav('explorePortfolios')}
+            >
+              <ExploreIcon className="w-6 h-6 mb-0.5" />
+              {tNav('explorePortfolios')}
+            </Link>
+            <button
+              type="button"
+              onClick={() => openAuthModal({ tab: 'signin' })}
+              className={`flex flex-col items-center justify-center flex-1 py-2 text-xs font-medium ${
+                pathname === '/login' ? 'text-blue-600' : 'text-gray-500'
+              }`}
+              aria-label={tLogin('signIn')}
+            >
+              <UserIcon className="w-6 h-6 mb-0.5" />
+              {tLogin('signIn')}
+            </button>
+          </>
         )}
-        <Link
-          href="/explore"
-          className={`flex flex-col items-center justify-center flex-1 py-2 text-xs font-medium ${
-            pathname === '/explore' ? 'text-blue-600' : 'text-gray-500'
-          }`}
-          aria-label={t('explorePortfolios')}
-        >
-          <ExploreIcon className="w-6 h-6 mb-0.5" />
-          {t('explorePortfolios')}
-        </Link>
       </div>
     </nav>
   );
@@ -111,6 +139,25 @@ function ExploreIcon({ className }: { className?: string }) {
         strokeLinejoin="round"
         strokeWidth={2}
         d="M21 21l-4.35-4.35M11 18a7 7 0 100-14 7 7 0 000 14z"
+      />
+    </svg>
+  );
+}
+
+function UserIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      aria-hidden
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M5.121 17.804A8 8 0 1118.88 17.804M15 11a3 3 0 11-6 0 3 3 0 016 0z"
       />
     </svg>
   );

@@ -2,17 +2,18 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from '@/i18n/navigation';
-import { getMyFavorites, type FavoriteRecord } from '@/lib/api/favorites';
+import { getMyFavorites, removeFavorite, type FavoriteRecord } from '@/lib/api/favorites';
 import { queryKeys } from '@/lib/api/queryKeys';
 import { useAuth } from '@/lib/auth';
+import { useAuthModal } from '@/lib/auth/AuthModalContext';
 import { useFavoritePortfolio } from '@/lib/hooks/useFavoritePortfolio';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Alert } from '@/components/ui/Alert';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { ArrowRightIcon, HeartFilledIcon } from '@/components/ui/Icons';
-import { AuthModal } from '@/components/auth/AuthModal';
 import type { PublicPortfolioListItem } from '@/lib/api/portfolios';
 
 function buildAssetsParam(assets: { morningstarId: string; weight: number }[]): string {
@@ -25,11 +26,13 @@ function FavoriteCard({
   onOpenBuilder,
   openAuthModalAndWait,
   onViewDetails,
+  onRemoveClick,
 }: {
   item: FavoriteRecord;
   onOpenBuilder: (p: PublicPortfolioListItem) => void;
   openAuthModalAndWait: () => Promise<void>;
   onViewDetails: () => void;
+  onRemoveClick?: (item: FavoriteRecord) => void;
 }) {
   const t = useTranslations('portfolios');
   const { isAuthenticated } = useAuth();
@@ -40,6 +43,14 @@ function FavoriteCard({
       onOpenBuilder,
       openAuthModalAndWait,
     });
+
+  const handleHeartClick = useCallback(() => {
+    if (onRemoveClick) {
+      onRemoveClick(item);
+    } else {
+      void toggleFavorite();
+    }
+  }, [item, onRemoveClick, toggleFavorite]);
 
   return (
     <Card className="p-4">
@@ -62,7 +73,7 @@ function FavoriteCard({
           <button
             type="button"
             className="flex items-center gap-1 p-2 rounded text-red-500 hover:bg-red-50 disabled:opacity-50"
-            onClick={toggleFavorite}
+            onClick={handleHeartClick}
             disabled={isPending}
             aria-label={t('removeFromFavorites')}
             title={t('removeFromFavorites')}
@@ -87,10 +98,13 @@ function FavoriteCard({
 
 export default function FavoritesPage() {
   const t = useTranslations('portfolios');
+  const tCommon = useTranslations('common');
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { isAuthenticated, user, isLoading: authLoading } = useAuth();
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const authResolveRef = useRef<(() => void) | null>(null);
+  const { openAuthModal, openAuthModalAndWait } = useAuthModal();
+  const didOpenAuthRef = useRef(false);
+  const [favoriteToRemove, setFavoriteToRemove] = useState<FavoriteRecord | null>(null);
 
   const { data: favorites = [], isLoading, error } = useQuery({
     queryKey: queryKeys.favorites.all,
@@ -98,32 +112,31 @@ export default function FavoritesPage() {
     enabled: isAuthenticated && !!user?.emailVerified,
   });
 
+  const removeMutation = useMutation({
+    mutationFn: removeFavorite,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.favorites.all });
+      setFavoriteToRemove(null);
+    },
+    onSettled: () => setFavoriteToRemove(null),
+  });
+
   useEffect(() => {
     if (authLoading) return;
     if (!isAuthenticated || !user?.emailVerified) {
-      router.replace('/login');
+      if (!didOpenAuthRef.current) {
+        didOpenAuthRef.current = true;
+        openAuthModal({ tab: 'signin', onCloseWithoutAuth: () => router.replace('/') });
+      }
+    } else {
+      didOpenAuthRef.current = false;
     }
-  }, [authLoading, isAuthenticated, user?.emailVerified, router]);
+  }, [authLoading, isAuthenticated, user?.emailVerified, openAuthModal, router]);
 
   const handleOpenInBuilder = useCallback((portfolio: PublicPortfolioListItem) => {
     const assetsParam = buildAssetsParam(portfolio.assets);
     router.push(`/?assets=${assetsParam}&portfolioId=${portfolio.id}`);
   }, [router]);
-
-  const openAuthModalAndWait = useCallback(
-    () =>
-      new Promise<void>((resolve) => {
-        authResolveRef.current = resolve;
-        setShowAuthModal(true);
-      }),
-    []
-  );
-
-  const handleAuthSuccess = useCallback(() => {
-    setShowAuthModal(false);
-    authResolveRef.current?.();
-    authResolveRef.current = null;
-  }, []);
 
   if (authLoading || (!isAuthenticated && !user)) {
     return (
@@ -134,7 +147,16 @@ export default function FavoritesPage() {
   }
 
   if (!isAuthenticated || !user?.emailVerified) {
-    return null;
+    return (
+      <main className="min-h-screen bg-slate-100 py-8 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-3xl mx-auto">
+          <h1 className="text-2xl font-bold text-slate-900 mb-4">{t('myFavorites')}</h1>
+          <Card>
+            <p className="text-slate-600 text-center py-8">{t('signInToViewFavorites')}</p>
+          </Card>
+        </div>
+      </main>
+    );
   }
 
   let content: React.ReactNode;
@@ -170,6 +192,7 @@ export default function FavoritesPage() {
               onOpenBuilder={handleOpenInBuilder}
               openAuthModalAndWait={openAuthModalAndWait}
               onViewDetails={() => router.push(`/explore/${item.portfolio.id}`)}
+              onRemoveClick={setFavoriteToRemove}
             />
           </li>
         ))}
@@ -179,6 +202,20 @@ export default function FavoritesPage() {
 
   return (
     <main className="min-h-screen bg-slate-100 py-8 px-4 sm:px-6 lg:px-8">
+      <ConfirmModal
+        isOpen={favoriteToRemove !== null}
+        onClose={() => setFavoriteToRemove(null)}
+        onConfirm={() => {
+          if (favoriteToRemove) removeMutation.mutate(favoriteToRemove.id);
+        }}
+        title={t('removeFromFavoritesConfirmTitle')}
+        message={favoriteToRemove ? t('removeFromFavoritesConfirm', { name: favoriteToRemove.portfolio.name }) : ''}
+        confirmLabel={removeMutation.isPending ? t('removingFromFavorites') : t('removeFromFavorites')}
+        cancelLabel={tCommon('cancel')}
+        variant="danger"
+        isLoading={removeMutation.isPending}
+      />
+
       <div className="max-w-3xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-slate-900">{t('myFavorites')}</h1>
@@ -195,16 +232,6 @@ export default function FavoritesPage() {
 
         {content}
       </div>
-
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => {
-          setShowAuthModal(false);
-          authResolveRef.current?.();
-          authResolveRef.current = null;
-        }}
-        onAuthSuccess={handleAuthSuccess}
-      />
     </main>
   );
 }

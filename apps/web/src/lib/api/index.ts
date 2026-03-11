@@ -37,6 +37,19 @@ export {
   type PublicPortfolioListItem,
 } from './portfolios';
 
+// Contact API
+export { sendContactMessage, type ContactRequest } from './contact';
+
+// Comments API
+export {
+  getPortfolioComments,
+  createComment,
+  updateComment,
+  deleteComment,
+  type CommentItem,
+  type CommentUserSummary,
+} from './comments';
+
 // Query Keys
 export { queryKeys, type QueryKeys } from './queryKeys';
 

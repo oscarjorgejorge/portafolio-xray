@@ -82,6 +82,8 @@ export const configuration = (): AppConfig => ({
       process.env.RESEND_TEMPLATE_VERIFICATION_ID || 'email-verification',
     templatePasswordResetId:
       process.env.RESEND_TEMPLATE_PASSWORD_RESET_ID || 'password-reset',
+    templateContactId: process.env.RESEND_TEMPLATE_CONTACT_ID || 'contacto',
+    contactEmail: process.env.CONTACT_EMAIL || 'oscar.jorge.jorge@gmail.com',
   },
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
 });
@@ -167,10 +169,14 @@ export interface EmailConfig {
   resendApiKey?: string;
   /** Email address to send from */
   from: string;
+  /** Default recipient for contact form submissions */
+  contactEmail: string;
   /** Resend template ID for email verification */
   templateVerificationId: string;
   /** Resend template ID for password reset */
   templatePasswordResetId: string;
+  /** Resend template ID for contact form notifications */
+  templateContactId: string;
 }
 
 /**

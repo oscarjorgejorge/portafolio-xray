@@ -70,6 +70,13 @@ export const envSchema = z.object({
   EMAIL_FROM: z.string().email().default('noreply@xrayportfolio.com'),
   RESEND_TEMPLATE_VERIFICATION_ID: z.string().default('email-verification'),
   RESEND_TEMPLATE_PASSWORD_RESET_ID: z.string().default('password-reset'),
+  RESEND_TEMPLATE_CONTACT_ID: z.string().default('contacto'),
+
+  // Contact form recipient (defaults to product owner email)
+  CONTACT_EMAIL: z
+    .string()
+    .email()
+    .default('oscar.jorge.jorge@gmail.com'),
 
   // Frontend URL (for email links)
   FRONTEND_URL: z.string().url().default('http://localhost:3000'),
