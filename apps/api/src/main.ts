@@ -116,6 +116,9 @@ async function bootstrap(): Promise<void> {
       logger.log('Swagger documentation enabled at /docs');
     }
 
+    // Normalize configured CORS origins (remove trailing slash)
+    const normalizedCorsOrigins = corsOrigins.map((o) => o.replace(/\/$/, ''));
+
     // CORS configuration using validated config
     app.enableCors({
       origin: (
@@ -128,14 +131,16 @@ async function bootstrap(): Promise<void> {
           return;
         }
 
+        const normalizedOrigin = origin.replace(/\/$/, '');
+
         // Check if origin is in the allowed list
-        if (corsOrigins.includes(origin)) {
+        if (normalizedCorsOrigins.includes(normalizedOrigin)) {
           callback(null, true);
           return;
         }
 
         // Allow Vercel preview deployments (*.vercel.app)
-        if (origin.endsWith('.vercel.app')) {
+        if (normalizedOrigin.endsWith('.vercel.app')) {
           callback(null, true);
           return;
         }

@@ -62,7 +62,7 @@ export const configuration = (): AppConfig => ({
     process.env.MORNINGSTAR_BASE_URL || 'https://lt.morningstar.com',
   corsOrigins: (process.env.CORS_ORIGINS || 'http://localhost:3000')
     .split(',')
-    .map((origin) => origin.trim()),
+    .map((origin) => origin.trim().replace(/\/$/, '')),
 
   // Authentication (V2)
   jwt: {
