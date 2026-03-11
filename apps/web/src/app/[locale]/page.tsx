@@ -229,6 +229,76 @@ function HomePageContent() {
     };
   }, [searchParams, t]);
 
+  // Fallback: when opening by portfolioId only (e.g. "Abrir en constructor"), if assets
+  // param is missing or empty, populate builder from portfolio.assets
+  useEffect(() => {
+    const assetsParam = searchParams.get('assets');
+    if (assetsParam || !portfolioId || !portfolio?.assets?.length) return;
+
+    const ac = new AbortController();
+    setIsLoading(true);
+
+    const resolveWithRetry = async (
+      identifier: string
+    ): Promise<Awaited<ReturnType<typeof resolveAsset>> | null> => {
+      const maxAttempts = 3;
+      let attempt = 0;
+      let lastError: unknown = null;
+      while (attempt < maxAttempts && !ac.signal.aborted) {
+        try {
+          return await resolveAsset(identifier, undefined, { signal: ac.signal });
+        } catch (error) {
+          if (error instanceof Error && error.name === 'AbortError') return null;
+          lastError = error;
+          attempt += 1;
+          if (attempt < maxAttempts) {
+            await new Promise((r) => setTimeout(r, 500 * attempt));
+          }
+        }
+      }
+      if (lastError) {
+        captureException(
+          lastError instanceof Error ? lastError : new Error('Failed to resolve asset'),
+          { tags: { action: 'portfolio-fallback-resolve' } }
+        );
+      }
+      return null;
+    };
+
+    (async () => {
+      try {
+        const resolved: PortfolioAsset[] = [];
+        for (const a of portfolio.assets) {
+          if (ac.signal.aborted) return;
+          const result = await resolveWithRetry(a.morningstarId);
+          if (ac.signal.aborted) return;
+          if (result?.success && result.asset) {
+            resolved.push({
+              id: generateSimpleId(),
+              identifier: a.morningstarId.toUpperCase(),
+              asset: result.asset,
+              weight: a.weight,
+              status: 'resolved',
+            });
+          } else {
+            resolved.push({
+              id: generateSimpleId(),
+              identifier: a.morningstarId.toUpperCase(),
+              weight: a.weight,
+              status: 'error',
+              error: result?.error ?? 'Failed to resolve asset',
+            });
+          }
+        }
+        if (!ac.signal.aborted) setInitialAssets(resolved);
+      } finally {
+        if (!ac.signal.aborted) setIsLoading(false);
+      }
+    })();
+
+    return () => ac.abort();
+  }, [portfolioId, portfolio?.assets, searchParams]);
+
   return (
     <main className="min-h-screen bg-slate-100 py-8">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl lg:max-w-6xl xl:max-w-7xl">
