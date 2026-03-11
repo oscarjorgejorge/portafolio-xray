@@ -120,13 +120,15 @@
     "myPortfolios": "Mis carteras",
     "myFavorites": "Mis favoritos",
     "explorePortfolios": "Explorar carteras",
-    "contact": "Contacto"
+    "contact": "Contacto",
+    "terms": "Términos y condiciones",
+    "privacy": "Política de privacidad"
   },
   "contact": {
     "title": "Contacto",
     "description": "Portfolio X-Ray te ayuda a generar informes Morningstar X-Ray para tus carteras de inversión. Si tienes feedback, ideas o preguntas sobre el producto, puedes ponerte en contacto a través del siguiente formulario.",
     "emailLabel": "Correo de contacto",
-    "emailValue": "oscar.jorge.jorge@gmail.com",
+    "emailValue": "xrayportfolio@gmail.com",
     "nameLabel": "Nombre",
     "subjectLabel": "Asunto",
     "messageLabel": "Mensaje",
@@ -201,7 +203,9 @@
       "registrationFailed": "Error al registrarse",
       "emailAlreadyRegistered": "El correo electrónico ya está registrado",
       "usernameAlreadyTaken": "El nombre de usuario ya está en uso",
-      "emailSendFailedMessage": "No se pudo enviar el correo de verificación automáticamente. Por favor, regístrate de nuevo para recibir un nuevo correo de verificación."
+      "emailSendFailedMessage": "No se pudo enviar el correo de verificación automáticamente. Por favor, regístrate de nuevo para recibir un nuevo correo de verificación.",
+      "acceptTermsLabel": "Confirmo que tengo al menos 18 años y acepto los <terms>Términos y Condiciones</terms> y la <privacy>Política de Privacidad</privacy>.",
+      "acceptTermsError": "Debes confirmar que tienes 18+ y aceptas los Términos y Condiciones y la Política de Privacidad para crear una cuenta."
     },
     "verifyEmailPending": {
       "title": "Verifica tu correo electrónico",

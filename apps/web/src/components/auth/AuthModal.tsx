@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
-import { useRouter } from '@/i18n/navigation';
+import { Link, useRouter } from '@/i18n/navigation';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -61,6 +61,7 @@ export function AuthModal({ isOpen, onClose, onAuthSuccess, initialTab: initialT
     password: '',
     confirmPassword: '',
   });
+  const [acceptTerms, setAcceptTerms] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotStatus, setForgotStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [forgotError, setForgotError] = useState('');
@@ -145,6 +146,10 @@ export function AuthModal({ isOpen, onClose, onAuthSuccess, initialTab: initialT
         setError(tRegister('passwordTooShort'));
         return;
       }
+      if (!acceptTerms) {
+        setError(tRegister('acceptTermsError'));
+        return;
+      }
       setIsLoading(true);
       try {
         await register({
@@ -161,7 +166,7 @@ export function AuthModal({ isOpen, onClose, onAuthSuccess, initialTab: initialT
         setIsLoading(false);
       }
     },
-    [getRegisterErrorMessage, register, registerData, tRegister, tValidation]
+    [acceptTerms, getRegisterErrorMessage, register, registerData, tRegister, tValidation]
   );
 
   const handleGoogleLogin = () => {
@@ -208,6 +213,7 @@ export function AuthModal({ isOpen, onClose, onAuthSuccess, initialTab: initialT
       password: '',
       confirmPassword: '',
     });
+    setAcceptTerms(false);
     onClose();
   }, [onClose]);
 
@@ -415,6 +421,43 @@ export function AuthModal({ isOpen, onClose, onAuthSuccess, initialTab: initialT
             required
             className="w-full"
           />
+        </div>
+        <div className="flex items-start space-x-2">
+          <input
+            id="auth-modal-reg-accept-terms"
+            type="checkbox"
+            checked={acceptTerms}
+            onChange={(e) => setAcceptTerms(e.target.checked)}
+            className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            required
+          />
+          <label
+            htmlFor="auth-modal-reg-accept-terms"
+            className="text-xs text-gray-600"
+          >
+            {tRegister.rich('acceptTermsLabel', {
+              terms: (chunks) => (
+                <Link
+                  href="/terms"
+                  className="text-blue-600 hover:text-blue-800 hover:underline"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {chunks}
+                </Link>
+              ),
+              privacy: (chunks) => (
+                <Link
+                  href="/privacy"
+                  className="text-blue-600 hover:text-blue-800 hover:underline"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {chunks}
+                </Link>
+              ),
+            })}
+          </label>
         </div>
         <Button type="submit" className="w-full" disabled={isLoading}>
           {isLoading ? tRegister('creatingAccount') : tRegister('createAccount')}
