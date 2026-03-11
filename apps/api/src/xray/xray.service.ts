@@ -104,7 +104,7 @@ export class XRayService implements IXRayService {
 
   /**
    * Build shareable app URL with portfolio encoded in query params
-   * Format: /xray?assets=ISIN:weight,ISIN:weight
+   * Format: /{locale}/xray?assets=ISIN:weight,ISIN:weight
    */
   private buildShareableUrl(assets: XRayAssetDto[]): string {
     // For now, use Morningstar IDs in the shareable URL
@@ -113,7 +113,10 @@ export class XRayService implements IXRayService {
       .map((asset) => `${asset.morningstarId}:${asset.weight}`)
       .join(',');
 
-    // Return relative URL - frontend will handle full URL
-    return `/xray?assets=${encodeURIComponent(assetsParam)}`;
+    // Use the default locale configured in next-intl routing (currently 'es')
+    const defaultLocale = 'es';
+
+    // Return relative URL (including locale prefix) - frontend will handle full URL
+    return `/${defaultLocale}/xray?assets=${encodeURIComponent(assetsParam)}`;
   }
 }
