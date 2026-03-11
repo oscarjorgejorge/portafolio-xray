@@ -93,6 +93,15 @@ export const authApi = {
   },
 
   /**
+   * Delete current user account (soft delete + anonymization on server).
+   * Clears tokens locally after successful deletion.
+   */
+  async deleteAccount(): Promise<void> {
+    await apiClient.delete('/auth/me');
+    tokenStorage.clearTokens();
+  },
+
+  /**
    * Logout from all devices
    */
   async logoutAll(): Promise<void> {
@@ -145,13 +154,34 @@ export const authApi = {
   },
 
   /**
-   * Change password (authenticated)
+   * Set password for OAuth-only accounts (no current password required)
+   */
+  async setPassword(newPassword: string): Promise<void> {
+    await apiClient.post('/auth/set-password', { newPassword });
+  },
+
+  /**
+   * Change password (authenticated, for accounts that already have a password)
    */
   async changePassword(currentPassword: string, newPassword: string): Promise<void> {
     await apiClient.put('/auth/change-password', {
       currentPassword,
       newPassword,
     });
+  },
+
+  /**
+   * Update user profile (name, userName)
+   */
+  async updateProfile(data: {
+    userName?: string;
+    name?: string;
+  }): Promise<User> {
+    const response = await apiClient.patch<{ user: User }>(
+      '/auth/profile',
+      data
+    );
+    return response.data.user;
   },
 
   /**
@@ -173,3 +203,14 @@ export const authApi = {
     return `${process.env.NEXT_PUBLIC_API_URL}/auth/google`;
   },
 };
+
+// Configure API client to refresh access tokens transparently before requests
+apiClient.setRefreshCallback(async () => {
+  try {
+    await authApi.refreshTokens();
+  } catch (error) {
+    // If refresh fails, clear tokens so the app can redirect to login
+    tokenStorage.clearTokens();
+    throw error;
+  }
+});

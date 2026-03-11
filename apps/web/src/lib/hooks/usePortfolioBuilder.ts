@@ -1,13 +1,17 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import type { PortfolioAsset, AllocationMode, Asset, AssetType } from '@/types';
 import { useAssetManagement } from './useAssetManagement';
 import { usePortfolioValidation } from './usePortfolioValidation';
 import { useXRayGeneration } from './useXRayGeneration';
 
+const PORTFOLIO_BUILDER_STORAGE_KEY = 'portfolioBuilderState';
+
 interface UsePortfolioBuilderOptions {
   initialAssets?: PortfolioAsset[];
+  reset?: boolean;
+  initialAllocationMode?: AllocationMode;
 }
 
 interface UsePortfolioBuilderReturn {
@@ -27,6 +31,7 @@ interface UsePortfolioBuilderReturn {
   isValid: boolean;
   isGenerating: boolean;
   generateError: Error | null;
+  isDirty: boolean;
 
   // Actions
   setAllocationMode: (mode: AllocationMode) => void;
@@ -52,7 +57,7 @@ interface UsePortfolioBuilderReturn {
     url: string
   ) => void;
   handleGenerate: () => void;
-  handleCopyUrl: () => void;
+  handleCopyUrl: (urlOverride?: string) => void;
   handleClearAll: () => void;
   handleConfirmClearAll: () => void;
   handleOpenPDF: () => void;
@@ -69,10 +74,66 @@ interface UsePortfolioBuilderReturn {
  */
 export function usePortfolioBuilder({
   initialAssets = [],
+  reset = false,
+  initialAllocationMode,
 }: UsePortfolioBuilderOptions = {}): UsePortfolioBuilderReturn {
+  const [initialState] = useState<{
+    assets: PortfolioAsset[];
+    allocationMode: AllocationMode;
+  }>(() => {
+    if (reset) {
+      return {
+        assets: [],
+        allocationMode: 'percentage',
+      };
+    }
+
+    if (initialAssets.length > 0) {
+      return {
+        assets: initialAssets,
+        allocationMode: initialAllocationMode || 'percentage',
+      };
+    }
+
+    if (typeof window === 'undefined') {
+      return {
+        assets: [],
+        allocationMode: 'percentage',
+      };
+    }
+
+    try {
+      const stored = window.sessionStorage.getItem(
+        PORTFOLIO_BUILDER_STORAGE_KEY
+      );
+      if (!stored) {
+        return {
+          assets: [],
+          allocationMode: 'percentage',
+        };
+      }
+
+      const parsed = JSON.parse(stored) as {
+        assets?: PortfolioAsset[];
+        allocationMode?: AllocationMode;
+      };
+
+      return {
+        assets: Array.isArray(parsed.assets) ? parsed.assets : [],
+        allocationMode: parsed.allocationMode || 'percentage',
+      };
+    } catch {
+      return {
+        assets: [],
+        allocationMode: 'percentage',
+      };
+    }
+  });
+
   // Allocation mode state
-  const [allocationMode, setAllocationMode] =
-    useState<AllocationMode>('percentage');
+  const [allocationMode, setAllocationMode] = useState<AllocationMode>(
+    initialState.allocationMode
+  );
 
   // Modal states
   const [selectedAssetForAlternatives, setSelectedAssetForAlternatives] =
@@ -87,15 +148,75 @@ export function usePortfolioBuilder({
 
   // Asset management hook with clearUrls callback
   const assetManagement = useAssetManagement({
-    initialAssets,
+    initialAssets: initialState.assets,
     // onAssetsChange will be set after xrayGeneration is created
   });
+
+  // Persist builder state so portfolio is not lost on redirects (e.g. auth flows)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const hasAssets = assetManagement.assets.length > 0;
+    if (!hasAssets && allocationMode === 'percentage') {
+      window.sessionStorage.removeItem(PORTFOLIO_BUILDER_STORAGE_KEY);
+      return;
+    }
+
+    try {
+      window.sessionStorage.setItem(
+        PORTFOLIO_BUILDER_STORAGE_KEY,
+        JSON.stringify({
+          assets: assetManagement.assets,
+          allocationMode,
+        })
+      );
+    } catch {
+      // Ignore storage errors
+    }
+  }, [assetManagement.assets, allocationMode]);
 
   // Validation hook
   const { totalWeight, isValid } = usePortfolioValidation({
     assets: assetManagement.assets,
     allocationMode,
   });
+
+  const isDirty = useMemo(() => {
+    if (allocationMode !== initialState.allocationMode) {
+      return true;
+    }
+
+    const currentAssets = assetManagement.assets;
+    const initialAssetsSnapshot = initialState.assets;
+
+    if (currentAssets.length !== initialAssetsSnapshot.length) {
+      return true;
+    }
+
+    for (let i = 0; i < currentAssets.length; i += 1) {
+      const current = currentAssets[i];
+      const initial = initialAssetsSnapshot[i];
+
+      if (!initial) {
+        return true;
+      }
+
+      const currentId =
+        current.asset?.morningstarId ?? current.identifier.toUpperCase();
+      const initialId =
+        initial.asset?.morningstarId ?? initial.identifier.toUpperCase();
+
+      if (currentId !== initialId) {
+        return true;
+      }
+
+      if (current.weight !== initial.weight) {
+        return true;
+      }
+    }
+
+    return false;
+  }, [allocationMode, assetManagement.assets, initialState.assets, initialState.allocationMode]);
 
   // X-Ray generation hook
   const xrayGeneration = useXRayGeneration({
@@ -244,6 +365,7 @@ export function usePortfolioBuilder({
     isValid,
     isGenerating: xrayGeneration.isGenerating,
     generateError: xrayGeneration.generateError,
+    isDirty,
 
     // Actions (memoized for stable references)
     ...actions,

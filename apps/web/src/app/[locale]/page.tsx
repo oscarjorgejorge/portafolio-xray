@@ -11,6 +11,11 @@ import { captureException } from '@/lib/services/errorReporting';
 import type { PortfolioAsset } from '@/types';
 import { resolveAsset } from '@/lib/api/assets';
 import { generateSimpleId } from '@/lib/utils/id';
+import { useQuery } from '@tanstack/react-query';
+import { getPortfolio } from '@/lib/api/portfolios';
+import { queryKeys } from '@/lib/api/queryKeys';
+
+const RESOLVED_ASSETS_CACHE_KEY = 'builderResolvedAssetsCache';
 
 function HomePageContent() {
   const t = useTranslations('home');
@@ -23,6 +28,27 @@ function HomePageContent() {
   const [showVerificationSuccess, setShowVerificationSuccess] = useState(false);
   const [showAlreadyVerified, setShowAlreadyVerified] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  const portfolioId = searchParams.get('portfolioId');
+  const initialAllocationModeParam = searchParams.get('allocationMode');
+  const resetBuilder = searchParams.get('resetBuilder') === 'true';
+
+  const {
+    data: portfolio,
+    isLoading: isPortfolioLoading,
+    error: portfolioError,
+  } = useQuery({
+    queryKey: portfolioId
+      ? queryKeys.portfolios.byId(portfolioId)
+      : ['portfolios', 'none'],
+    queryFn: () => {
+      if (!portfolioId) {
+        throw new Error('Missing portfolioId');
+      }
+      return getPortfolio(portfolioId);
+    },
+    enabled: !!portfolioId,
+  });
 
   useEffect(() => {
     const verified = searchParams.get('verified');
@@ -44,6 +70,25 @@ function HomePageContent() {
     const assetsParam = searchParams.get('assets');
     if (!assetsParam) return;
 
+    // If we have cached resolved assets for this exact param, reuse them
+    if (typeof window !== 'undefined') {
+      try {
+        const rawCache = window.sessionStorage.getItem(
+          RESOLVED_ASSETS_CACHE_KEY
+        );
+        if (rawCache) {
+          const cache = JSON.parse(rawCache) as Record<string, PortfolioAsset[]>;
+          const cached = cache[assetsParam];
+          if (cached && Array.isArray(cached) && cached.length > 0) {
+            setInitialAssets(cached);
+            return;
+          }
+        }
+      } catch {
+        // Ignore cache errors and fall back to resolving
+      }
+    }
+
     // Cancel any previous request
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -62,6 +107,49 @@ function HomePageContent() {
         const pairs = decodedAssetsParam.split(',');
         const resolvedAssets: PortfolioAsset[] = [];
 
+        const resolveWithRetry = async (
+          identifier: string
+        ): Promise<Awaited<ReturnType<typeof resolveAsset>> | null> => {
+          const maxAttempts = 3;
+          let attempt = 0;
+          let lastError: unknown = null;
+
+          while (attempt < maxAttempts && !abortController.signal.aborted) {
+            try {
+              return await resolveAsset(identifier, undefined, {
+                signal: abortController.signal,
+              });
+            } catch (error) {
+              // Ignore abort errors
+              if (error instanceof Error && error.name === 'AbortError') {
+                return null;
+              }
+              lastError = error;
+              attempt += 1;
+
+              if (attempt < maxAttempts) {
+                // Small backoff before retrying
+                await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
+              }
+            }
+          }
+
+          // After retries, log once and treat as failure
+          if (lastError) {
+            captureException(
+              lastError instanceof Error
+                ? lastError
+                : new Error('Failed to resolve asset after retries'),
+              {
+                tags: { action: 'asset-resolve-retry' },
+                extra: { identifier, attempts: maxAttempts },
+              }
+            );
+          }
+
+          return null;
+        };
+
         for (const pair of pairs) {
           // Check if request was cancelled
           if (abortController.signal.aborted) return;
@@ -70,41 +158,28 @@ function HomePageContent() {
           const weight = parseFloat(weightStr) || 0;
 
           if (identifier && !isNaN(weight)) {
-            try {
-              const result = await resolveAsset(identifier, undefined, {
-                signal: abortController.signal,
+            const result = await resolveWithRetry(identifier);
+
+            // Check again after async operation
+            if (abortController.signal.aborted) return;
+
+            if (result && result.success && result.asset) {
+              resolvedAssets.push({
+                id: generateSimpleId(),
+                identifier: identifier.toUpperCase(),
+                asset: result.asset,
+                weight,
+                status: 'resolved',
               });
-
-              // Check again after async operation
-              if (abortController.signal.aborted) return;
-
-              if (result.success && result.asset) {
-                resolvedAssets.push({
-                  id: generateSimpleId(),
-                  identifier: identifier.toUpperCase(),
-                  asset: result.asset,
-                  weight,
-                  status: 'resolved',
-                });
-              } else {
-                resolvedAssets.push({
-                  id: generateSimpleId(),
-                  identifier: identifier.toUpperCase(),
-                  weight,
-                  status: 'error',
-                  error: result.error || 'Could not resolve asset',
-                });
-              }
-            } catch (error) {
-              // Ignore abort errors
-              if (error instanceof Error && error.name === 'AbortError') return;
-
+            } else {
               resolvedAssets.push({
                 id: generateSimpleId(),
                 identifier: identifier.toUpperCase(),
                 weight,
                 status: 'error',
-                error: 'Failed to resolve asset',
+                error:
+                  result?.error ||
+                  'Failed to resolve asset after multiple attempts',
               });
             }
           }
@@ -113,6 +188,24 @@ function HomePageContent() {
         // Final check before setting state
         if (!abortController.signal.aborted) {
           setInitialAssets(resolvedAssets);
+
+          // Persist resolved assets in a small session cache by assetsParam
+          if (typeof window !== 'undefined') {
+            try {
+              const rawCache =
+                window.sessionStorage.getItem(RESOLVED_ASSETS_CACHE_KEY);
+              const cache = rawCache
+                ? (JSON.parse(rawCache) as Record<string, PortfolioAsset[]>)
+                : {};
+              cache[assetsParam] = resolvedAssets;
+              window.sessionStorage.setItem(
+                RESOLVED_ASSETS_CACHE_KEY,
+                JSON.stringify(cache)
+              );
+            } catch {
+              // Ignore cache errors
+            }
+          }
         }
       } catch (error) {
         // Ignore abort errors
@@ -167,10 +260,28 @@ function HomePageContent() {
           </Alert>
         )}
 
-        {isLoading ? (
+        {portfolioId && portfolioError && (
+          <Alert variant="error" className="mb-6">
+            {portfolioError instanceof Error ? portfolioError.message : tCommon('unexpectedError')}
+          </Alert>
+        )}
+
+        {isLoading || (portfolioId && isPortfolioLoading) ? (
           <PortfolioBuilderSkeleton assetCount={3} />
         ) : (
-          <PortfolioBuilder initialAssets={initialAssets} />
+          <PortfolioBuilder
+            initialAssets={initialAssets}
+            portfolioId={portfolioId || undefined}
+            initialName={portfolio?.name}
+            initialDescription={portfolio?.description}
+            initialIsPublic={portfolio?.isPublic}
+            resetBuilder={resetBuilder}
+            initialAllocationMode={
+              initialAllocationModeParam === 'amount' || initialAllocationModeParam === 'percentage'
+                ? (initialAllocationModeParam as 'amount' | 'percentage')
+                : undefined
+            }
+          />
         )}
       </div>
     </main>

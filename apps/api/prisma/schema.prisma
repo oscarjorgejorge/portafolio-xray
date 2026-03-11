@@ -61,10 +61,15 @@ model User {
   locale        String       @default("es") // User language preference: 'es' or 'en'
   createdAt     DateTime     @default(now()) @map("created_at")
   updatedAt     DateTime     @updatedAt @map("updated_at")
+  deletedAt     DateTime?    @map("deleted_at")
+  isDeleted     Boolean      @default(false) @map("is_deleted")
 
   refreshTokens      RefreshToken[]
   passwordResets     PasswordReset[]
   emailVerifications EmailVerification[]
+  portfolios         Portfolio[]
+  favorites          Favorite[]
+  comments           Comment[]
 
   @@map("users")
 }
@@ -120,4 +125,79 @@ model EmailVerification {
 enum AuthProvider {
   email
   google
+}
+
+// ==========================================
+// V2 Entities - Saved Portfolios
+// ==========================================
+
+model Portfolio {
+  id                String   @id @default(uuid())
+  userId            String   @map("user_id")
+  name              String
+  description       String?
+  isPublic          Boolean  @default(true) @map("is_public")
+  assets            Json     // Array of { morningstarId: string, weight: number, amount?: number }
+  xrayShareableUrl  String?  @map("xray_shareable_url")
+  xrayMorningstarUrl String? @map("xray_morningstar_url")
+  xrayGeneratedAt   DateTime? @map("xray_generated_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  deletedAt         DateTime? @map("deleted_at")
+  isDeleted         Boolean   @default(false) @map("is_deleted")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  favorites Favorite[]
+  comments  Comment[]
+
+  @@index([userId])
+  @@map("portfolios")
+}
+
+// ==========================================
+// V3 Entities - Favorites
+// ==========================================
+
+model Favorite {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  portfolioId String   @map("portfolio_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, portfolioId])
+  @@index([userId])
+  @@index([portfolioId])
+  @@map("favorites")
+}
+
+model Comment {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  portfolioId String   @map("portfolio_id")
+  content     String
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@index([portfolioId])
+  @@index([userId])
+  @@map("comments")
+}
+
+// ==========================================
+// V4 Entities - System Counters
+// ==========================================
+
+model AnonymizedUserSequence {
+  id        Int      @id @default(1)
+  nextValue Int      @default(0) @map("next_value")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("anonymized_user_sequence")
 }

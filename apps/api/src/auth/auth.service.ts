@@ -17,6 +17,8 @@ import {
   LoginDto,
   ResetPasswordDto,
   ChangePasswordDto,
+  SetPasswordDto,
+  UpdateProfileDto,
 } from './dto';
 import {
   JwtPayload,
@@ -146,6 +148,7 @@ export class AuthService {
           avatarUrl: updatedUser.avatarUrl,
           emailVerified: updatedUser.emailVerified,
           locale: updatedUser.locale || 'es',
+          hasPassword: !!updatedUser.password,
         },
         tokens,
         verificationToken,
@@ -196,6 +199,7 @@ export class AuthService {
         avatarUrl: user.avatarUrl,
         emailVerified: user.emailVerified,
         locale: user.locale || 'es',
+        hasPassword: true,
       },
       tokens,
       verificationToken,
@@ -247,6 +251,7 @@ export class AuthService {
         avatarUrl: user.avatarUrl,
         emailVerified: user.emailVerified,
         locale: user.locale || 'es',
+        hasPassword: !!user.password,
       },
       tokens,
     };
@@ -306,6 +311,7 @@ export class AuthService {
         avatarUrl: user.avatarUrl,
         emailVerified: user.emailVerified,
         locale: user.locale || 'es',
+        hasPassword: !!user.password,
       },
       tokens,
       isNewUser,
@@ -418,6 +424,7 @@ export class AuthService {
           avatarUrl: user.avatarUrl,
           emailVerified: user.emailVerified,
           locale: user.locale || 'es',
+          hasPassword: !!user.password,
         };
         const tokens = await this.generateTokens(
           user.id,
@@ -490,6 +497,7 @@ export class AuthService {
       avatarUrl: verifiedUser.avatarUrl,
       emailVerified: verifiedUser.emailVerified,
       locale: verifiedUser.locale || 'es',
+      hasPassword: !!verifiedUser.password,
     };
 
     const tokens = await this.generateTokens(
@@ -616,6 +624,27 @@ export class AuthService {
     await this.authRepository.updateUserPassword(userId, hashedPassword);
   }
 
+  /**
+   * Set password for OAuth-only accounts (no current password required).
+   * Only allowed when user has no password (e.g. signed in with Google).
+   */
+  async setPassword(userId: string, dto: SetPasswordDto): Promise<void> {
+    const user = await this.authRepository.findUserById(userId);
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (user.password) {
+      throw new BadRequestException(
+        'Account already has a password. Use change password instead.',
+      );
+    }
+
+    const hashedPassword = await bcrypt.hash(dto.newPassword, BCRYPT_ROUNDS);
+    await this.authRepository.updateUserPassword(userId, hashedPassword);
+  }
+
   // ==========================================
   // Get Current User
   // ==========================================
@@ -635,12 +664,47 @@ export class AuthService {
       avatarUrl: user.avatarUrl,
       emailVerified: user.emailVerified,
       locale: user.locale || 'es',
+      hasPassword: !!user.password,
     };
   }
 
   // ==========================================
-  // User Preferences
+  // User Preferences & Profile
   // ==========================================
+
+  async updateProfile(
+    userId: string,
+    dto: UpdateProfileDto,
+  ): Promise<AuthenticatedUser> {
+    if (dto.userName !== undefined) {
+      const existing = await this.authRepository.findUserByUserName(
+        dto.userName,
+      );
+      if (existing && existing.id !== userId && existing.emailVerified) {
+        throw new ConflictException('Username already taken');
+      }
+    }
+
+    const updateData: { userName?: string; name?: string } = {};
+    if (dto.userName !== undefined) updateData.userName = dto.userName;
+    if (dto.name !== undefined) updateData.name = dto.name;
+
+    if (Object.keys(updateData).length === 0) {
+      return this.getCurrentUser(userId);
+    }
+
+    const user = await this.authRepository.updateUser(userId, updateData);
+    return {
+      id: user.id,
+      email: user.email,
+      userName: user.userName,
+      name: user.name,
+      avatarUrl: user.avatarUrl,
+      emailVerified: user.emailVerified,
+      locale: user.locale || 'es',
+      hasPassword: !!user.password,
+    };
+  }
 
   async updateUserLocale(
     userId: string,
@@ -661,7 +725,29 @@ export class AuthService {
       avatarUrl: user.avatarUrl,
       emailVerified: user.emailVerified,
       locale: user.locale || 'es',
+      hasPassword: !!user.password,
     };
+  }
+
+  // ==========================================
+  // Account Deletion
+  // ==========================================
+
+  /**
+   * Soft delete a user account and anonymize personal data.
+   * From the user's perspective this is irreversible.
+   */
+  async deleteAccount(userId: string): Promise<void> {
+    const user = await this.authRepository.findUserById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Soft delete user and hide portfolios
+    await this.authRepository.softDeleteUserAndPortfolios(userId);
+
+    // Revoke all refresh tokens so tokens cannot be reused
+    await this.authRepository.revokeAllUserRefreshTokens(userId);
   }
 
   // ==========================================

@@ -30,6 +30,44 @@ export const queryKeys = {
     generate: (assetIds: string[]) =>
       ['xray', 'generate', ...assetIds.sort()] as const,
   },
+
+  /**
+   * Portfolios (saved) query keys
+   */
+  portfolios: {
+    /** Root key for all portfolio queries */
+    all: ['portfolios'] as const,
+    /** Key for a specific portfolio by id */
+    byId: (id: string) => ['portfolios', id] as const,
+    /** Key for public portfolios explorer list */
+    publicList: (filters: {
+      name?: string;
+      userName?: string;
+      sortBy?: string;
+    } = {}) => ['portfolios', 'public', filters] as const,
+    /** Key for a single public portfolio by id */
+    publicById: (id: string) =>
+      ['portfolios', 'public', 'byId', id] as const,
+  },
+
+  /**
+   * Favorites query keys
+   */
+  favorites: {
+    /** Root key for current user favorites list */
+    all: ['favorites'] as const,
+  },
+
+  /**
+   * Comments query keys
+   */
+  comments: {
+    /** Root key for all comments */
+    all: ['comments'] as const,
+    /** Comments for a specific portfolio */
+    byPortfolio: (portfolioId: string) =>
+      ['comments', 'byPortfolio', portfolioId] as const,
+  },
 } as const;
 
 /**

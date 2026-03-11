@@ -40,6 +40,10 @@ export interface CreateEmailVerificationData {
   expiresAt: Date;
 }
 
+const ANONYMIZED_EMAIL_PREFIX = 'anonymous_email_';
+const ANONYMIZED_USERNAME_PREFIX = 'anonymous_user_name_';
+const ANONYMIZED_NAME_PREFIX = 'anonymous_name_';
+
 @Injectable()
 export class AuthRepository {
   private readonly logger = new Logger(AuthRepository.name);
@@ -51,14 +55,14 @@ export class AuthRepository {
   // ==========================================
 
   async findUserById(id: string): Promise<User | null> {
-    return this.prisma.user.findUnique({
-      where: { id },
+    return this.prisma.user.findFirst({
+      where: { id, isDeleted: false },
     });
   }
 
   async findUserByEmail(email: string): Promise<User | null> {
-    return this.prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
+    return this.prisma.user.findFirst({
+      where: { email: email.toLowerCase(), isDeleted: false },
     });
   }
 
@@ -79,8 +83,8 @@ export class AuthRepository {
       return null;
     }
 
-    return this.prisma.user.findUnique({
-      where: { userName: normalizedUserName },
+    return this.prisma.user.findFirst({
+      where: { userName: normalizedUserName, isDeleted: false },
     });
   }
 
@@ -156,6 +160,55 @@ export class AuthRepository {
       where: { id: userId },
       data: { emailVerified: true },
     });
+  }
+
+  /**
+   * Soft delete a user and hide all their portfolios.
+   * - Marks user as isDeleted=true and anonymizes personal data.
+   * - Marks all portfolios for that user as isDeleted=true and isPublic=false.
+   */
+  async softDeleteUserAndPortfolios(userId: string): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      const seq = await tx.anonymizedUserSequence.upsert({
+        where: { id: 1 },
+        update: { nextValue: { increment: 1 } },
+        create: { id: 1, nextValue: 1 },
+      });
+      const anonymizedIndex = seq.nextValue;
+      const deletedAt = new Date();
+
+      await tx.user.update({
+        where: { id: userId },
+        data: this.buildAnonymizedUserData(anonymizedIndex, deletedAt),
+      });
+
+      await tx.portfolio.updateMany({
+        where: { userId },
+        data: {
+          isPublic: false,
+          isDeleted: true,
+          deletedAt,
+        },
+      });
+    });
+  }
+
+  private buildAnonymizedUserData(
+    anonymizedIndex: number,
+    deletedAt: Date,
+  ): Prisma.UserUpdateInput {
+    const suffix = String(anonymizedIndex);
+
+    return {
+      email: `${ANONYMIZED_EMAIL_PREFIX}${suffix}@mail.com`,
+      userName: `${ANONYMIZED_USERNAME_PREFIX}${suffix}`,
+      name: `${ANONYMIZED_NAME_PREFIX}${suffix}`,
+      avatarUrl: null,
+      password: null,
+      emailVerified: false,
+      isDeleted: true,
+      deletedAt,
+    };
   }
 
   // ==========================================

@@ -3,6 +3,8 @@ import {
   Post,
   Get,
   Put,
+  Patch,
+  Delete,
   Body,
   UseGuards,
   Req,
@@ -35,7 +37,9 @@ import {
   ForgotPasswordDto,
   ResetPasswordDto,
   ChangePasswordDto,
+  SetPasswordDto,
   UpdateLocaleDto,
+  UpdateProfileDto,
 } from './dto';
 import { JwtAuthGuard, GoogleAuthGuard } from './guards';
 import { CurrentUser, Public } from './decorators';
@@ -301,6 +305,23 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Not authenticated' })
   async getCurrentUser(@CurrentUser() user: AuthenticatedUser) {
     return { user: await this.authService.getCurrentUser(user.id) };
+  }
+
+  @Patch('profile')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Update authenticated user profile' })
+  @ApiResponse({ status: 200, description: 'Profile updated successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid input' })
+  @ApiResponse({ status: 401, description: 'Not authenticated' })
+  @ApiResponse({ status: 409, description: 'Username already taken' })
+  async updateProfile(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: UpdateProfileDto,
+  ) {
+    const updatedUser = await this.authService.updateProfile(user.id, dto);
+    return { user: updatedUser };
   }
 
   @Public()
@@ -599,6 +620,29 @@ export class AuthController {
     };
   }
 
+  @Post('set-password')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Set password for OAuth-only accounts',
+    description:
+      'Allows users who signed in with Google (no password) to set a password. Not allowed for accounts that already have a password.',
+  })
+  @ApiResponse({ status: 200, description: 'Password set successfully' })
+  @ApiResponse({
+    status: 400,
+    description: 'Account already has a password',
+  })
+  @ApiResponse({ status: 401, description: 'Not authenticated' })
+  async setPassword(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: SetPasswordDto,
+  ) {
+    await this.authService.setPassword(user.id, dto);
+    return { message: 'Password set successfully' };
+  }
+
   @Put('change-password')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
@@ -640,5 +684,20 @@ export class AuthController {
       message: 'Language preference updated successfully',
       user: updatedUser,
     };
+  }
+
+  @Delete('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: 'Delete current user account',
+    description:
+      'Soft deletes the current user account, anonymizes personal data, and hides all associated portfolios. From the user perspective this is irreversible.',
+  })
+  @ApiResponse({ status: 204, description: 'Account deleted' })
+  @ApiResponse({ status: 401, description: 'Not authenticated' })
+  async deleteAccount(@CurrentUser() user: AuthenticatedUser) {
+    await this.authService.deleteAccount(user.id);
   }
 }

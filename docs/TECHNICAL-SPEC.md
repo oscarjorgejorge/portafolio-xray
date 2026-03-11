@@ -81,27 +81,38 @@ Controller ──► Service ──► Repository ──► PrismaService ──
 
 ---
 
-## Database Schema
+## Database Schema (Current)
 
-### V1 Entities (Asset Resolution Cache)
+The database schema is defined in `apps/api/prisma/schema.prisma` and evolves by version:
+
+- **V1**: Asset resolution cache (`Asset`)
+- **V2**: Users, authentication, saved portfolios (`User`, `RefreshToken`, `PasswordReset`, `EmailVerification`, `Portfolio`)
+- **V3**: Social features on top of portfolios (`Favorite`, `Comment`)
+- **V4**: Internal system counters (`AnonymizedUserSequence`)
+
+### V1 Entity — Asset (Resolution Cache)
 
 ```prisma
 model Asset {
-  id            String   @id @default(uuid())
-  isin          String   @unique
-  morningstarId String   @unique
+  id            String      @id @default(uuid())
+  isin          String?     // Can be null when pending enrichment
+  morningstarId String      @unique @map("morningstar_id")
   ticker        String?
   name          String
   type          AssetType
-  currency      String?
-  country       String?
-  confidence    Float
+  url           String      // Morningstar URL from resolution
   source        AssetSource
-  status        AssetStatus
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  isinPending   Boolean     @default(false) @map("isin_pending") // True when ISIN enrichment is in progress
+  isinManual    Boolean     @default(false) @map("isin_manual")  // True when ISIN was manually entered by user
+  tickerManual  Boolean     @default(false) @map("ticker_manual") // True when ticker was manually entered by user
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
 
-  xrayAssets XRayAsset[]  // V2 relation
+  @@index([isin]) // Index for lookups, but not unique (allows null)
+  @@index([isin, isinPending]) // Composite index for polling queries
+  @@index([morningstarId, type]) // Composite index for type filtering
+  @@index([ticker]) // Index for ticker-based lookups
+  @@map("assets")
 }
 
 enum AssetType {
@@ -116,31 +127,34 @@ enum AssetSource {
   web_search
   imported
 }
-
-enum AssetStatus {
-  resolved
-  needs_review
-  conflict
-}
 ```
 
-### V2 Entities (Users & Saved X-Rays)
+### V2 Entities — Authentication & Saved Portfolios
 
 ```prisma
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  userName  String   @unique
-  name      String
-  avatarUrl String?
-  provider  AuthProvider
-  password  String?  // null for OAuth
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String       @id @default(uuid())
+  email         String       @unique
+  userName      String       @unique @map("user_name")
+  name          String
+  password      String?      // null for OAuth users
+  avatarUrl     String?      @map("avatar_url")
+  provider      AuthProvider
+  emailVerified Boolean      @default(false) @map("email_verified")
+  locale        String       @default("es") // User language preference: 'es' or 'en'
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+  deletedAt     DateTime?    @map("deleted_at")
+  isDeleted     Boolean      @default(false) @map("is_deleted")
 
-  xrays     XRay[]
-  favorites Favorite[]   // V3
-  comments  Comment[]    // V3
+  refreshTokens      RefreshToken[]
+  passwordResets     PasswordReset[]
+  emailVerifications EmailVerification[]
+  portfolios         Portfolio[]
+  favorites          Favorite[]
+  comments           Comment[]
+
+  @@map("users")
 }
 
 enum AuthProvider {
@@ -148,64 +162,123 @@ enum AuthProvider {
   google
 }
 
-model XRay {
-  id          String   @id @default(uuid())
-  slug        String   @unique
-  title       String?
-  isPublic    Boolean  @default(false)
-  ownerId     String
-  // source field removed - all X-Rays use Morningstar
-  externalUrl String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+model RefreshToken {
+  id        String    @id @default(uuid())
+  token     String    @unique
+  userId    String    @map("user_id")
+  userAgent String?   @map("user_agent") // Browser/device info
+  ipAddress String?   @map("ip_address")
+  expiresAt DateTime  @map("expires_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  revokedAt DateTime? @map("revoked_at")
 
-  owner     User        @relation(fields: [ownerId], references: [id])
-  assets    XRayAsset[]
-  favorites Favorite[]  // V3
-  comments  Comment[]   // V3
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
 }
 
-model XRayAsset {
-  id      String @id @default(uuid())
-  xrayId  String
-  assetId String
-  weight  Float
-  order   Int
+model PasswordReset {
+  id        String    @id @default(uuid())
+  token     String    @unique
+  userId    String    @map("user_id")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
 
-  xray  XRay  @relation(fields: [xrayId], references: [id])
-  asset Asset @relation(fields: [assetId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([xrayId, assetId])
+  @@index([token])
+  @@index([userId])
+  @@map("password_resets")
 }
 
-// Note: XRaySource enum removed - all X-Rays use Morningstar for now
+model EmailVerification {
+  id        String    @id @default(uuid())
+  token     String    @unique
+  userId    String    @map("user_id")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@map("email_verifications")
+}
+
+model Portfolio {
+  id                 String    @id @default(uuid())
+  userId             String    @map("user_id")
+  name               String
+  description        String?
+  isPublic           Boolean   @default(true) @map("is_public")
+  assets             Json      // Array of { morningstarId: string, weight: number, amount?: number }
+  xrayShareableUrl   String?   @map("xray_shareable_url")
+  xrayMorningstarUrl String?   @map("xray_morningstar_url")
+  xrayGeneratedAt    DateTime? @map("xray_generated_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+  deletedAt          DateTime? @map("deleted_at")
+  isDeleted          Boolean   @default(false) @map("is_deleted")
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  favorites Favorite[]
+  comments  Comment[]
+
+  @@index([userId])
+  @@map("portfolios")
+}
 ```
 
-### V3 Entities (Social Features)
+### V3 Entities — Social Features (on Portfolios)
 
 ```prisma
 model Favorite {
-  id        String   @id @default(uuid())
-  userId    String
-  xrayId    String
-  createdAt DateTime @default(now())
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  portfolioId String   @map("portfolio_id")
+  createdAt   DateTime @default(now()) @map("created_at")
 
-  user User @relation(fields: [userId], references: [id])
-  xray XRay @relation(fields: [xrayId], references: [id])
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, xrayId])
+  @@unique([userId, portfolioId])
+  @@index([userId])
+  @@index([portfolioId])
+  @@map("favorites")
 }
 
 model Comment {
-  id        String   @id @default(uuid())
-  userId    String
-  xrayId    String
-  content   String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  portfolioId String   @map("portfolio_id")
+  content     String
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
-  user User @relation(fields: [userId], references: [id])
-  xray XRay @relation(fields: [xrayId], references: [id])
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@index([portfolioId])
+  @@index([userId])
+  @@map("comments")
+}
+```
+
+### V4 Entity — System Counters
+
+```prisma
+model AnonymizedUserSequence {
+  id        Int      @id @default(1)
+  nextValue Int      @default(0) @map("next_value")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("anonymized_user_sequence")
 }
 ```
 

@@ -45,6 +45,8 @@ const WeightInput = memo<WeightInputProps>(function WeightInput({
       min={0}
       max={maxValue}
       step={0.01}
+      maxDecimals={2}
+      selectOnFocus
       label={isMobile ? undefined : label}
       placeholder="0"
       aria-label={label}
@@ -119,6 +121,7 @@ ErrorMessage.displayName = 'ErrorMessage';
 interface AssetRowProps {
   asset: PortfolioAsset;
   allocationMode: AllocationMode;
+  totalWeight: number;
   onWeightChange: (id: string, weight: number) => void;
   onRemove: (id: string) => void;
   onOpenManualInput?: (id: string) => void;
@@ -131,6 +134,7 @@ interface AssetRowProps {
 export const AssetRow = memo<AssetRowProps>(function AssetRow({
   asset,
   allocationMode,
+  totalWeight,
   onWeightChange,
   onRemove,
   onOpenManualInput,
@@ -139,6 +143,12 @@ export const AssetRow = memo<AssetRowProps>(function AssetRow({
   isLoading = false,
 }) {
   const t = useTranslations('assetRow');
+  const percentageDisplay =
+    allocationMode === 'amount' &&
+    totalWeight > 0 &&
+    asset.weight >= 0
+      ? `(${((asset.weight / totalWeight) * 100).toFixed(1)}%)`
+      : null;
   const tCommon = useTranslations('common');
   const [showTooltip, setShowTooltip] = useState(false);
   
@@ -171,9 +181,11 @@ export const AssetRow = memo<AssetRowProps>(function AssetRow({
   const handleMouseLeave = useCallback(() => setShowTooltip(false), []);
 
   const isinPending = asset.isinPending || asset.asset?.isinPending || false;
+  const shouldPollIsin = asset.asset?.type !== 'STOCK' && isinPending;
+
   useIsinPolling({
-    assetId: asset.asset?.id,
-    isinPending,
+    assetId: shouldPollIsin ? asset.asset?.id : undefined,
+    isinPending: shouldPollIsin,
     onIsinResolved: handleIsinResolved,
   });
 
@@ -217,7 +229,9 @@ export const AssetRow = memo<AssetRowProps>(function AssetRow({
                     onTickerUpdated={handleIsinResolved}
                   />
                 ) : (
-                  asset.asset.ticker && (
+                  asset.asset.ticker &&
+                  asset.asset.type !== 'FUND' &&
+                  asset.asset.type !== 'ETF' && (
                     <span>
                       <span className="font-medium">{t('ticker')}</span> {asset.asset.ticker}
                     </span>
@@ -260,27 +274,8 @@ export const AssetRow = memo<AssetRowProps>(function AssetRow({
                 />
               </div>
             </div>
-            {/* Desktop: Weight and X button */}
-            <div className="hidden md:flex items-start gap-2 flex-shrink-0 ml-auto">
-              <WeightInput
-                value={asset.weight}
-                onChange={handleWeightChange}
-                allocationMode={allocationMode}
-                hasError={hasWeightError}
-                variant="desktop"
-                labels={weightLabels}
-              />
-              <RemoveButton
-                onClick={handleRemove}
-                showTooltip={showTooltip}
-                onMouseEnter={handleMouseEnter}
-                onMouseLeave={handleMouseLeave}
-                className="flex items-start"
-                removeLabel={tCommon('remove')}
-              />
-            </div>
-            {/* Mobile: Remove button */}
-            <div className="md:hidden flex-shrink-0">
+            {/* Mobile: Trash above percentage (saves horizontal space) */}
+            <div className="md:hidden flex flex-col items-center gap-0.5 flex-shrink-0">
               <RemoveButton
                 onClick={handleRemove}
                 showTooltip={showTooltip}
@@ -289,6 +284,37 @@ export const AssetRow = memo<AssetRowProps>(function AssetRow({
                 className="mt-0.5"
                 removeLabel={tCommon('remove')}
               />
+              {percentageDisplay && (
+                <span className="text-sm text-slate-600 whitespace-nowrap">
+                  {percentageDisplay}
+                </span>
+              )}
+            </div>
+            {/* Desktop: Weight, then trash above percentage */}
+            <div className="hidden md:flex items-end gap-2 flex-shrink-0 ml-auto">
+              <WeightInput
+                value={asset.weight}
+                onChange={handleWeightChange}
+                allocationMode={allocationMode}
+                hasError={hasWeightError}
+                variant="desktop"
+                labels={weightLabels}
+              />
+              <div className="flex flex-col items-center gap-0.5 pb-1.5">
+                <RemoveButton
+                  onClick={handleRemove}
+                  showTooltip={showTooltip}
+                  onMouseEnter={handleMouseEnter}
+                  onMouseLeave={handleMouseLeave}
+                  className="flex items-start"
+                  removeLabel={tCommon('remove')}
+                />
+                {percentageDisplay && (
+                  <span className="text-sm text-slate-600 whitespace-nowrap">
+                    {percentageDisplay}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
           {/* Error message */}
@@ -307,8 +333,8 @@ export const AssetRow = memo<AssetRowProps>(function AssetRow({
             <h4 className="font-semibold text-slate-900 flex-1 min-w-0 break-words">
               {asset.identifier}
             </h4>
-            {/* Desktop: Weight and X button */}
-            <div className="hidden md:flex items-start gap-2 flex-shrink-0">
+            {/* Desktop: Weight, then trash above percentage */}
+            <div className="hidden md:flex items-end gap-2 flex-shrink-0">
               <WeightInput
                 value={asset.weight}
                 onChange={handleWeightChange}
@@ -317,40 +343,55 @@ export const AssetRow = memo<AssetRowProps>(function AssetRow({
                 variant="desktop"
                 labels={weightLabels}
               />
-              <RemoveButton
-                onClick={handleRemove}
-                showTooltip={showTooltip}
-                onMouseEnter={handleMouseEnter}
-                onMouseLeave={handleMouseLeave}
-                className="flex items-start pt-6"
-                removeLabel={tCommon('remove')}
-              />
-            </div>
-            {/* Mobile: Remove button */}
-            <div className="md:hidden flex-shrink-0">
-              <RemoveButton
-                onClick={handleRemove}
-                showTooltip={showTooltip}
-                onMouseEnter={handleMouseEnter}
-                onMouseLeave={handleMouseLeave}
-                className="mt-0.5"
-                removeLabel={tCommon('remove')}
-              />
+              <div className="flex flex-col items-center gap-0.5 pb-1.5">
+                <RemoveButton
+                  onClick={handleRemove}
+                  showTooltip={showTooltip}
+                  onMouseEnter={handleMouseEnter}
+                  onMouseLeave={handleMouseLeave}
+                  className="flex items-start"
+                  removeLabel={tCommon('remove')}
+                />
+                {percentageDisplay && (
+                  <span className="text-sm text-slate-600 whitespace-nowrap">
+                    {percentageDisplay}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
-          {/* Mobile: Weight input */}
+          {/* Mobile: Weight input + trash above percentage */}
           <div className="md:hidden mb-2">
-            <label className="block text-xs font-medium text-slate-700 mb-1">
-              {allocationMode === 'percentage' ? t('weightPercent') : t('amount')}
-            </label>
-            <WeightInput
-              value={asset.weight}
-              onChange={handleWeightChange}
-              allocationMode={allocationMode}
-              hasError={hasWeightError}
-              variant="mobile"
-              labels={weightLabels}
-            />
+            <div className="flex items-end gap-2">
+              <div className="flex-1">
+                <label className="block text-xs font-medium text-slate-700 mb-1">
+                  {allocationMode === 'percentage' ? t('weightPercent') : t('amount')}
+                </label>
+                <WeightInput
+                  value={asset.weight}
+                  onChange={handleWeightChange}
+                  allocationMode={allocationMode}
+                  hasError={hasWeightError}
+                  variant="mobile"
+                  labels={weightLabels}
+                />
+              </div>
+              <div className="flex flex-col items-center gap-0.5 pb-2">
+                <RemoveButton
+                  onClick={handleRemove}
+                  showTooltip={showTooltip}
+                  onMouseEnter={handleMouseEnter}
+                  onMouseLeave={handleMouseLeave}
+                  className="mt-0.5"
+                  removeLabel={tCommon('remove')}
+                />
+                {percentageDisplay && (
+                  <span className="text-sm text-slate-600 whitespace-nowrap">
+                    {percentageDisplay}
+                  </span>
+                )}
+              </div>
+            </div>
             {hasWeightError && <ErrorMessage error={error!} className="mt-1" />}
           </div>
           {asset.status === 'resolving' && (

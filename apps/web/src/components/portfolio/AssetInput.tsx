@@ -132,6 +132,7 @@ export const AssetInput: React.FC<AssetInputProps> = ({
       </div>
       <Button
         type="submit"
+        variant="secondary"
         isLoading={resolveMutation.isPending}
         disabled={!input.trim() || resolveMutation.isPending}
       >

@@ -11,8 +11,14 @@ interface PortfolioSummaryProps {
   allocationMode: AllocationMode;
   isValid: boolean;
   isGenerating: boolean;
+  /** Whether there is already a generated X-Ray for the current state */
+  hasGeneratedXRay: boolean;
+  /** Whether the portfolio has unsaved changes compared to its initial state */
+  isDirty: boolean;
   onClearAll: () => void;
   onGenerate: () => void;
+  /** Called when user clicks "Save portfolio". Opens auth or save modal. */
+  onSavePortfolio?: () => void;
 }
 
 /**
@@ -24,10 +30,14 @@ export const PortfolioSummary = memo<PortfolioSummaryProps>(function PortfolioSu
   allocationMode,
   isValid,
   isGenerating,
+  hasGeneratedXRay,
+  isDirty,
   onClearAll,
   onGenerate,
+  onSavePortfolio,
 }) {
   const t = useTranslations('summary');
+  const tSave = useTranslations('savePortfolio');
   const isPercentageValid = Math.abs(totalWeight - 100) < 0.01;
   const remaining = 100 - totalWeight;
 
@@ -50,13 +60,22 @@ export const PortfolioSummary = memo<PortfolioSummaryProps>(function PortfolioSu
           </Alert>
         )}
       </div>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
+        {onSavePortfolio && (
+          <Button
+            variant="secondary"
+            onClick={onSavePortfolio}
+            disabled={!isValid}
+          >
+            {tSave('button')}
+          </Button>
+        )}
         <Button variant="secondary" onClick={onClearAll}>
           {t('clearAll')}
         </Button>
         <Button
           onClick={onGenerate}
-          disabled={!isValid}
+          disabled={!isValid || (!isDirty && hasGeneratedXRay)}
           isLoading={isGenerating}
         >
           {t('generateXray')}

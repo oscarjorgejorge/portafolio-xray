@@ -23,8 +23,11 @@ export type { GenerateXRayResponse };
 export async function generateXRay(
   assets: XRayAsset[]
 ): Promise<GenerateXRayResponse> {
-  const response = await apiClient.post<{ success: true; data: GenerateXRayResponse; timestamp: string; requestId?: string }>('/xray/generate', { assets });
-  // TransformResponseInterceptor wraps the response in { success: true, data: {...}, timestamp, requestId }
-  return GenerateXRayResponseSchema.parse(response.data.data);
+  const response = await apiClient.post<GenerateXRayResponse>(
+    '/xray/generate',
+    { assets }
+  );
+
+  return GenerateXRayResponseSchema.parse(response.data);
 }
 

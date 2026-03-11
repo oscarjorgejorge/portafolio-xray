@@ -65,7 +65,7 @@ export default function AuthCallbackPage() {
           <Alert variant="error" className="mt-4">
             {error}
           </Alert>
-          <Button onClick={() => router.push('/login')} className="mt-6 w-full">
+          <Button onClick={() => router.push('/')} className="mt-6 w-full">
             Try Again
           </Button>
         </div>

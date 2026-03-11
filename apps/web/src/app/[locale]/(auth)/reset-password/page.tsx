@@ -1,41 +1,51 @@
 'use client';
 
 import { useState } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
+import { Link, useRouter } from '@/i18n/navigation';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { PasswordInput } from '@/components/ui/PasswordInput';
+import { PasswordRequirements } from '@/components/ui/PasswordRequirements';
 import { Alert } from '@/components/ui/Alert';
 
 export default function ResetPasswordPage() {
+  const t = useTranslations('auth.resetPassword');
   const router = useRouter();
   const searchParams = useSearchParams();
   const { resetPassword } = useAuth();
-  
+
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [error, setError] = useState('');
-  
+
   const token = searchParams.get('token');
+
+  const isValid =
+    password.length >= 6 && password === confirmPassword && confirmPassword.length > 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setStatus('idle');
 
     if (!token) {
-      setError('Invalid reset link');
+      setStatus('error');
+      setError(t('invalidLink'));
       return;
     }
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      setStatus('error');
+      setError(t('passwordsNoMatch'));
       return;
     }
 
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters');
+    if (password.length < 6) {
+      setStatus('error');
+      setError(t('passwordTooShort'));
       return;
     }
 
@@ -46,7 +56,7 @@ export default function ResetPasswordPage() {
       setStatus('success');
     } catch (err) {
       setStatus('error');
-      setError(err instanceof Error ? err.message : 'Failed to reset password');
+      setError(err instanceof Error ? err.message : t('resetError'));
     }
   };
 
@@ -55,13 +65,13 @@ export default function ResetPasswordPage() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4">
         <div className="max-w-md w-full text-center">
           <Alert variant="error">
-            Invalid reset link. Please request a new password reset.
+            {t('invalidLinkMessage')}
           </Alert>
           <Link
             href="/forgot-password"
             className="mt-4 inline-block text-sm font-medium text-blue-600 hover:text-blue-500"
           >
-            Request new reset link
+            {t('requestNewLink')}
           </Link>
         </div>
       </div>
@@ -77,12 +87,12 @@ export default function ResetPasswordPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h2 className="mt-4 text-xl font-semibold text-gray-900">Password Reset!</h2>
+          <h2 className="mt-4 text-xl font-semibold text-gray-900">{t('successTitle')}</h2>
           <p className="mt-2 text-gray-600">
-            Your password has been successfully reset. You can now sign in with your new password.
+            {t('successMessage')}
           </p>
           <Button onClick={() => router.push('/login')} className="mt-6 w-full">
-            Go to Login
+            {t('goToLogin')}
           </Button>
         </div>
       </div>
@@ -97,11 +107,11 @@ export default function ResetPasswordPage() {
             Portfolio X-Ray
           </h1>
           <h2 className="mt-6 text-center text-xl font-semibold text-gray-700">
-            Set new password
+            {t('title')}
           </h2>
         </div>
 
-        {status === 'error' && (
+        {(status === 'error' && error) && (
           <Alert variant="error">
             {error}
           </Alert>
@@ -109,55 +119,54 @@ export default function ResetPasswordPage() {
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-4">
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                New password
-              </label>
-              <Input
-                id="password"
-                type="password"
-                autoComplete="new-password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="mt-1"
-              />
-              <p className="mt-1 text-xs text-gray-500">
-                At least 8 characters with uppercase, lowercase, and number
-              </p>
-            </div>
-
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-                Confirm new password
-              </label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                autoComplete="new-password"
-                required
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="••••••••"
-                className="mt-1"
-              />
-            </div>
+            <PasswordInput
+              id="password"
+              label={t('newPassword')}
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (status === 'error') {
+                  setStatus('idle');
+                  setError('');
+                }
+              }}
+              autoComplete="new-password"
+              required
+              minLength={6}
+              className="mt-1"
+            />
+            <PasswordRequirements password={password} />
+            <PasswordInput
+              id="confirmPassword"
+              label={t('confirmPassword')}
+              value={confirmPassword}
+              onChange={(e) => {
+                setConfirmPassword(e.target.value);
+                if (status === 'error') {
+                  setStatus('idle');
+                  setError('');
+                }
+              }}
+              autoComplete="new-password"
+              required
+              minLength={6}
+              className="mt-1"
+            />
           </div>
 
           <Button
             type="submit"
             className="w-full"
-            disabled={status === 'loading'}
+            disabled={status === 'loading' || !isValid}
           >
-            {status === 'loading' ? 'Resetting...' : 'Reset password'}
+            {status === 'loading' ? t('resetting') : t('submit')}
           </Button>
         </form>
 
         <p className="mt-4 text-center text-sm text-gray-600">
-          Remember your password?{' '}
+          {t('rememberPassword')}{' '}
           <Link href="/login" className="font-medium text-blue-600 hover:text-blue-500">
-            Sign in
+            {t('signIn')}
           </Link>
         </p>
       </div>

@@ -22,6 +22,7 @@ interface AuthContextValue extends AuthState {
   register: (data: RegisterData) => Promise<void>;
   logout: () => Promise<void>;
   logoutAll: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
   
   // Token management
   refreshAuth: () => Promise<void>;
@@ -33,6 +34,7 @@ interface AuthContextValue extends AuthState {
   // Password management
   forgotPassword: (email: string) => Promise<void>;
   resetPassword: (token: string, newPassword: string) => Promise<void>;
+  setPassword: (newPassword: string) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   
   // Google OAuth
@@ -43,6 +45,9 @@ interface AuthContextValue extends AuthState {
   
   // Update user state (for email verification, etc.)
   updateUser: (user: User) => void;
+  
+  // Update user profile (name, userName)
+  updateProfile: (data: { userName?: string; name?: string }) => Promise<void>;
   
   // Update user language preference
   updateLocale: (locale: 'es' | 'en') => Promise<void>;
@@ -130,6 +135,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   /**
+   * Delete current user account (soft delete + anonymization on server)
+   */
+  const deleteAccount = useCallback(async () => {
+    await authApi.deleteAccount();
+    setUser(null);
+  }, []);
+
+  /**
    * Refresh authentication
    */
   const refreshAuth = useCallback(async () => {
@@ -188,7 +201,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   /**
-   * Change password (authenticated)
+   * Set password for OAuth-only accounts (no current password required)
+   */
+  const setPassword = useCallback(async (newPassword: string) => {
+    await authApi.setPassword(newPassword);
+    const updatedUser = await authApi.getCurrentUser();
+    setUser(updatedUser);
+  }, []);
+
+  /**
+   * Change password (authenticated, for accounts that already have a password)
    */
   const changePassword = useCallback(
     async (currentPassword: string, newPassword: string) => {
@@ -237,6 +259,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(updatedUser);
   }, []);
 
+  /**
+   * Update user profile (name, userName)
+   */
+  const updateProfile = useCallback(
+    async (data: { userName?: string; name?: string }) => {
+      const updatedUser = await authApi.updateProfile(data);
+      setUser(updatedUser);
+    },
+    []
+  );
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
@@ -246,15 +279,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       register,
       logout,
       logoutAll,
+      deleteAccount,
       refreshAuth,
       verifyEmail,
       resendVerification,
       forgotPassword,
       resetPassword,
+      setPassword,
       changePassword,
       getGoogleLoginUrl,
       handleOAuthCallback,
       updateUser,
+      updateProfile,
       updateLocale,
     }),
     [
@@ -265,15 +301,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       register,
       logout,
       logoutAll,
+      deleteAccount,
       refreshAuth,
       verifyEmail,
       resendVerification,
       forgotPassword,
       resetPassword,
+      setPassword,
       changePassword,
       getGoogleLoginUrl,
       handleOAuthCallback,
       updateUser,
+      updateProfile,
       updateLocale,
     ]
   );

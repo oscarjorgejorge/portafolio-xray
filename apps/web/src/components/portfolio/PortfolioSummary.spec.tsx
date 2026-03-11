@@ -9,6 +9,8 @@ describe('PortfolioSummary', () => {
     allocationMode: 'percentage' as const,
     isValid: true,
     isGenerating: false,
+    hasGeneratedXRay: false,
+    isDirty: false,
     onClearAll: vi.fn(),
     onGenerate: vi.fn(),
   };

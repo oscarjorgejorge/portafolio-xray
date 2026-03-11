@@ -1,6 +1,6 @@
 'use client';
 
-import React, { forwardRef, useId, useCallback } from 'react';
+import React, { forwardRef, useId, useCallback, useRef } from 'react';
 import { cn } from '@/lib/utils';
 
 interface InputNumberProps
@@ -23,6 +23,10 @@ interface InputNumberProps
   size?: 'sm' | 'md';
   /** Suffix text (e.g., '%', '$') */
   suffix?: string;
+  /** Select the full value when the input receives focus */
+  selectOnFocus?: boolean;
+  /** Maximum number of decimal places (e.g. 2 limits to 33.33) */
+  maxDecimals?: number;
 }
 
 /**
@@ -41,16 +45,21 @@ export const InputNumber = forwardRef<HTMLInputElement, InputNumberProps>(
       allowNegative = false,
       size = 'md',
       suffix,
+      selectOnFocus = false,
+      maxDecimals,
       className,
       id,
       value,
       disabled,
+      onFocus: onFocusProp,
+      onMouseUp: onMouseUpProp,
       ...props
     },
     ref
   ) => {
     const generatedId = useId();
     const inputId = id || generatedId;
+    const preventMouseUpRef = useRef(false);
 
     const handleChange = useCallback(
       (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -82,9 +91,14 @@ export const InputNumber = forwardRef<HTMLInputElement, InputNumberProps>(
           numValue = max;
         }
 
+        if (maxDecimals !== undefined) {
+          const factor = 10 ** maxDecimals;
+          numValue = Math.round(numValue * factor) / factor;
+        }
+
         onChange?.(numValue);
       },
-      [onChange, min, max, allowNegative]
+      [onChange, min, max, allowNegative, maxDecimals]
     );
 
     const sizeClasses = {
@@ -110,6 +124,20 @@ export const InputNumber = forwardRef<HTMLInputElement, InputNumberProps>(
             inputMode="decimal"
             value={value ?? ''}
             onChange={handleChange}
+            onFocus={(e) => {
+              if (selectOnFocus) {
+                preventMouseUpRef.current = true;
+                e.currentTarget.select();
+              }
+              onFocusProp?.(e);
+            }}
+            onMouseUp={(e) => {
+              if (selectOnFocus && preventMouseUpRef.current) {
+                preventMouseUpRef.current = false;
+                e.preventDefault();
+              }
+              onMouseUpProp?.(e);
+            }}
             min={allowNegative ? undefined : min}
             max={max}
             step={step}

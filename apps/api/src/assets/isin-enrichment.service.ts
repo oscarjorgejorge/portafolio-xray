@@ -6,6 +6,7 @@ import { HttpClientService } from '../common/http';
 import { createContextLogger } from '../common/logger';
 import { getErrorMessage } from './resolver/utils/error-handler';
 import { VALID_ISIN_PREFIXES } from './resolver/utils/constants';
+import { IdentifierClassifier } from '../common/utils/identifier-classifier';
 import { IIsinEnrichmentService } from './interfaces';
 import type { AppConfig } from '../config';
 
@@ -236,8 +237,13 @@ export class IsinEnrichmentService implements IIsinEnrichmentService {
     // Clean up fund name for search
     const cleanName = fundName.replace(/\s+/g, ' ').trim();
 
-    // Search query targeting ISIN codes (LU, IE, etc.)
-    const searchQuery = `"${cleanName}" ISIN LU OR IE site:morningstar OR site:moneycontroller OR site:justetf`;
+    // Search query targeting ISIN codes on high-signal domains
+    // Broadened to include issuer and data providers (e.g. FT) to improve hit rate
+    const searchQuery =
+      `"${cleanName}" (ISIN OR "A2 USD" OR LU OR IE) ` +
+      '(site:morningstar.com OR site:morningstar.es OR site:global.morningstar.com ' +
+      'OR site:janushenderson.com OR site:markets.ft.com OR site:ft.com ' +
+      'OR site:moneycontroller.it OR site:justetf.com)';
 
     this.logger.debug(`[ENRICH] Searching: ${searchQuery}`);
 
@@ -253,42 +259,170 @@ export class IsinEnrichmentService implements IIsinEnrichmentService {
       return null;
     }
 
-    return this.extractIsinFromHtml(response.data);
+    // First try to extract ISIN directly from DuckDuckGo result snippets/links
+    const { isin, candidateUrls } = this.extractIsinFromHtml(response.data);
+    if (isin) {
+      return isin;
+    }
+
+    // Fallback: follow a few high-signal result URLs and scan their HTML
+    if (candidateUrls.length > 0) {
+      const pageIsin = await this.searchIsinInResultPages(candidateUrls);
+      if (pageIsin) {
+        return pageIsin;
+      }
+    }
+
+    return null;
   }
 
   /**
-   * Extract valid ISIN from HTML content
+   * Extract valid ISIN candidates and result URLs from DuckDuckGo HTML
    */
-  private extractIsinFromHtml(html: string): string | null {
+  private extractIsinFromHtml(html: string): {
+    isin: string | null;
+    candidateUrls: string[];
+  } {
     const $ = cheerio.load(html);
 
     // Extract text from results
     const resultsText =
       $('.result__body').text() + ' ' + $('.result__snippet').text();
 
-    // Look for ISIN patterns (2 letter country code + 10 alphanumeric)
-    const isinPattern = /\b([A-Z]{2}[A-Z0-9]{10})\b/g;
-    const matches = resultsText.match(isinPattern);
+    // Also inspect all result links (href) because many data providers
+    // embed the ISIN directly in the URL, e.g.:
+    // https://markets.ft.com/data/funds/tearsheet/summary?s=LU1897414303:USD
+    const linksText = $('a')
+      .map((_, el) => $(el).attr('href') || '')
+      .get()
+      .join(' ');
 
-    if (!matches) {
-      this.logger.debug(`[ENRICH] No ISIN patterns found in search results`);
-      return null;
-    }
+    const combinedText = `${resultsText} ${linksText}`;
 
-    // Filter to valid ISIN country codes (exclude Morningstar IDs like F00000...)
-    const validIsins = matches.filter((isin) => {
-      const prefix = isin.substring(0, 2);
-      return VALID_ISIN_PREFIXES.includes(
-        prefix as (typeof VALID_ISIN_PREFIXES)[number],
-      );
+    const isin = this.extractIsinFromText(combinedText);
+
+    // Collect candidate result URLs (DuckDuckGo uses .result__a for result links)
+    const candidateUrls: string[] = [];
+    $('.result__a').each((_, el) => {
+      const href = $(el).attr('href');
+      if (href) {
+        candidateUrls.push(href);
+      }
     });
 
-    if (validIsins.length === 0) {
-      this.logger.debug(`[ENRICH] No valid ISIN prefixes found in matches`);
+    return { isin, candidateUrls };
+  }
+
+  /**
+   * Follow result links and try to extract ISIN from the target pages.
+   * This is slower, so we only check a small number of high-signal domains.
+   */
+  private async searchIsinInResultPages(
+    urls: string[],
+  ): Promise<string | null> {
+    const MAX_PAGES = 3;
+    const allowedDomains = [
+      'morningstar.com',
+      'global.morningstar.com',
+      'morningstar.es',
+      'janushenderson.com',
+      'markets.ft.com',
+      'ft.com',
+      'moneycontroller.it',
+      'justetf.com',
+    ];
+
+    const normalizeUrl = (rawUrl: string): string => {
+      // DuckDuckGo sometimes wraps target URLs like "/l/?kh=-1&uddg=ENCODED"
+      if (rawUrl.includes('/l/?') && rawUrl.includes('uddg=')) {
+        try {
+          const urlObj = new URL(rawUrl, 'https://duckduckgo.com');
+          const encoded = urlObj.searchParams.get('uddg');
+          if (encoded) {
+            return decodeURIComponent(encoded);
+          }
+        } catch {
+          return rawUrl;
+        }
+      }
+      return rawUrl;
+    };
+
+    const isAllowedDomain = (urlStr: string): boolean => {
+      try {
+        const { hostname } = new URL(urlStr);
+        return allowedDomains.some((domain) => hostname.endsWith(domain));
+      } catch {
+        return false;
+      }
+    };
+
+    for (const rawUrl of urls.slice(0, MAX_PAGES)) {
+      const targetUrl = normalizeUrl(rawUrl);
+      if (!isAllowedDomain(targetUrl)) continue;
+
+      try {
+        this.logger.debug(`[ENRICH] Following result URL: ${targetUrl}`);
+        const resp = await this.httpClient.get<string>(targetUrl, {
+          responseType: 'html',
+          timeout: this.enrichmentTimeoutMs,
+        });
+        if (!resp.ok || !resp.data) continue;
+
+        const $ = cheerio.load(resp.data);
+        const pageText = $('body').text();
+        const isin = this.extractIsinFromText(pageText);
+        if (isin) {
+          this.logger.debug(
+            `[ENRICH] Found ISIN ${isin} in result page: ${targetUrl}`,
+          );
+          return isin;
+        }
+      } catch (error) {
+        this.logger.debug(
+          `[ENRICH] Failed to fetch or parse result page ${targetUrl}: ${getErrorMessage(error)}`,
+        );
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Extract a valid ISIN from arbitrary text using prefix + checksum validation.
+   */
+  private extractIsinFromText(text: string): string | null {
+    // Look for ISIN patterns (2 letter country code + 10 alphanumeric)
+    const isinPattern = /\b([A-Z]{2}[A-Z0-9]{10})\b/g;
+    const matches = text.match(isinPattern);
+
+    if (!matches) {
+      this.logger.debug(`[ENRICH] No ISIN patterns found in text`);
       return null;
     }
 
-    // Return the first valid ISIN found
+    // Filter to valid ISIN country codes AND valid checksum.
+    const validIsins = matches
+      .map((m) => m.toUpperCase())
+      .filter((isin) => {
+        const prefix = isin.substring(0, 2);
+        if (
+          !VALID_ISIN_PREFIXES.includes(
+            prefix as (typeof VALID_ISIN_PREFIXES)[number],
+          )
+        ) {
+          return false;
+        }
+        return IdentifierClassifier.validateISINChecksum(isin);
+      });
+
+    if (validIsins.length === 0) {
+      this.logger.debug(
+        `[ENRICH] No valid ISINs found (prefix+checksum) in matches`,
+      );
+      return null;
+    }
+
     this.logger.debug(
       `[ENRICH] Found potential ISINs: ${validIsins.join(', ')}`,
     );
