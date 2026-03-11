@@ -27,6 +27,8 @@ export interface SavePortfolioModalProps {
   initialName?: string;
   initialDescription?: string | null;
   initialIsPublic?: boolean;
+  /** Notify parent when the public/private state changes */
+  onIsPublicChange?: (isPublic: boolean) => void;
 }
 
 function buildAssetsPayload(
@@ -62,6 +64,7 @@ export function SavePortfolioModal({
   initialName,
   initialDescription,
   initialIsPublic = true,
+  onIsPublicChange,
 }: SavePortfolioModalProps) {
   const t = useTranslations('savePortfolio');
   const tCommon = useTranslations('common');
@@ -80,9 +83,10 @@ export function SavePortfolioModal({
       setName(initialName ?? '');
       setDescription(initialDescription ?? '');
       setIsPublic(initialIsPublic);
+      onIsPublicChange?.(initialIsPublic);
       setError('');
     }
-  }, [isOpen, initialName, initialDescription, initialIsPublic]);
+  }, [isOpen, initialName, initialDescription, initialIsPublic, onIsPublicChange]);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -145,6 +149,14 @@ export function SavePortfolioModal({
     onClose();
   }, [onClose]);
 
+  const handleIsPublicChange = useCallback(
+    (value: boolean) => {
+      setIsPublic(value);
+      onIsPublicChange?.(value);
+    },
+    [onIsPublicChange],
+  );
+
   return (
     <Modal
       isOpen={isOpen}
@@ -180,7 +192,7 @@ export function SavePortfolioModal({
             <Switch
               id="save-portfolio-public"
               checked={isPublic}
-              onCheckedChange={setIsPublic}
+              onCheckedChange={handleIsPublicChange}
               aria-label={t('isPublicLabel')}
             />
           </div>

@@ -19,6 +19,7 @@ import { SavePortfolioModal } from './SavePortfolioModal';
 import { Button } from '@/components/ui/Button';
 import { SaveChangesModeModal } from './SaveChangesModeModal';
 import { updatePortfolio } from '@/lib/api/portfolios';
+import { Switch } from '@/components/ui/Switch';
 
 // Lazy load modal components - they are only rendered when needed
 const AssetAlternatives = dynamic(
@@ -66,6 +67,7 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
   const [showSaveSuccessToast, setShowSaveSuccessToast] = useState(false);
   const [saveMode, setSaveMode] = useState<SaveMode>('create');
   const [hasUserChanges, setHasUserChanges] = useState(false);
+  const [isPublic, setIsPublic] = useState(initialIsPublic ?? true);
 
   const canSavePortfolio = isAuthenticated && user?.emailVerified;
 
@@ -199,6 +201,25 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
           )}
         </div>
 
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="space-y-0.5">
+            <p className="text-sm font-medium text-slate-700">
+              {tSave('isPublicLabel')}
+            </p>
+            <p className="text-xs text-slate-500">
+              {tSave('isPublicHint')}
+            </p>
+          </div>
+          <Switch
+            checked={isPublic}
+            onCheckedChange={(value) => {
+              setIsPublic(value);
+              setHasUserChanges(true);
+            }}
+            aria-label={tSave('isPublicLabel')}
+          />
+        </div>
+
         <AllocationModeToggle mode={allocationMode} onChange={handleAllocationModeChange} />
 
         <div className="mb-6">
@@ -264,6 +285,7 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
                     : fullShareableUrl
                 }
                 morningstarUrl={morningstarUrl}
+                isPublic={isPublic}
                 copied={copied}
                 copyError={copyError}
                 onCopyUrl={() => {
@@ -370,7 +392,8 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
         mode={portfolioId ? saveMode : 'create'}
         initialName={initialName ?? undefined}
         initialDescription={initialDescription ?? undefined}
-        initialIsPublic={initialIsPublic}
+        initialIsPublic={isPublic}
+        onIsPublicChange={setIsPublic}
       />
 
       {showSaveSuccessToast && (
