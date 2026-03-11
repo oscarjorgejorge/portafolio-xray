@@ -29,6 +29,14 @@ export class CommentsService {
     private readonly portfoliosService: PortfoliosService,
   ) {}
 
+  private validateAndNormalizeContent(content: string): string {
+    const trimmed = content.trim();
+    if (!trimmed) {
+      throw new ForbiddenException('Comment content cannot be empty');
+    }
+    return trimmed;
+  }
+
   private toCommentItem(
     comment: {
       id: string;
@@ -102,10 +110,7 @@ export class CommentsService {
       throw new NotFoundException('Portfolio not found');
     }
 
-    const trimmed = content.trim();
-    if (!trimmed) {
-      throw new ForbiddenException('Comment content cannot be empty');
-    }
+    const trimmed = this.validateAndNormalizeContent(content);
 
     const comment = await this.prisma.comment.create({
       data: {
@@ -154,10 +159,7 @@ export class CommentsService {
       throw new ForbiddenException('You can only edit your own comments');
     }
 
-    const trimmed = content.trim();
-    if (!trimmed) {
-      throw new ForbiddenException('Comment content cannot be empty');
-    }
+    const trimmed = this.validateAndNormalizeContent(content);
 
     const updated = await this.prisma.comment.update({
       where: { id: commentId },

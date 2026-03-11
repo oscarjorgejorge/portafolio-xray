@@ -9,12 +9,18 @@ import {
 import type { AuthenticatedUser } from '../auth/interfaces';
 import { WEIGHT_VALIDATION } from '../common/constants';
 
+export interface PortfolioAsset {
+  morningstarId: string;
+  weight: number;
+  amount?: number;
+}
+
 export interface PortfolioListItem {
   id: string;
   name: string;
   description: string | null;
   isPublic: boolean;
-  assets: { morningstarId: string; weight: number; amount?: number }[];
+  assets: PortfolioAsset[];
   xrayShareableUrl: string | null;
   xrayMorningstarUrl: string | null;
   xrayGeneratedAt: Date | null;
@@ -45,7 +51,7 @@ export class PortfoliosService {
         name: dto.name.trim(),
         description: dto.description?.trim() || null,
         isPublic: dto.isPublic ?? true,
-        assets: dto.assets as unknown as object,
+        assets: this.toPortfolioAssetsJson(dto.assets),
       },
     });
     return this.toListItem(portfolio);
@@ -79,7 +85,7 @@ export class PortfoliosService {
     }
 
     if (dto.assets !== undefined) {
-      updateData.assets = dto.assets as unknown as Prisma.InputJsonValue;
+      updateData.assets = this.toPortfolioAssetsJson(dto.assets);
     }
 
     if (dto.xrayShareableUrl !== undefined) {
@@ -308,11 +314,7 @@ export class PortfoliosService {
       name: portfolio.name,
       description: portfolio.description,
       isPublic: portfolio.isPublic,
-      assets: portfolio.assets as {
-        morningstarId: string;
-        weight: number;
-        amount?: number;
-      }[],
+      assets: portfolio.assets as PortfolioAsset[],
       xrayShareableUrl: portfolio.xrayShareableUrl,
       xrayMorningstarUrl: portfolio.xrayMorningstarUrl,
       xrayGeneratedAt: portfolio.xrayGeneratedAt,
@@ -321,9 +323,13 @@ export class PortfoliosService {
     };
   }
 
-  private isTotalWeightValid(
-    assets: { morningstarId: string; weight: number; amount?: number }[],
-  ): boolean {
+  private toPortfolioAssetsJson(
+    assets: PortfolioAsset[],
+  ): Prisma.InputJsonValue {
+    return assets as unknown as Prisma.InputJsonValue;
+  }
+
+  private isTotalWeightValid(assets: PortfolioAsset[]): boolean {
     if (!assets.length) {
       return false;
     }

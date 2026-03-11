@@ -121,26 +121,10 @@ export class AssetsService implements IAssetsService {
           identifierType !== IdentifierType.ISIN &&
           identifierType !== IdentifierType.MORNINGSTAR_ID
         ) {
-          const resultsWithId = resolution.allResults.filter(
-            (r) => r.morningstarId,
+          const alternatives = this.buildAlternativesFromResults(
+            resolution.allResults,
+            resolution.bestMatch,
           );
-          const sourceResults =
-            resultsWithId.length > 0
-              ? resultsWithId
-              : resolution.bestMatch
-                ? [resolution.bestMatch]
-                : [];
-          const alternatives = sourceResults
-            .slice(0, this.maxAlternatives)
-            .map((r) => ({
-              morningstarId: r.morningstarId!,
-              name: r.title,
-              url: r.url,
-              score: r.score,
-              ticker: r.ticker,
-              assetType: this.mapAssetType(r.assetType),
-              market: this.detectMarketFromUrl(r.url),
-            }));
           this.logger.log(
             `Match for non-identifier input "${input}" -> requiring confirmation (${alternatives.length} option(s))`,
           );
@@ -250,20 +234,10 @@ export class AssetsService implements IAssetsService {
         resolution.status === 'needs_review' &&
         resolution.allResults.length > 0
       ) {
-        // Return alternatives for user to pick
-        const alternatives = resolution.allResults
-          .filter((r) => r.morningstarId)
-          .slice(0, this.maxAlternatives)
-          .map((r) => ({
-            morningstarId: r.morningstarId!,
-            name: r.title,
-            url: r.url,
-            score: r.score,
-            ticker: r.ticker,
-            // Map internal assetType (Spanish) to API enum (English)
-            assetType: this.mapAssetType(r.assetType),
-            market: this.detectMarketFromUrl(r.url),
-          }));
+        const alternatives = this.buildAlternativesFromResults(
+          resolution.allResults,
+          resolution.bestMatch,
+        );
 
         return {
           success: false,
@@ -795,5 +769,42 @@ export class AssetsService implements IAssetsService {
       errorCode: ResolutionErrorCode.UNKNOWN,
       message: `Error resolving asset "${input}". Please try again or provide Morningstar ID manually.`,
     };
+  }
+
+  private buildAlternativesFromResults(
+    allResults: {
+      morningstarId: string | null;
+      title: string;
+      url: string;
+      score: number;
+      ticker?: string | null;
+      assetType?: string | null;
+    }[],
+    bestMatch?: {
+      morningstarId: string | null;
+      title: string;
+      url: string;
+      score: number;
+      ticker?: string | null;
+      assetType?: string | null;
+    } | null,
+  ) {
+    const resultsWithId = allResults.filter((r) => r.morningstarId);
+    const sourceResults =
+      resultsWithId.length > 0
+        ? resultsWithId
+        : bestMatch && bestMatch.morningstarId
+          ? [bestMatch]
+          : [];
+
+    return sourceResults.slice(0, this.maxAlternatives).map((r) => ({
+      morningstarId: r.morningstarId!,
+      name: r.title,
+      url: r.url,
+      score: r.score,
+      ticker: r.ticker ?? undefined,
+      assetType: this.mapAssetType(r.assetType ?? undefined),
+      market: this.detectMarketFromUrl(r.url),
+    }));
   }
 }
