@@ -253,9 +253,7 @@ export class MailService {
         return false;
       }
 
-      this.logger.log(
-        `Contact email sent successfully to ${to}: ${subject}`,
-      );
+      this.logger.log(`Contact email sent successfully to ${to}: ${subject}`);
       return true;
     } catch (error) {
       this.logger.error(

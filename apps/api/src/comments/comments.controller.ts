@@ -107,4 +107,3 @@ export class CommentsController {
     await this.commentsService.deleteComment(user.id, portfolioId, id);
   }
 }
-

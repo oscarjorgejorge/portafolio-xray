@@ -12,4 +12,3 @@ export class CreateCommentDto {
   @MaxLength(1000)
   content!: string;
 }
-

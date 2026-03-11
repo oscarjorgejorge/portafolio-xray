@@ -17,4 +17,3 @@ export class ContactDto {
   @MaxLength(2000)
   message!: string;
 }
-

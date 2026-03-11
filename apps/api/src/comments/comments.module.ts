@@ -11,4 +11,3 @@ import { PortfoliosModule } from '../portfolios/portfolios.module';
   exports: [CommentsService],
 })
 export class CommentsModule {}
-

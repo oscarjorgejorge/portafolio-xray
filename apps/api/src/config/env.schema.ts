@@ -73,10 +73,7 @@ export const envSchema = z.object({
   RESEND_TEMPLATE_CONTACT_ID: z.string().default('contacto'),
 
   // Contact form recipient (defaults to product owner email)
-  CONTACT_EMAIL: z
-    .string()
-    .email()
-    .default('oscar.jorge.jorge@gmail.com'),
+  CONTACT_EMAIL: z.string().email().default('oscar.jorge.jorge@gmail.com'),
 
   // Frontend URL (for email links)
   FRONTEND_URL: z.string().url().default('http://localhost:3000'),
