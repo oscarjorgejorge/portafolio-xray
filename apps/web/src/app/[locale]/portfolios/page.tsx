@@ -19,8 +19,9 @@ import { Alert } from '@/components/ui/Alert';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { generateXRay } from '@/lib/api/xray';
 import { VALIDATION } from '@/lib/constants';
-import { TrashIcon, EditIcon } from '@/components/ui/Icons';
+import { TrashIcon, EditIcon, ShareIcon } from '@/components/ui/Icons';
 import { EditPortfolioModal } from '@/components/portfolio/EditPortfolioModal';
+import { Toast } from '@/components/ui/Toast';
 
 function buildAssetsParam(
   assets: { morningstarId: string; weight: number; amount?: number }[],
@@ -56,6 +57,8 @@ export default function PortfoliosPage() {
   const [xrayError, setXrayError] = useState<string | null>(null);
   const [editingPortfolio, setEditingPortfolio] = useState<PortfolioListItem | null>(null);
   const [portfolioToDelete, setPortfolioToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [copiedPortfolioId, setCopiedPortfolioId] = useState<string | null>(null);
+  const [showCopyToast, setShowCopyToast] = useState(false);
 
   const { data: portfolios = [], isLoading, error } = useQuery({
     queryKey: queryKeys.portfolios.all,
@@ -141,6 +144,32 @@ export default function PortfoliosPage() {
     setEditingPortfolio(portfolio);
   };
 
+  const handleCopyPublicUrl = async (portfolio: PortfolioListItem) => {
+    if (!portfolio.isPublic || !portfolio.xrayShareableUrl) return;
+    if (typeof window === 'undefined' || typeof navigator === 'undefined') return;
+
+    const pathSegments = window.location.pathname.split('/').filter(Boolean);
+    if (!pathSegments.length) return;
+
+    // Reemplaza el último segmento (p.ej. "portfolios") por "explore/{id}"
+    pathSegments[pathSegments.length - 1] = 'explore';
+    pathSegments.push(portfolio.id);
+
+    const publicPath = `/${pathSegments.join('/')}`;
+    const publicUrl = `${window.location.origin}${publicPath}`;
+
+    try {
+      await navigator.clipboard.writeText(publicUrl);
+      setCopiedPortfolioId(portfolio.id);
+      setShowCopyToast(true);
+      window.setTimeout(() => {
+        setCopiedPortfolioId((current) => (current === portfolio.id ? null : current));
+      }, 1500);
+    } catch {
+      // ignore copy errors
+    }
+  };
+
   if (authLoading || (!isAuthenticated && !user)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -212,9 +241,43 @@ export default function PortfoliosPage() {
                       date: new Date(portfolio.updatedAt).toLocaleDateString(),
                     })}
                   </p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="mt-2 px-0 text-xs text-slate-500 hover:bg-slate-100"
+                    onClick={() => handleDeleteClick(portfolio.id, portfolio.name)}
+                    disabled={deleteMutation.isPending}
+                    aria-label={tCommon('remove')}
+                  >
+                    {tCommon('remove')}
+                  </Button>
                 </div>
                 <div className="flex flex-col items-end gap-2 shrink-0">
                   <div className="flex items-center gap-2">
+                    {portfolio.isPublic && portfolio.xrayShareableUrl && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="px-2"
+                        onClick={() => handleCopyPublicUrl(portfolio)}
+                        aria-label={
+                          copiedPortfolioId === portfolio.id
+                            ? tCommon('copied')
+                            : t('copyPortfolioLink')
+                        }
+                        title={
+                          copiedPortfolioId === portfolio.id
+                            ? tCommon('copied')
+                            : t('copyPortfolioLink')
+                        }
+                      >
+                        <ShareIcon
+                          className={`h-4 w-4 ${
+                            copiedPortfolioId === portfolio.id ? 'text-blue-600' : ''
+                          }`}
+                        />
+                      </Button>
+                    )}
                     <Button
                       variant="primary"
                       size="sm"
@@ -235,17 +298,6 @@ export default function PortfoliosPage() {
                       title={t('edit')}
                     >
                       <EditIcon className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-red-600 hover:bg-red-50 px-2"
-                      onClick={() => handleDeleteClick(portfolio.id, portfolio.name)}
-                      disabled={deleteMutation.isPending}
-                      aria-label={tCommon('remove')}
-                      title={tCommon('remove')}
-                    >
-                      <TrashIcon className="h-4 w-4" />
                     </Button>
                   </div>
                   <Button
@@ -300,6 +352,15 @@ export default function PortfoliosPage() {
           isOpen={!!editingPortfolio}
           portfolio={editingPortfolio}
           onClose={() => setEditingPortfolio(null)}
+        />
+      )}
+
+      {showCopyToast && (
+        <Toast
+          message={tCommon('copied')}
+          variant="success"
+          duration={2500}
+          onClose={() => setShowCopyToast(false)}
         />
       )}
     </main>

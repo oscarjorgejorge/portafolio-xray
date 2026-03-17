@@ -64,15 +64,12 @@ export function AuthModalProvider({ children }: AuthModalProviderProps) {
   );
 
   const handleClose = useCallback(() => {
-    const wasAuthenticated = isAuthenticated && user?.emailVerified;
+    // Cerrar el modal sin navegar ni ejecutar callbacks externos.
     setIsOpen(false);
     pendingResolveRef.current?.();
     pendingResolveRef.current = null;
-    if (!wasAuthenticated && onCloseWithoutAuthRef.current) {
-      onCloseWithoutAuthRef.current();
-      onCloseWithoutAuthRef.current = null;
-    }
-  }, [isAuthenticated, user?.emailVerified]);
+    onCloseWithoutAuthRef.current = null;
+  }, []);
 
   const handleAuthSuccess = useCallback(() => {
     pendingResolveRef.current?.();

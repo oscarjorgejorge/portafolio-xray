@@ -3,9 +3,9 @@
 import { useCallback } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { PublicPortfolioListItem } from '@/lib/api/portfolios';
-import { getPublicPortfolio } from '@/lib/api/portfolios';
 import { addFavorite, removeFavorite } from '@/lib/api/favorites';
 import { queryKeys } from '@/lib/api/queryKeys';
+import { setPendingFavorite } from '@/lib/favorites/pending-favorite-storage';
 
 export interface UseFavoritePortfolioOptions {
   /** When on "my favorites" page, pass the favorite record id for unfavorite */
@@ -26,7 +26,7 @@ export interface UseFavoritePortfolioResult {
 
 /**
  * Hook to handle favorite/pencil behavior for a public portfolio.
- * - If not authenticated, opening the heart triggers auth modal; after auth, either adds favorite or opens builder if now owner.
+ * - If not authenticated, opening the heart triggers auth modal; after auth, a global handler will add favorite if needed.
  * - If owner, show pencil and open builder.
  * - If not owner, show heart and toggle favorite.
  */
@@ -58,13 +58,10 @@ export function useFavoritePortfolio(
 
   const toggleFavorite = useCallback(async () => {
     if (!isAuthenticated) {
+      // Mark this portfolio as pending favorite and trigger auth flow.
+      setPendingFavorite(portfolio.id);
       await openAuthModalAndWait();
-      const updated = await getPublicPortfolio(portfolio.id);
-      if (updated.isOwnedByCurrentUser) {
-        onOpenBuilder(updated);
-      } else {
-        await addMutation.mutateAsync(portfolio.id);
-      }
+      // The actual favorite will be applied after auth by a global handler.
       return;
     }
 
@@ -98,3 +95,4 @@ export function useFavoritePortfolio(
     isPending,
   };
 }
+
