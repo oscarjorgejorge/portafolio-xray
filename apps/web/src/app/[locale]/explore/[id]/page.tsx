@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -26,6 +26,7 @@ import { Alert } from '@/components/ui/Alert';
 import { Spinner } from '@/components/ui/Spinner';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { EditIcon, ExternalLinkIcon, HeartFilledIcon, HeartOutlineIcon, TrashIcon } from '@/components/ui/Icons';
+import { clearPendingComment, getPendingComment, setPendingComment } from '@/lib/comments/pending-comment-storage';
 
 function buildAssetsParam(assets: { morningstarId: string; weight: number }[]): string {
   const param = assets.map((a) => `${a.morningstarId}:${a.weight}`).join(',');
@@ -357,9 +358,11 @@ function CommentsSection({
 
   const [newComment, setNewComment] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState('');
   const [commentToDeleteId, setCommentToDeleteId] = useState<string | null>(null);
+  const hasProcessedPendingRef = useRef(false);
 
   const {
     data: comments = [],
@@ -378,7 +381,12 @@ function CommentsSection({
 
   const createMutation = useMutation({
     mutationFn: (content: string) => createComment(portfolioId, content),
-    onSuccess: () => {
+    onSuccess: (created) => {
+      // Optimistically añadir el comentario recién creado al caché
+      queryClient.setQueryData<CommentItem[] | undefined>(
+        queryKeys.comments.byPortfolio(portfolioId),
+        (prev) => (prev ? [...prev, created] : [created])
+      );
       setNewComment('');
       invalidateComments();
     },
@@ -410,16 +418,50 @@ function CommentsSection({
     }
     setLocalError(null);
 
+    // If user is not authenticated, store the comment and trigger auth flow.
     if (!isAuthenticated) {
-      await openAuthModalAndWait();
+      setPendingComment(portfolioId, trimmed);
+      try {
+        await openAuthModalAndWait();
+      } catch {
+        // Ignore errors from auth modal flow; user might have just closed it.
+      }
+      // Do not attempt to submit here; a separate effect will handle
+      // submitting the pending comment once the user is authenticated.
+      return;
     }
 
     try {
+      setIsSubmitting(true);
       await createMutation.mutateAsync(trimmed);
     } catch {
       setLocalError(tComments('createError'));
+    } finally {
+      setIsSubmitting(false);
     }
   };
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    if (hasProcessedPendingRef.current) return;
+
+    const pending = getPendingComment(portfolioId);
+    if (!pending) return;
+
+    hasProcessedPendingRef.current = true;
+    setNewComment(pending);
+    setLocalError(null);
+
+    createMutation.mutate(pending, {
+      onSuccess: () => {
+        setNewComment('');
+        clearPendingComment(portfolioId);
+      },
+      onError: () => {
+        setLocalError(tComments('createError'));
+      },
+    });
+  }, [isAuthenticated, portfolioId, createMutation, tComments]);
 
   const startEdit = (comment: CommentItem) => {
     setEditingId(comment.id);
@@ -498,19 +540,17 @@ function CommentsSection({
             </p>
           )}
           <div className="flex items-center gap-2 sm:justify-end">
-            {createMutation.isPending && (
+            {isSubmitting && (
               <Spinner size="sm" className="text-slate-400" />
             )}
             <Button
               type="submit"
               variant="primary"
               size="sm"
-              disabled={createMutation.isPending || !newComment.trim()}
+              disabled={isSubmitting || !newComment.trim()}
               className="inline-flex items-center gap-2 shadow-sm"
             >
-              {createMutation.isPending
-                ? tComments('submitting')
-                : tComments('submit')}
+              {isSubmitting ? tComments('submitting') : tComments('submit')}
             </Button>
           </div>
         </div>

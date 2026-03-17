@@ -65,6 +65,25 @@ export const EditIcon: React.FC<IconProps> = ({ className = 'h-4 w-4' }) => (
 );
 
 /**
+ * Share icon (three connected nodes)
+ */
+export const ShareIcon: React.FC<IconProps> = ({ className = 'h-4 w-4' }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+  >
+    <circle cx="6" cy="12" r="2.5" />
+    <circle cx="17.5" cy="6" r="2.5" />
+    <circle cx="17.5" cy="18" r="2.5" />
+    <path d="M8.3 11l6.9-3.4M8.3 13l6.9 3.4" />
+  </svg>
+);
+
+/**
  * Check/Checkmark icon
  */
 export const CheckIcon: React.FC<IconProps> = ({ className = 'h-4 w-4' }) => (

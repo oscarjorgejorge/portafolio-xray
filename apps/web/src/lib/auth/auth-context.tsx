@@ -12,6 +12,8 @@ import {
 import { User, RegisterData, LoginData, TokenPair, AuthState } from './types';
 import { authApi } from './auth-api';
 import { tokenStorage } from './token-storage';
+import { getPendingFavorite, clearPendingFavorite } from '@/lib/favorites/pending-favorite-storage';
+import { addFavorite } from '@/lib/api/favorites';
 
 /**
  * Auth context value type
@@ -68,6 +70,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * Initialize auth state on mount
    */
   useEffect(() => {
+    const applyPendingFavoriteIfAny = async () => {
+      if (!tokenStorage.hasTokens()) return;
+
+      const pendingId = getPendingFavorite();
+      if (!pendingId) return;
+
+      try {
+        await addFavorite(pendingId);
+      } finally {
+        clearPendingFavorite();
+      }
+    };
+
     const initAuth = async () => {
       try {
         // Check if we have tokens
@@ -91,6 +106,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Fetch current user
         const currentUser = await authApi.getCurrentUser();
         setUser(currentUser);
+
+        // After we have a valid user, apply any pending favorite.
+        await applyPendingFavoriteIfAny();
       } catch {
         // Failed to get user, clear tokens
         tokenStorage.clearTokens();
@@ -108,6 +126,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (data: LoginData) => {
     const response = await authApi.login(data);
     setUser(response.user);
+
+    // Apply any pending favorite after interactive login.
+    const pendingId = getPendingFavorite();
+    if (pendingId) {
+      try {
+        await addFavorite(pendingId);
+      } finally {
+        clearPendingFavorite();
+      }
+    }
   }, []);
 
   /**
@@ -233,6 +261,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     tokenStorage.setTokens(tokens);
     const currentUser = await authApi.getCurrentUser();
     setUser(currentUser);
+
+    // Apply any pending favorite after OAuth login (e.g. Google).
+    const pendingId = getPendingFavorite();
+    if (pendingId) {
+      try {
+        await addFavorite(pendingId);
+      } finally {
+        clearPendingFavorite();
+      }
+    }
   }, []);
 
   /**

@@ -153,7 +153,9 @@ export class AuthController {
   @ApiOperation({ summary: 'Initiate Google OAuth login' })
   @ApiResponse({ status: 302, description: 'Redirects to Google OAuth' })
   googleAuth() {
-    // Guard redirects to Google
+    // Guard redirects to Google. We intentionally keep redirectUrl handling
+    // on the frontend via sessionStorage + /auth/callback to avoid coupling
+    // Google state with frontend routes.
   }
 
   @Public()

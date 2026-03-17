@@ -170,6 +170,9 @@ export function AuthModal({ isOpen, onClose, onAuthSuccess, initialTab: initialT
   );
 
   const handleGoogleLogin = () => {
+    if (typeof window === 'undefined') return;
+    const currentUrl = window.location.href;
+    window.sessionStorage.setItem('postOAuthRedirectUrl', currentUrl);
     window.location.href = getGoogleLoginUrl();
   };
 
