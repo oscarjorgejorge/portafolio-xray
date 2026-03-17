@@ -53,14 +53,18 @@ function HomePageContent() {
   useEffect(() => {
     const verified = searchParams.get('verified');
     const alreadyVerified = searchParams.get('alreadyVerified');
-    if (verified === 'true') {
-      setShowVerificationSuccess(true);
-      const t = setTimeout(() => setShowVerificationSuccess(false), 5000);
-      return () => clearTimeout(t);
-    }
+
+    // Prefer the "already verified" message if both params are ever present,
+    // so we never show two verification alerts at the same time.
     if (alreadyVerified === 'true') {
       setShowAlreadyVerified(true);
       const t = setTimeout(() => setShowAlreadyVerified(false), 5000);
+      return () => clearTimeout(t);
+    }
+
+    if (verified === 'true') {
+      setShowVerificationSuccess(true);
+      const t = setTimeout(() => setShowVerificationSuccess(false), 5000);
       return () => clearTimeout(t);
     }
   }, [searchParams]);
