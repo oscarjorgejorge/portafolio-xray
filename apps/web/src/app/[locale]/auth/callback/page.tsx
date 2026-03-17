@@ -38,7 +38,21 @@ export default function AuthCallbackPage() {
       try {
         await handleOAuthCallback({ accessToken, refreshToken });
         
-        // Redirect based on whether this is a new user
+        // Prefer redirecting back to the page the user was on before OAuth.
+        const storedRedirect =
+          typeof window !== 'undefined'
+            ? window.sessionStorage.getItem('postOAuthRedirectUrl')
+            : null;
+        if (typeof window !== 'undefined') {
+          window.sessionStorage.removeItem('postOAuthRedirectUrl');
+        }
+
+        if (storedRedirect) {
+          window.location.href = storedRedirect;
+          return;
+        }
+
+        // Fallback: redirect based on whether this is a new user
         if (isNewUser) {
           router.push('/?welcome=true');
         } else {

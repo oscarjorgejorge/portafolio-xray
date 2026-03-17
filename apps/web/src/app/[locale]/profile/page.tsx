@@ -164,7 +164,7 @@ export default function ProfilePage() {
 
   const handleLogout = async () => {
     await logout();
-    router.push('/');
+    router.push('/explore');
   };
 
   const handleConfirmDeleteAccount = async () => {
@@ -174,7 +174,7 @@ export default function ProfilePage() {
       await deleteAccount();
       clearPendingSavePortfolio();
       setShowDeleteModal(false);
-      router.replace('/');
+      router.replace('/explore');
     } catch (err) {
       setDeleteError(
         err instanceof Error ? err.message : t('deleteAccountError'),
