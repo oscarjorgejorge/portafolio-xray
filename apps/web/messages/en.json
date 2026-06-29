@@ -16,7 +16,7 @@
   },
   "home": {
     "title": "Portfolio X-Ray Generator",
-    "subtitle": "Generate Morningstar X-Ray reports for your portfolio. Enter ISINs or Morningstar IDs and get instant analysis.",
+    "subtitle": "Generate Morningstar X-Ray reports for your portfolio. Enter ISINs or Morningstar IDs for the fastest results — you can also search by name, but it may require confirmation.",
     "urlParseError": "Could not load portfolio from URL. Please add assets manually."
   },
   "xray": {
@@ -42,14 +42,22 @@
     "builder": "Portfolio Builder",
     "currentPortfolioLabel": "Portfolio",
     "noAssets": "No assets added yet.",
-    "noAssetsHint": "Enter an ISIN, Morningstar ID, or ticker above to get started.",
+    "noAssetsHint": "Enter an ISIN or Morningstar ID above for instant matching. Name and ticker searches are also supported but may require confirmation.",
     "successToast": "X-Ray generated successfully!"
   },
   "assetInput": {
     "placeholder": "Enter ISIN, Morningstar ID, or ticker (e.g., IE00B4L5Y983)",
     "addAsset": "Add Asset",
     "duplicateError": "This asset is already in your portfolio",
-    "emptyError": "Please enter an ISIN, Morningstar ID, or ticker"
+    "emptyError": "Please enter an ISIN, Morningstar ID, or ticker",
+    "helperText": "For best results, use an ISIN or Morningstar ID. Searching by name may require confirmation.",
+    "hintIsin": "ISIN detected — automatic resolution",
+    "hintMorningstarId": "Morningstar ID detected — automatic resolution",
+    "hintTicker": "Ticker — may require confirmation",
+    "hintName": "Name search — multiple matches possible",
+    "examplesLabel": "Examples:",
+    "infoTitle": "Search tips",
+    "infoBody": "ISIN (e.g. LU1206943596) and Morningstar ID (e.g. 0P00015LRD) resolve instantly. Ticker and name searches work but often need you to confirm the correct match."
   },
   "assetRow": {
     "weightPercent": "Weight (%)",
@@ -86,7 +94,7 @@
   },
   "manualInput": {
     "title": "Manual Asset Entry for \"{identifier}\"",
-    "description": "The asset could not be resolved automatically. Please enter the Morningstar details manually.",
+    "description": "The asset could not be resolved automatically. Please enter the Morningstar details manually. Tip: you can find the ISIN and Morningstar ID on the fund's Morningstar page for faster matching next time.",
     "morningstarId": "Morningstar ID",
     "morningstarIdPlaceholder": "e.g., 0P0000YXJO",
     "assetName": "Asset Name",
@@ -99,7 +107,9 @@
     "singleMatch": "Match found for \"{identifier}\"",
     "multipleMatches": "Multiple matches found for \"{identifier}\"",
     "confirmSingle": "Please confirm this is the correct asset:",
-    "selectFromList": "Please select the correct asset from the list below:"
+    "selectFromList": "Please select the correct asset from the list below:",
+    "nameSearchNotice": "You searched by name or ticker. Select the correct asset from the list below.",
+    "nameSearchTip": "Next time, try an ISIN or Morningstar ID for faster, more accurate resolution."
   },
   "editableIsin": {
     "manual": "(manual)",
