@@ -5,6 +5,10 @@ import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { confirmAsset } from '@/lib/api/assets';
+import {
+  IdentifierType,
+  classifyIdentifier,
+} from '@/lib/utils/identifier-classifier';
 import type { AlternativeAsset, Asset, AssetType } from '@/types';
 import { useMutation } from '@tanstack/react-query';
 import { ASSET_TYPES } from '@/lib/constants';
@@ -121,8 +125,19 @@ export const AssetAlternatives: React.FC<AssetAlternativesProps> = ({
     ? t('singleMatch', { identifier })
     : t('multipleMatches', { identifier });
 
+  const identifierType = classifyIdentifier(identifier);
+  const showNameSearchTip =
+    identifierType === IdentifierType.FREE_TEXT ||
+    identifierType === IdentifierType.TICKER;
+
   return (
     <Modal isOpen onClose={onCancel} title={title} maxWidth="2xl">
+      <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+        <p>{t('nameSearchNotice')}</p>
+        {showNameSearchTip && (
+          <p className="mt-1 text-blue-800">{t('nameSearchTip')}</p>
+        )}
+      </div>
       <p className="text-sm text-slate-700 mb-4">
         {isSingleAlternative
           ? t('confirmSingle')

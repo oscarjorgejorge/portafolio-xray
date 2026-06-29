@@ -16,7 +16,7 @@
   },
   "home": {
     "title": "Generador de X-Ray de Cartera",
-    "subtitle": "Genera informes X-Ray de Morningstar para tu cartera. Introduce ISINs o IDs de Morningstar y obtén análisis instantáneo.",
+    "subtitle": "Genera informes X-Ray de Morningstar para tu cartera. Introduce ISINs o IDs de Morningstar para resultados más rápidos — también puedes buscar por nombre, pero puede requerir confirmación.",
     "urlParseError": "No se pudo cargar la cartera desde la URL. Por favor, añade activos manualmente."
   },
   "xray": {
@@ -42,14 +42,22 @@
     "builder": "Constructor de Cartera",
     "currentPortfolioLabel": "Cartera",
     "noAssets": "No hay activos añadidos aún.",
-    "noAssetsHint": "Introduce un ISIN, ID de Morningstar o ticker arriba para comenzar.",
+    "noAssetsHint": "Introduce un ISIN o ID de Morningstar arriba para una coincidencia instantánea. También puedes buscar por nombre o ticker, pero puede requerir confirmación.",
     "successToast": "¡X-Ray generado exitosamente!"
   },
   "assetInput": {
     "placeholder": "Introduce ISIN, ID de Morningstar o ticker (ej., IE00B4L5Y983)",
     "addAsset": "Añadir Activo",
     "duplicateError": "Este activo ya está en tu cartera",
-    "emptyError": "Por favor, introduce un ISIN, ID de Morningstar o ticker"
+    "emptyError": "Por favor, introduce un ISIN, ID de Morningstar o ticker",
+    "helperText": "Para mejores resultados, usa un ISIN o ID de Morningstar. Buscar por nombre puede requerir confirmación.",
+    "hintIsin": "ISIN detectado — resolución automática",
+    "hintMorningstarId": "ID Morningstar detectado — resolución automática",
+    "hintTicker": "Ticker — puede requerir confirmación",
+    "hintName": "Búsqueda por nombre — puede haber varias coincidencias",
+    "examplesLabel": "Ejemplos:",
+    "infoTitle": "Consejos de búsqueda",
+    "infoBody": "El ISIN (ej. LU1206943596) y el ID de Morningstar (ej. 0P00015LRD) se resuelven al instante. La búsqueda por ticker o nombre funciona, pero a menudo requiere confirmar la coincidencia correcta."
   },
   "assetRow": {
     "weightPercent": "Peso (%)",
@@ -87,7 +95,7 @@
   },
   "manualInput": {
     "title": "Entrada Manual de Activo para \"{identifier}\"",
-    "description": "El activo no se pudo resolver automáticamente. Por favor, introduce los detalles de Morningstar manualmente.",
+    "description": "El activo no se pudo resolver automáticamente. Por favor, introduce los detalles de Morningstar manualmente. Consejo: puedes encontrar el ISIN y el ID de Morningstar en la página del fondo en Morningstar para una búsqueda más rápida la próxima vez.",
     "morningstarId": "ID de Morningstar",
     "morningstarIdPlaceholder": "ej., 0P0000YXJO",
     "assetName": "Nombre del Activo",
@@ -100,7 +108,9 @@
     "singleMatch": "Coincidencia encontrada para \"{identifier}\"",
     "multipleMatches": "Múltiples coincidencias encontradas para \"{identifier}\"",
     "confirmSingle": "Por favor, confirma que este es el activo correcto:",
-    "selectFromList": "Por favor, selecciona el activo correcto de la lista:"
+    "selectFromList": "Por favor, selecciona el activo correcto de la lista:",
+    "nameSearchNotice": "Buscaste por nombre o ticker. Selecciona el activo correcto de la lista.",
+    "nameSearchTip": "La próxima vez, prueba con un ISIN o ID de Morningstar para una resolución más rápida y precisa."
   },
   "editableIsin": {
     "manual": "(manual)",
