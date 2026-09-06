@@ -10,6 +10,7 @@ export const AssetSchema = z.object({
   id: z.string(),
   isin: z.string().nullable(),
   morningstarId: z.string(),
+  shareClassId: z.string().nullable().optional(),
   ticker: z.string().nullable().optional(),
   name: z.string(),
   type: AssetTypeSchema,

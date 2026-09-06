@@ -11,6 +11,8 @@ import {
   HtmlScrapeStrategy,
   GlobalSearchStrategy,
   DuckDuckGoStrategy,
+  YahooFinanceSearchStrategy,
+  InstantXrayScreenerStrategy,
   ResultScorerService,
   PageVerifierService,
 } from './resolver';
@@ -27,6 +29,8 @@ import {
     HtmlScrapeStrategy,
     GlobalSearchStrategy,
     DuckDuckGoStrategy,
+    YahooFinanceSearchStrategy,
+    InstantXrayScreenerStrategy,
     ResultScorerService,
     PageVerifierService,
   ],

@@ -8,6 +8,7 @@ export function createMockAsset(overrides: Partial<Asset> = {}): Asset {
     id: 'asset-1',
     isin: 'IE00B4L5Y983',
     morningstarId: 'F00000WU13',
+    shareClassId: 'F00000WU13',
     ticker: 'VWCE',
     name: 'Vanguard FTSE All-World UCITS ETF',
     type: 'ETF' as AssetType,

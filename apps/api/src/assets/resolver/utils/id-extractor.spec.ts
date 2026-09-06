@@ -1,7 +1,13 @@
 import {
   extractMorningstarId,
+  extractMorningstarIdFromUrl,
   extractDomain,
   isValidIsin,
+  isFundShareClassId,
+  isPerformanceId,
+  isPersistedMorningstarIdValid,
+  extractPreferredFundId,
+  extractShareClassIdFromHtml,
 } from './id-extractor';
 
 describe('id-extractor utils', () => {
@@ -29,6 +35,36 @@ describe('id-extractor utils', () => {
       it('should extract 0P-prefixed ID from fund URL', () => {
         const url = 'https://www.morningstar.com/funds/xnas/0P0000YXJO/quote';
         expect(extractMorningstarId(url)).toBe('0P0000YXJO');
+      });
+
+      it('should extract a 0P ID from a Yahoo Finance symbol', () => {
+        expect(extractMorningstarId('0P0001CLDK.F')).toBe('0P0001CLDK');
+      });
+
+      it('should extract ID from a global stock URL', () => {
+        expect(
+          extractMorningstarId(
+            'https://global.morningstar.com/en-ca/investments/stocks/0P000000B7/quote',
+          ),
+        ).toBe('0P000000B7');
+      });
+
+      it('should extract 0P IDs from en-eu quote, chart and ES cotizacion URLs', () => {
+        expect(
+          extractMorningstarId(
+            'https://global.morningstar.com/en-eu/investments/funds/0P0001CLDK/quote',
+          ),
+        ).toBe('0P0001CLDK');
+        expect(
+          extractMorningstarId(
+            'https://global.morningstar.com/en-eu/investments/funds/0P0001CLDK/chart',
+          ),
+        ).toBe('0P0001CLDK');
+        expect(
+          extractMorningstarId(
+            'https://global.morningstar.com/es/inversiones/fondos/0P0001CLDK/cotizacion',
+          ),
+        ).toBe('0P0001CLDK');
       });
     });
 
@@ -107,6 +143,33 @@ describe('id-extractor utils', () => {
         const url = 'https://www.morningstar.es/es/funds/f00000tha5/overview';
         expect(extractMorningstarId(url)).toBe('F00000THA5');
       });
+    });
+  });
+
+  describe('extractMorningstarIdFromUrl', () => {
+    it('should ignore non-Morningstar text', () => {
+      expect(extractMorningstarIdFromUrl('0P0001CLDK')).toBeNull();
+    });
+
+    it('should extract the ID from a pasted Morningstar quote URL', () => {
+      expect(
+        extractMorningstarIdFromUrl(
+          'https://global.morningstar.com/en-eu/investments/funds/0P0001CLDK/quote',
+        ),
+      ).toBe('0P0001CLDK');
+    });
+
+    it('should extract the ID from chart and Spanish cotizacion URLs', () => {
+      expect(
+        extractMorningstarIdFromUrl(
+          'https://global.morningstar.com/en-eu/investments/funds/0P0001CLDK/chart',
+        ),
+      ).toBe('0P0001CLDK');
+      expect(
+        extractMorningstarIdFromUrl(
+          'https://global.morningstar.com/es/inversiones/fondos/0P0001CLDK/cotizacion',
+        ),
+      ).toBe('0P0001CLDK');
     });
   });
 
@@ -222,6 +285,10 @@ describe('id-extractor utils', () => {
         expect(isValidIsin(undefined as unknown as string)).toBe(false);
       });
 
+      it('should return false for YEARLOWPRICE CSS keys', () => {
+        expect(isValidIsin('YEARLOWPRICE')).toBe(false);
+      });
+
       it('should return false for ticker', () => {
         expect(isValidIsin('AAPL')).toBe(false);
       });
@@ -236,6 +303,92 @@ describe('id-extractor utils', () => {
       it('should reject strings that look like ISINs but have unknown prefix', () => {
         expect(isValidIsin('ZZ1234567890')).toBe(false);
       });
+    });
+  });
+
+  describe('isFundShareClassId / isPerformanceId', () => {
+    it('should detect F share-class IDs including F0GBR', () => {
+      expect(isFundShareClassId('F00000THA5')).toBe(true);
+      expect(isFundShareClassId('F000014TGO')).toBe(true);
+      expect(isFundShareClassId('F0GBR04M6M')).toBe(true);
+      expect(isFundShareClassId('0P00016YQ5')).toBe(false);
+    });
+
+    it('should detect 0P performance IDs', () => {
+      expect(isPerformanceId('0P00016YQ5')).toBe(true);
+      expect(isPerformanceId('F00000WI0D')).toBe(false);
+    });
+  });
+
+  describe('isPersistedMorningstarIdValid', () => {
+    it('should accept quote and share-class IDs', () => {
+      expect(isPersistedMorningstarIdValid('0P0001ODL3')).toBe(true);
+      expect(isPersistedMorningstarIdValid('F00000THA5')).toBe(true);
+    });
+
+    it('should reject an ISIN stored as a Morningstar ID', () => {
+      expect(isPersistedMorningstarIdValid('ES0114498027')).toBe(false);
+      expect(isPersistedMorningstarIdValid('LU0328476410')).toBe(false);
+    });
+  });
+
+  describe('extractPreferredFundId', () => {
+    it('should prefer F IDs even when the path contains 0P', () => {
+      const url =
+        'https://global.morningstar.com/es/inversiones/fondos/0P00016YQ5/cotizacion?id=F00000WI0D';
+      expect(extractPreferredFundId(url)).toBe('F00000WI0D');
+    });
+
+    it('should extract F from a share-class quote URL', () => {
+      const url =
+        'https://global.morningstar.com/es/inversiones/fondos/F00000WI0D/cotizacion';
+      expect(extractPreferredFundId(url)).toBe('F00000WI0D');
+    });
+
+    it('should return null when the URL only has a 0P ID', () => {
+      const url =
+        'https://global.morningstar.com/es/inversiones/fondos/0P00016YQ5/cotizacion';
+      expect(extractPreferredFundId(url)).toBeNull();
+    });
+  });
+
+  describe('extractShareClassIdFromHtml', () => {
+    it('should read the SAL security-id from a 0P quote page', () => {
+      const html = `
+        <sal-components-mds-container
+          security-id="F00000VYOL"
+          security-type="FO"
+          tab="fund-quote-top"
+        ></sal-components-mds-container>
+        <a data-linkbinding="F00000VYOL">Renta 4 Multigestión Num. Patr. Glb FI</a>
+      `;
+      expect(extractShareClassIdFromHtml(html)).toBe('F00000VYOL');
+    });
+
+    it('should ignore 0P IDs and CSS hashes that look similar', () => {
+      const html = `
+        <div id="0P000168OI"></div>
+        <style>.F0ACBKPSJNNCA3 { color: red; }</style>
+        <sal-components security-id="0P000168OI"></sal-components>
+      `;
+      expect(extractShareClassIdFromHtml(html)).toBeNull();
+    });
+
+    it('should pick the most frequent F security-id', () => {
+      const html = `
+        <x security-id="F00000AAAA"></x>
+        <x security-id="F00000VYOL"></x>
+        <x security-id="F00000VYOL"></x>
+        <x security-id="F00000VYOL"></x>
+      `;
+      expect(extractShareClassIdFromHtml(html)).toBe('F00000VYOL');
+    });
+
+    it('should read quoted F IDs from www.morningstar.com JSON', () => {
+      const html = `
+        <script>window.__NUXT__={byId:"F00001019E",name:"Fidelity MSCI World Index Fund EUR P Acc"}</script>
+      `;
+      expect(extractShareClassIdFromHtml(html)).toBe('F00001019E');
     });
   });
 });

@@ -6,6 +6,7 @@ describe('asset.mapper', () => {
     id: '123e4567-e89b-12d3-a456-426614174000',
     isin: 'IE00B4L5Y983',
     morningstarId: '0P0000YXJO',
+    shareClassId: null as string | null,
     ticker: 'IWDA',
     name: 'iShares Core MSCI World UCITS ETF',
     type: AssetType.ETF,
@@ -27,6 +28,7 @@ describe('asset.mapper', () => {
       expect(dto.id).toBe(asset.id);
       expect(dto.isin).toBe(asset.isin);
       expect(dto.morningstarId).toBe(asset.morningstarId);
+      expect(dto.shareClassId).toBe(asset.shareClassId);
       expect(dto.ticker).toBe(asset.ticker);
       expect(dto.name).toBe(asset.name);
       expect(dto.type).toBe(asset.type);
@@ -50,6 +52,7 @@ describe('asset.mapper', () => {
 
     it('should map isinPending, isinManual, tickerManual when present', () => {
       const asset = createMockAsset({
+        isin: null,
         isinPending: true,
         isinManual: true,
         tickerManual: true,
@@ -59,6 +62,17 @@ describe('asset.mapper', () => {
       expect(dto.isinPending).toBe(true);
       expect(dto.isinManual).toBe(true);
       expect(dto.tickerManual).toBe(true);
+    });
+
+    it('should not report isinPending when an ISIN is already stored', () => {
+      const asset = createMockAsset({
+        isin: 'ES0173311103',
+        isinPending: true,
+      });
+      const dto = toResolvedAssetDto(asset);
+
+      expect(dto.isinPending).toBe(false);
+      expect(dto.isin).toBe('ES0173311103');
     });
 
     it('should handle null ISIN', () => {

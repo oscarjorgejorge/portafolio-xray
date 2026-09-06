@@ -2049,6 +2049,92 @@ After upgrading Prisma and introducing the `@prisma/adapter-pg` driver adapter w
 Describe and implement a public contact endpoint in the API (POST /contact) that accepts name, email, subject and message, sends the message via Resend to the configured CONTACT_EMAIL, and wire a localized Contact page in the frontend (including navigation changes for desktop and mobile) that posts to this endpoint.
 Add portfolio favorites: heart to add/remove public portfolios from favorites (only when not owner); pencil to open portfolio in builder when owner. If not logged in, show auth modal on heart click, then after login either add favorite or open builder if now owner. On explore list show heart/pencil and favorites count; allow sorting by favorites. Add "My favorites" page in sidebar (like My portfolios) with list of favorited portfolios and ability to unfavorite. When portfolio owner deletes a portfolio, use hard delete with FK cascade so favorites disappear and detail URL shows "portfolio no longer available".
 
-### Prompt 131
+### Prompt 132
+por que no se genera bien el xray, este activo no lo carga bien en el pdf, entiendo que la url no esta bien generada: 0P0001J9GX
 
-quiero que en el visualizador de la cartera se puedan dejar comentarios, si un usuario no esta logueado al darle a 'enviar comentario' (o el copy que mejor se entienda), le aparecera el pop de registro sin navegacion a otra pagina (despues del registrarse el comentario que escribio debe seguir ahi, que no se pierda)
+puedes mirar en la base de datos de los assets, si hay assets con el mismo problema?
+
+0P00016YQ5 y este esta fallando https://global.morningstar.com/es/inversiones/fondos/0P00016YQ5/cotizacion
+
+como podemos arreglar toda la base de datos? isin duplicados y valores incorrectos?
+
+antes de cambiar morning start ids tenemos una forma de comprobar que son correctos?
+
+entonces se van a probar los assets con una url y se va a verificar que ese pdf se genera bien antes de cambiarlo?
+
+y todo lo que haya en cache o en los portafolios se va a corregir?
+
+los assets que vamos a corregir y esten en cache o en las carteras se van a corregir?
+
+implementa el plan
+
+### Prompt 133
+solo consigo encontrar los fondos con estas urls, pero con estos codigos de morningstar no se general bien el xray https://global.morningstar.com/es/inversiones/fondos/0P000168OI/cotizacion
+
+### Prompt 134
+deberiamos anhadir otro cambio en la base de datos para guardar el security-id?
+
+### Prompt 135
+puedes intentar resolver este codigo? ES0112231016
+
+### Prompt 136
+porque se queda en obteniendo isin, si esta en la base de datos?
+
+### Prompt 137
+el isPending, tiene que modificarse si se resuelve (habria que hacer esa comprobacion cuando se pide el assets si esta resuelto)
+
+### Prompt 138
+¿Lo implemento (migración Prisma + resolver + generación de X-ray)? a esto anhadiria que cuando se vuelva a pedir un asset, se compruebe si los datos estan bien (que el isin este, que el morningstarid este y que el nuevo campo del asset este bien, y si no esta, que se resuelva y si esta se coge de la base de datos),
+
+como afectaria esto a los portafolios ya hechos?
+
+### Prompt 139
+aqui habria que anhadir otra nota diciendo, si el xray no se genera bien, escribe a traves del formulario de contacto (link), informando de los assets que no aparecen en el xray y sus isins para poder corregirlos manualmente (como experto ux/ui)
+
+### Prompt 140
+y si en el morningstar id esta el shareClassId se corrige? como este de Fidelity MSCI World Index Fund EUR P Acc IE00BYX5NX33, se corrige y se asignan los valores correctamente?
+
+### Prompt 141
+porque no se resuelve bien?
+
+### Prompt 142
+pero no se intenta resolver buscando en internet?
+
+### Prompt 143
+https://global.morningstar.com/en-eu/investments/funds/0P0001CLDK/quote
+https://global.morningstar.com/en-eu/investments/funds/0P0001CLDK/chart
+https://global.morningstar.com/es/inversiones/fondos/0P0001CLDK/cotizacion
+
+### Prompt 144
+pero parece que sigue sin encontrarlo http://localhost:4000/assets/resolve
+
+### Prompt 145
+http://localhost:3000/es/xray?assets=0P0001CLDK%3A30%2C0P0001ODL3%3A30%2C0P000168OI%3A20%2C0P0001MYMU%3A20, parece que no se ha generado bien, no se guardo ningun share_class_id
+
+### Prompt 146
+Hydration failed because the server-rendered HTML didn't match the client. The error is in PortfolioBuilder on localhost:3000/es. Screenshot of the console hydration mismatch.
+
+### Prompt 147
+https://global.morningstar.com/en-ca/investments/stocks/0P000000B7/quote  amazon y AMZNS, me esta sacando el popup para introducir el ticker manualmente
+
+y luego el portafolio xray se genera mal
+
+tampoco reconoce los etfs https://global.morningstar.com/en-gb/investments/etfs/0P00014E87/quote  IE00BP3QZB59  LU0328476410
+
+https://global.morningstar.com/en-eu/investments/etfs/0P0000AB7T/quote 
+
+falla con las acciones y etfs
+
+### Prompt 148
+siguen sin funcionar los etf y las acciones
+
+### Prompt 149
+esta informacion no esta correcta, no en un stock, y el ticker seria LU0328476410 ?  https://global.morningstar.com/en-eu/investments/etfs/0P0000AB7T/quote
+
+### Prompt 150
+ESTE se introdujo manualmente, deberia comprobar si morningstart id esta bien resuelto (al buscar el asset y corregirlo en caso de que no
+
+### Prompt 151
+realiza el fix
+
+

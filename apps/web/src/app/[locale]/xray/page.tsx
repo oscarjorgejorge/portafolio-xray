@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useRouter } from '@/i18n/navigation';
 import { Card } from '@/components/ui/Card';
+import { XRayIssueHint } from '@/components/portfolio/XRayIssueHint';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { PageLoading } from '@/components/ui/PageLoading';
@@ -159,6 +160,7 @@ function XRayPageContent() {
               <Button onClick={openMorningstarPdf} className="w-full">
                 {t('pdfCard.openPdf')}
               </Button>
+              <XRayIssueHint className="pt-1" />
             </div>
           </Card>
 

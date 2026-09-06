@@ -44,6 +44,7 @@ export class DuckDuckGoStrategy implements SearchStrategy {
       'site:global.morningstar.com/*/investments/funds',
       'site:global.morningstar.com/*/investments/etfs',
       'site:global.morningstar.com/*/investments/stocks',
+      'site:global.morningstar.com/en-eu/investments/funds',
     ],
   ];
 

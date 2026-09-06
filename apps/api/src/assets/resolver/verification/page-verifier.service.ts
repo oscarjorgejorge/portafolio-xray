@@ -5,8 +5,24 @@ import {
   EUROPEAN_MARKETS,
   MS_ASSET_TYPES,
   MorningstarAssetType,
+  SHARE_CLASS_LOOKUP_RETRIES,
+  SHARE_CLASS_LOOKUP_RETRY_DELAY_MS,
+  isMorningstarBotChallenge,
 } from '../utils/constants';
-import { buildMorningstarUrl } from '../utils/url-builder';
+import {
+  buildMorningstarUrl,
+  buildWwwMorningstarQuoteUrl,
+} from '../utils/url-builder';
+import {
+  extractShareClassIdFromHtml,
+  isValidIsin,
+} from '../utils/id-extractor';
+import { extractLabeledIsin } from '../utils/www-morningstar-quote';
+import {
+  extractTickerFromQuotePage,
+  isQuoteVerificationValid,
+  parseQuoteHeaderIdentity,
+} from '../utils/quote-page-fields';
 import { HttpClientService } from '../../../common/http';
 import { createContextLogger } from '../../../common/logger';
 import { IdentifierClassifier } from '../../../common/utils/identifier-classifier';
@@ -71,6 +87,7 @@ export class PageVerifierService {
   async verifyFundPage(
     url: string,
     expectedIsin: string,
+    httpOptions?: { retries?: number; retryDelay?: number },
   ): Promise<VerificationResult> {
     this.logger.debug(`[VERIFY] Verifying page: ${url}`);
 
@@ -84,14 +101,18 @@ export class PageVerifierService {
     const response = await this.httpClient.get<string>(url, {
       responseType: 'html',
       timeout: 15000,
+      retries: httpOptions?.retries,
+      retryDelay: httpOptions?.retryDelay,
     });
 
     if (!response.ok) {
       this.logger.warn(`[VERIFY] HTTP ${response.status}`);
-      // Treat non-200 responses (especially 404) as "not available in this market"
+      result.additionalInfo.httpStatus = response.status.toString();
+      if (isMorningstarBotChallenge(response.status, response.error?.message)) {
+        result.additionalInfo.botChallenge = 'true';
+      }
       if (response.status === 404) {
         result.additionalInfo.marketNotAvailable = 'true';
-        result.additionalInfo.httpStatus = response.status.toString();
       }
       return result;
     }
@@ -111,7 +132,7 @@ export class PageVerifierService {
     }
 
     // Extract ISINs
-    const foundIsins = this.extractIsins($);
+    const foundIsins = this.extractIsins($, html);
     this.logger.debug(
       `[VERIFY] Found ${foundIsins.length} potential ISINs: ${foundIsins.join(', ') || 'none'}`,
     );
@@ -131,8 +152,15 @@ export class PageVerifierService {
     // Extract fund name
     result.nameFound = this.extractName($);
 
-    // Extract additional info (ticker, category, currency)
+    // Extract additional info (ticker, category, currency, share-class ID)
     this.extractAdditionalInfo($, url, result);
+    const shareClassId = extractShareClassIdFromHtml(html);
+    if (shareClassId) {
+      result.additionalInfo.shareClassId = shareClassId;
+      this.logger.debug(
+        `[VERIFY] Share-class ID from quote page: ${shareClassId}`,
+      );
+    }
 
     if (!result.verified && result.isinFound) {
       this.logger.warn(
@@ -146,8 +174,18 @@ export class PageVerifierService {
   /**
    * Extract ISINs from page content
    */
-  private extractIsins($: cheerio.CheerioAPI): string[] {
+  private extractIsins($: cheerio.CheerioAPI, html: string): string[] {
     const foundIsins: string[] = [];
+
+    const headerIdentity = parseQuoteHeaderIdentity($('body').text());
+    if (headerIdentity?.isin) {
+      foundIsins.push(headerIdentity.isin);
+    }
+
+    const labeledIsin = extractLabeledIsin(html);
+    if (labeledIsin && !foundIsins.includes(labeledIsin)) {
+      foundIsins.push(labeledIsin);
+    }
 
     // Strategy 1: Check meta tags (most reliable for SSR pages)
     const metaKeywords = $('meta[name="keywords"]').attr('content') || '';
@@ -176,9 +214,10 @@ export class PageVerifierService {
       if (matches) {
         for (const match of matches) {
           const candidate = match.toUpperCase();
-          // Use strict checksum validation to filter out garbage like "CANADAFRENCH"
-          // which passes format check but fails ISO 6166 Luhn algorithm
+          // Country prefix + ISO 6166 checksum. Rejects CSS keys like
+          // YEARLOWPRICE that pass Luhn but are not real ISINs.
           if (
+            isValidIsin(candidate) &&
             IdentifierClassifier.validateISINChecksum(candidate) &&
             !foundIsins.includes(candidate)
           ) {
@@ -249,6 +288,17 @@ export class PageVerifierService {
     canonicalUrl: string | null;
     detectedType: MorningstarAssetType | null;
   } {
+    const headerIdentity = parseQuoteHeaderIdentity($('body').text());
+    if (headerIdentity) {
+      this.logger.debug(
+        `[VERIFY] Detected asset type from quote header: ${headerIdentity.assetType} (ISIN: ${headerIdentity.isin})`,
+      );
+      return {
+        canonicalUrl: $('link[rel="canonical"]').attr('href') || null,
+        detectedType: headerIdentity.assetType,
+      };
+    }
+
     // Strategy 1: Check canonical link tag (most reliable)
     const canonicalUrl = $('link[rel="canonical"]').attr('href') || null;
 
@@ -303,68 +353,15 @@ export class PageVerifierService {
       result.additionalInfo.detectedAssetType = detectedType;
     }
 
-    // Ticker extraction with multiple fallback strategies
-    // 1. From URL path for stocks (most reliable for stocks): /stocks/{exchange}/{ticker}/quote
-    // Example: morningstar.com/stocks/xnys/nke/quote -> NKE
-    const stockUrlMatch = url.match(/\/stocks\/[a-z]+\/([a-z0-9.]+)(?:\/|$)/i);
-    if (stockUrlMatch?.[1]) {
-      result.additionalInfo.ticker = stockUrlMatch[1].toUpperCase();
-      this.logger.debug(
-        `[VERIFY] Extracted ticker from stock URL path: ${result.additionalInfo.ticker}`,
-      );
-    }
-
-    // 2. From URL parameter: ?ticker=CELH
-    if (!result.additionalInfo.ticker) {
-      const urlTickerMatch = url.match(/[?&]ticker=([A-Z0-9.]{1,10})/i);
-      if (urlTickerMatch?.[1]) {
-        result.additionalInfo.ticker = urlTickerMatch[1].toUpperCase();
-        this.logger.debug(
-          `[VERIFY] Extracted ticker from URL param: ${result.additionalInfo.ticker}`,
-        );
-      }
-    }
-
-    // 3. From meta keywords (e.g., "NKE, Nike Stock, NKE Stock Price...")
-    // The ticker is often the first keyword for stocks
-    if (!result.additionalInfo.ticker && metaKeywords) {
-      const keywordsTickerMatch = metaKeywords.match(/^([A-Z]{1,5})(?:,|\s)/);
-      if (keywordsTickerMatch?.[1]) {
-        result.additionalInfo.ticker = keywordsTickerMatch[1].toUpperCase();
-        this.logger.debug(
-          `[VERIFY] Extracted ticker from meta keywords: ${result.additionalInfo.ticker}`,
-        );
-      }
-    }
-
-    // 4. From page title (e.g., "Nike Inc Class B NKE" or "CELH Precio de las acciones...")
-    if (!result.additionalInfo.ticker) {
-      // Try pattern at end: "Company Name TICKER"
-      const titleEndMatch = pageTitle.match(/\s([A-Z]{1,5})(?:\s|$)/);
-      // Try pattern at start: "TICKER Price..."
-      const titleStartMatch = pageTitle.match(
-        /^([A-Z]{1,5})\s+(?:Precio|Price|Quote)/i,
-      );
-      const titleMatch = titleEndMatch || titleStartMatch;
-      if (titleMatch?.[1]) {
-        result.additionalInfo.ticker = titleMatch[1].toUpperCase();
-        this.logger.debug(
-          `[VERIFY] Extracted ticker from title: ${result.additionalInfo.ticker}`,
-        );
-      }
-    }
-
-    // 5. Fallback: Look for Ticker/Symbol label in page text
-    if (!result.additionalInfo.ticker) {
-      const textTickerMatch = pageText.match(
-        /(?:Ticker|Symbol)[:\s]*([A-Z0-9.]{1,10})/i,
-      );
-      if (textTickerMatch?.[1]) {
-        result.additionalInfo.ticker = textTickerMatch[1].trim().toUpperCase();
-        this.logger.debug(
-          `[VERIFY] Extracted ticker from page text: ${result.additionalInfo.ticker}`,
-        );
-      }
+    const ticker = extractTickerFromQuotePage({
+      url,
+      pageTitle,
+      metaKeywords,
+      pageText,
+    });
+    if (ticker) {
+      result.additionalInfo.ticker = ticker;
+      this.logger.debug(`[VERIFY] Extracted ticker: ${ticker}`);
     }
 
     // Other additional info
@@ -397,6 +394,24 @@ export class PageVerifierService {
   ): Promise<ExtendedVerificationResult> {
     const assetTypesToTry = this.getAssetTypePriority(assetType);
 
+    const wwwResult = await this.tryWwwMorningstarQuote(
+      morningstarId,
+      expectedIsin,
+      assetTypesToTry,
+    );
+    if (
+      wwwResult &&
+      this.isValidResult(wwwResult.verification, wwwResult.detectedAssetType)
+    ) {
+      return wwwResult;
+    }
+    if (wwwResult && this.isBotChallenge(wwwResult.verification)) {
+      this.logger.warn(
+        `[FALLBACK] Skipping global.morningstar.com after bot challenge for ${morningstarId}`,
+      );
+      return wwwResult;
+    }
+
     // First, try all asset types in the default Spanish market (fast path)
     const esResult = await this.tryDefaultMarket(
       morningstarId,
@@ -405,6 +420,15 @@ export class PageVerifierService {
     );
     if (esResult) {
       return esResult;
+    }
+
+    const euResult = await this.tryEuQuoteMarket(
+      morningstarId,
+      expectedIsin,
+      assetTypesToTry,
+    );
+    if (euResult) {
+      return euResult;
     }
 
     this.logger.log(
@@ -437,12 +461,55 @@ export class PageVerifierService {
     assetType: MorningstarAssetType,
   ): MorningstarAssetType[] {
     if (assetType === MS_ASSET_TYPES.ETF) {
-      return [MS_ASSET_TYPES.ETF, MS_ASSET_TYPES.FUND];
+      return [MS_ASSET_TYPES.ETF, MS_ASSET_TYPES.FUND, MS_ASSET_TYPES.STOCK];
     }
     if (assetType === MS_ASSET_TYPES.FUND) {
-      return [MS_ASSET_TYPES.FUND, MS_ASSET_TYPES.ETF];
+      return [MS_ASSET_TYPES.FUND, MS_ASSET_TYPES.ETF, MS_ASSET_TYPES.STOCK];
     }
-    return [assetType, MS_ASSET_TYPES.FUND, MS_ASSET_TYPES.ETF];
+    return [assetType, MS_ASSET_TYPES.ETF, MS_ASSET_TYPES.FUND];
+  }
+
+  /**
+   * www.morningstar.com quote pages are less often WAF-blocked than global.morningstar.com
+   */
+  private async tryWwwMorningstarQuote(
+    morningstarId: string,
+    expectedIsin: string,
+    assetTypesToTry: MorningstarAssetType[],
+  ): Promise<ExtendedVerificationResult | null> {
+    for (const tryAssetType of assetTypesToTry) {
+      const wwwUrl = buildWwwMorningstarQuoteUrl(morningstarId, tryAssetType);
+      const verification = await this.verifyFundPage(wwwUrl, expectedIsin, {
+        retries: SHARE_CLASS_LOOKUP_RETRIES,
+        retryDelay: SHARE_CLASS_LOOKUP_RETRY_DELAY_MS,
+      });
+      if (this.isBotChallenge(verification)) {
+        this.logger.warn(
+          `[FALLBACK] www.morningstar.com bot challenge for ${morningstarId}`,
+        );
+        return {
+          verification,
+          workingUrl: wwwUrl,
+          marketId: 'www',
+          detectedAssetType: tryAssetType,
+        };
+      }
+      if (this.isValidResult(verification, tryAssetType)) {
+        this.logger.log(
+          `[FALLBACK] Found ${morningstarId} as ${tryAssetType} on www.morningstar.com (ISIN: ${verification.isinFound})`,
+        );
+        return {
+          verification,
+          workingUrl: wwwUrl,
+          marketId: 'www',
+          detectedAssetType:
+            (verification.additionalInfo?.detectedAssetType as
+              | MorningstarAssetType
+              | undefined) || tryAssetType,
+        };
+      }
+    }
+    return null;
   }
 
   /**
@@ -458,7 +525,7 @@ export class PageVerifierService {
       const defaultUrl = buildMorningstarUrl(morningstarId, tryAssetType);
       const verification = await this.verifyFundPage(defaultUrl, expectedIsin);
 
-      if (this.isValidResult(verification)) {
+      if (this.isValidResult(verification, tryAssetType)) {
         // Check if the canonical URL indicates a different asset type
         const canonicalDetectedType = verification.additionalInfo
           ?.detectedAssetType as MorningstarAssetType | undefined;
@@ -489,6 +556,46 @@ export class PageVerifierService {
           verification,
           workingUrl: defaultUrl,
           detectedAssetType: tryAssetType,
+        };
+      }
+    }
+    return null;
+  }
+
+  /**
+   * UCITS funds often live on /en-eu/investments/.../quote without a marketID
+   */
+  private async tryEuQuoteMarket(
+    morningstarId: string,
+    expectedIsin: string,
+    assetTypesToTry: MorningstarAssetType[],
+  ): Promise<ExtendedVerificationResult | null> {
+    for (const tryAssetType of assetTypesToTry) {
+      const euUrl = buildMorningstarUrl(morningstarId, tryAssetType, 'eu');
+      const verification = await this.verifyFundPage(euUrl, expectedIsin);
+      if (this.isValidResult(verification, tryAssetType)) {
+        const canonicalDetectedType = verification.additionalInfo
+          ?.detectedAssetType as MorningstarAssetType | undefined;
+        const finalAssetType = canonicalDetectedType || tryAssetType;
+        const finalUrl =
+          canonicalDetectedType && canonicalDetectedType !== tryAssetType
+            ? buildMorningstarUrl(morningstarId, canonicalDetectedType, 'eu')
+            : euUrl;
+
+        if (canonicalDetectedType && canonicalDetectedType !== tryAssetType) {
+          this.logger.log(
+            `[FALLBACK] Type mismatch on en-eu quote: requested ${tryAssetType} but canonical shows ${canonicalDetectedType}`,
+          );
+        }
+
+        this.logger.log(
+          `[FALLBACK] Found ${morningstarId} as ${finalAssetType} on en-eu quote (ISIN: ${verification.isinFound})`,
+        );
+        return {
+          verification,
+          workingUrl: finalUrl,
+          marketId: 'eu',
+          detectedAssetType: finalAssetType,
         };
       }
     }
@@ -535,7 +642,7 @@ export class PageVerifierService {
 
       // Find first successful result
       const successResult = results.find((r) =>
-        this.isValidResult(r.verification),
+        this.isValidResult(r.verification, r.tryAssetType),
       );
       if (successResult) {
         // Check if the canonical URL indicates a different asset type
@@ -578,12 +685,24 @@ export class PageVerifierService {
   }
 
   /**
-   * Check if verification result is valid (found and has ISIN)
+   * A quote page is valid with an ISIN, or with a name plus a detected type.
+   * ETF/fund pages must not fall through to STOCK when ISIN is missing from HTML.
    */
-  private isValidResult(verification: VerificationResult): boolean {
-    return (
-      verification.additionalInfo?.marketNotAvailable !== 'true' &&
-      verification.isinFound !== null
-    );
+  private isValidResult(
+    verification: VerificationResult,
+    assetType?: MorningstarAssetType,
+  ): boolean {
+    return isQuoteVerificationValid({
+      marketNotAvailable:
+        verification.additionalInfo?.marketNotAvailable === 'true',
+      isinFound: verification.isinFound,
+      nameFound: verification.nameFound,
+      detectedAssetType: verification.additionalInfo?.detectedAssetType,
+      triedAssetType: assetType,
+    });
+  }
+
+  private isBotChallenge(verification: VerificationResult): boolean {
+    return verification.additionalInfo?.botChallenge === 'true';
   }
 }

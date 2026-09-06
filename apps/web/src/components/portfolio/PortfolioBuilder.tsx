@@ -8,6 +8,7 @@ import { AssetRow } from './AssetRow';
 import { AllocationModeToggle } from './AllocationModeToggle';
 import { PortfolioSummary } from './PortfolioSummary';
 import { ShareableUrlSection } from './ShareableUrlSection';
+import { XRayIssueHint } from './XRayIssueHint';
 import { Card } from '@/components/ui/Card';
 import { Toast } from '@/components/ui/Toast';
 import type { PortfolioAsset, AllocationMode } from '@/types';
@@ -309,6 +310,8 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
             </p>
           </div>
         )}
+
+        <XRayIssueHint className="mt-6 pt-4 border-t border-slate-100" />
       </Card>
 
       {/* Alternatives Modal */}
