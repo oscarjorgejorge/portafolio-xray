@@ -173,4 +173,30 @@ describe('instant-xray-screener', () => {
       }),
     ).toBe('0P00014E87');
   });
+
+  it('uses SecId as shareClassId when Instant X-Ray omits ShareClassId', () => {
+    const results = parseInstantXrayScreenerResponse(
+      {
+        total: 1,
+        rows: [
+          {
+            SecId: 'F00001DES5',
+            Name: 'Caixabank Destino 2035 Plus FI',
+            ISIN: 'ES0114498027',
+            PerformanceId: '0P0001ODL3',
+          },
+        ],
+      },
+      'ES0114498027',
+      'FOESP$$ALL',
+    );
+
+    expect(results).toHaveLength(1);
+    expect(results[0]).toMatchObject({
+      morningstarId: '0P0001ODL3',
+      shareClassId: 'F00001DES5',
+      isin: 'ES0114498027',
+      assetType: MS_ASSET_TYPES.FUND,
+    });
+  });
 });

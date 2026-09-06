@@ -2134,7 +2134,7 @@ esta informacion no esta correcta, no en un stock, y el ticker seria LU032847641
 ### Prompt 150
 ESTE se introdujo manualmente, deberia comprobar si morningstart id esta bien resuelto (al buscar el asset y corregirlo en caso de que no
 
-### Prompt 151
-realiza el fix
+### Prompt 152
+estoy probando en produccion y sigue sin anhadirse el share_class_id
 
 
