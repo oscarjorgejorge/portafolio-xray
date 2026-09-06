@@ -1,7 +1,7 @@
 import { IdentifierClassifier } from '../../../common/utils/identifier-classifier';
 import { SearchResult } from '../resolver.types';
 import { MS_ASSET_TYPES, MorningstarAssetType } from './constants';
-import { extractMorningstarId } from './id-extractor';
+import { extractMorningstarId, isFundShareClassId } from './id-extractor';
 import { buildMorningstarUrl } from './url-builder';
 
 export const INSTANT_XRAY_SCREENER_BASE_URL =
@@ -110,6 +110,23 @@ export function morningstarIdFromScreenerRow(
   return null;
 }
 
+/**
+ * Instant X-Ray often puts the F share-class ID in SecId and leaves
+ * ShareClassId empty. PerformanceId stays the 0P quote ID.
+ */
+export function shareClassIdFromScreenerRow(
+  row: InstantXrayScreenerRow,
+): string | undefined {
+  const candidates = [row.ShareClassId, row.FundShareClassId, row.SecId];
+  for (const candidate of candidates) {
+    const value = candidate?.trim().toUpperCase();
+    if (value && isFundShareClassId(value)) {
+      return value;
+    }
+  }
+  return undefined;
+}
+
 export function rowMatchesQuery(
   row: InstantXrayScreenerRow,
   query: string,
@@ -163,10 +180,7 @@ export function parseInstantXrayScreenerResponse(
 
     const ticker = row.Ticker?.trim().toUpperCase() || undefined;
     const isin = row.ISIN?.trim().toUpperCase() || undefined;
-    const shareClassId =
-      extractMorningstarId(row.ShareClassId ?? '') ||
-      extractMorningstarId(row.FundShareClassId ?? '') ||
-      undefined;
+    const shareClassId = shareClassIdFromScreenerRow(row);
 
     results.push({
       url: buildMorningstarUrl(morningstarId, assetType, 'eu'),

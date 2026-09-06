@@ -166,7 +166,7 @@ describe('AssetsService', () => {
     describe('database cache hit', () => {
       it('should return asset from database when found by ISIN', async () => {
         cacheManager.get.mockResolvedValue(null);
-        const mockAsset = createMockAsset();
+        const mockAsset = createMockAsset({ shareClassId: 'F00000THA5' });
         repository.findByIsin.mockResolvedValue(mockAsset);
 
         const result = await service.resolve({ input: 'IE00B4L5Y983' });
@@ -179,7 +179,7 @@ describe('AssetsService', () => {
 
       it('should return asset from database when found by Morningstar ID', async () => {
         cacheManager.get.mockResolvedValue(null);
-        const mockAsset = createMockAsset();
+        const mockAsset = createMockAsset({ shareClassId: 'F00000THA5' });
         repository.findByMorningstarId.mockResolvedValue(mockAsset);
 
         const result = await service.resolve({ input: '0P0000YXJO' });
@@ -328,6 +328,65 @@ describe('AssetsService', () => {
             isin: 'ES0114498027',
           }),
         );
+      });
+
+      it('should re-resolve when a cached fund is missing shareClassId', async () => {
+        cacheManager.get.mockResolvedValue(null);
+        repository.findByIsin.mockResolvedValue(
+          createMockAsset({
+            morningstarId: '0P0001ODL3',
+            isin: 'ES0114498027',
+            type: AssetType.FUND,
+            ticker: null,
+            name: 'Caixabank Destino 2035 Plus FI',
+            url: 'https://global.morningstar.com/es/inversiones/fondos/0P0001ODL3/cotizacion',
+            shareClassId: null,
+          }),
+        );
+
+        morningstarResolver.resolve.mockResolvedValue({
+          status: 'resolved',
+          morningstarId: '0P0001ODL3',
+          morningstarUrl:
+            'https://global.morningstar.com/es/inversiones/fondos/0P0001ODL3/cotizacion',
+          bestMatch: createMockScoredResult({
+            title: 'Caixabank Destino 2035 Plus FI',
+            assetType: MS_ASSET_TYPES.FUND,
+            isin: 'ES0114498027',
+            morningstarId: '0P0001ODL3',
+            shareClassId: 'F00001DES5',
+          }),
+          confidence: 1,
+          allResults: [],
+          input: 'ES0114498027',
+          inputType: IdentifierType.ISIN,
+          normalizedInput: 'ES0114498027',
+          timestamp: new Date().toISOString(),
+        });
+
+        repository.upsertByMorningstarId.mockResolvedValue(
+          createMockAsset({
+            morningstarId: '0P0001ODL3',
+            shareClassId: 'F00001DES5',
+            isin: 'ES0114498027',
+            type: AssetType.FUND,
+            ticker: null,
+            name: 'Caixabank Destino 2035 Plus FI',
+          }),
+        );
+
+        const result = await service.resolve({ input: 'ES0114498027' });
+
+        expect(morningstarResolver.resolve).toHaveBeenCalledWith(
+          'ES0114498027',
+        );
+        expect(repository.upsertByMorningstarId).toHaveBeenCalledWith(
+          expect.objectContaining({
+            morningstarId: '0P0001ODL3',
+            shareClassId: 'F00001DES5',
+          }),
+        );
+        expect(result.asset?.shareClassId).toBe('F00001DES5');
       });
 
       it('should re-resolve a cached STOCK whose quote URL is an ETF page', async () => {
@@ -742,6 +801,7 @@ describe('AssetsService', () => {
       const mockAsset1 = createMockAsset({
         isin: 'IE00B4L5Y983',
         morningstarId: '0P0000YXJO',
+        shareClassId: 'F00000THA5',
       });
       const mockAsset2 = createMockAsset({
         isin: 'LU0996182563',
