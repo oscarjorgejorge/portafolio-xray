@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { XRayService } from './xray.service';
 import { AssetsRepository } from '../assets/assets.repository';
+import { HttpClientService } from '../common/http';
 import { AssetType, AssetSource } from '@prisma/client';
 import { MORNINGSTAR_URL } from '../common/constants';
 
@@ -10,6 +11,7 @@ const createMockAsset = (overrides = {}) => ({
   id: '123e4567-e89b-12d3-a456-426614174000',
   isin: 'IE00B4L5Y983',
   morningstarId: '0P0000YXJO',
+  shareClassId: null as string | null,
   ticker: 'IWDA',
   name: 'iShares Core MSCI World UCITS ETF',
   type: AssetType.ETF,
@@ -26,18 +28,30 @@ const createMockAsset = (overrides = {}) => ({
 describe('XRayService', () => {
   let service: XRayService;
   let repository: jest.Mocked<AssetsRepository>;
+  let httpClient: jest.Mocked<HttpClientService>;
 
   const mockBaseUrl = 'https://lt.morningstar.com';
 
   beforeEach(async () => {
     repository = {
       findManyByMorningstarIds: jest.fn(),
+      findManyByIsins: jest.fn().mockResolvedValue([]),
+      update: jest
+        .fn()
+        .mockImplementation(async (id: string, data: object) =>
+          createMockAsset({ id, ...data }),
+        ),
     } as unknown as jest.Mocked<AssetsRepository>;
+
+    httpClient = {
+      get: jest.fn().mockResolvedValue({ ok: false, data: null }),
+    } as unknown as jest.Mocked<HttpClientService>;
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         XRayService,
         { provide: AssetsRepository, useValue: repository },
+        { provide: HttpClientService, useValue: httpClient },
         {
           provide: ConfigService,
           useValue: {
@@ -230,6 +244,137 @@ describe('XRayService', () => {
     });
 
     describe('security token format', () => {
+      it('should remap 0P fund IDs to the persisted shareClassId', async () => {
+        repository.findManyByMorningstarIds.mockResolvedValue([
+          createMockAsset({
+            morningstarId: '0P000168OI',
+            shareClassId: 'F00000VYOL',
+            type: AssetType.FUND,
+            url: 'https://global.morningstar.com/es/inversiones/fondos/0P000168OI/cotizacion',
+          }),
+        ]);
+
+        const result = await service.generate({
+          assets: [{ morningstarId: '0P000168OI', weight: 100 }],
+        });
+
+        expect(httpClient.get).not.toHaveBeenCalled();
+        expect(result.morningstarUrl).toContain('F00000VYOL');
+        expect(result.morningstarUrl).not.toContain('0P000168OI');
+      });
+
+      it('should remap 0P fund IDs to F IDs found in the cached URL', async () => {
+        repository.findManyByMorningstarIds.mockResolvedValue([
+          createMockAsset({
+            morningstarId: '0P00016YQ5',
+            type: AssetType.FUND,
+            name: 'Azvalor Internacional FI',
+            url: 'https://global.morningstar.com/es/inversiones/fondos/F00000WI0D/cotizacion',
+          }),
+        ]);
+
+        const result = await service.generate({
+          assets: [{ morningstarId: '0P00016YQ5', weight: 100 }],
+        });
+
+        expect(result.morningstarUrl).toContain('F00000WI0D');
+        expect(result.morningstarUrl).not.toContain('0P00016YQ5');
+      });
+
+      it('should remap 0P fund IDs to an F sibling sharing the same ISIN', async () => {
+        repository.findManyByMorningstarIds.mockResolvedValue([
+          createMockAsset({
+            morningstarId: '0P00016YQ5',
+            isin: 'ES0112611001',
+            type: AssetType.FUND,
+            url: 'https://global.morningstar.com/es/inversiones/fondos/0P00016YQ5/cotizacion',
+          }),
+        ]);
+        repository.findManyByIsins.mockResolvedValue([
+          createMockAsset({
+            morningstarId: '0P00016YQ5',
+            isin: 'ES0112611001',
+            type: AssetType.FUND,
+          }),
+          createMockAsset({
+            morningstarId: 'F00000WI0D',
+            isin: 'ES0112611001',
+            type: AssetType.FUND,
+            name: 'Azvalor Internacional FI',
+          }),
+        ]);
+
+        const result = await service.generate({
+          assets: [{ morningstarId: '0P00016YQ5', weight: 100 }],
+        });
+
+        expect(result.morningstarUrl).toContain('F00000WI0D');
+        expect(result.morningstarUrl).not.toContain('0P00016YQ5');
+      });
+
+      it('should remap 0P fund IDs to the F security-id on the quote page', async () => {
+        repository.findManyByMorningstarIds.mockResolvedValue([
+          createMockAsset({
+            morningstarId: '0P000168OI',
+            type: AssetType.FUND,
+            name: 'Renta 4 Multigestión Numantia Patrimonio Global FI',
+            url: 'https://global.morningstar.com/es/inversiones/fondos/0P000168OI/cotizacion',
+          }),
+        ]);
+        httpClient.get.mockResolvedValue({
+          ok: true,
+          data: '<sal-components security-id="F00000VYOL" security-type="FO"></sal-components>',
+          status: 200,
+        } as never);
+
+        const result = await service.generate({
+          assets: [{ morningstarId: '0P000168OI', weight: 100 }],
+        });
+
+        expect(httpClient.get).toHaveBeenCalledWith(
+          'https://www.morningstar.com/funds/_/0P000168OI/quote',
+          expect.objectContaining({ responseType: 'html' }),
+        );
+        expect(result.morningstarUrl).toContain('F00000VYOL');
+        expect(result.morningstarUrl).not.toContain('0P000168OI');
+        expect(repository.update).toHaveBeenCalledWith(
+          expect.any(String),
+          expect.objectContaining({ shareClassId: 'F00000VYOL' }),
+        );
+        expect(result.shareableUrl).toContain('F00000VYOL');
+      });
+
+      it('should not fetch the stored global URL after a www bot challenge', async () => {
+        repository.findManyByMorningstarIds.mockResolvedValue([
+          createMockAsset({
+            morningstarId: '0P0001ODL3',
+            type: AssetType.FUND,
+            url: 'https://global.morningstar.com/es/inversiones/fondos/0P0001ODL3/cotizacion',
+          }),
+        ]);
+        httpClient.get.mockResolvedValue({
+          ok: false,
+          data: null,
+          status: 202,
+          error: {
+            type: 'HTTP_ERROR',
+            message: 'HTTP 202: Morningstar bot challenge',
+          },
+        } as never);
+
+        const result = await service.generate({
+          assets: [{ morningstarId: '0P0001ODL3', weight: 100 }],
+        });
+
+        expect(httpClient.get).toHaveBeenCalledTimes(1);
+        expect(httpClient.get).toHaveBeenCalledWith(
+          'https://www.morningstar.com/funds/_/0P0001ODL3/quote',
+          expect.objectContaining({ responseType: 'html' }),
+        );
+        expect(repository.update).not.toHaveBeenCalled();
+        expect(result.morningstarUrl).toContain('0P0001ODL3');
+      });
+
       it('should include security token suffix', async () => {
         repository.findManyByMorningstarIds.mockResolvedValue([
           createMockAsset({ morningstarId: '0P0000YXJO' }),

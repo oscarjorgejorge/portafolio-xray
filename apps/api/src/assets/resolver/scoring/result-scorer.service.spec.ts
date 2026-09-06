@@ -76,6 +76,19 @@ describe('ResultScorerService', () => {
         expect(scored.scoreBreakdown.isinMatch).toBe(SCORE_WEIGHTS.ISIN_MATCH);
       });
 
+      it('should give ISIN match bonus when the result isin field matches', () => {
+        const result = createSearchResult({
+          isin: 'IE00BYX5NX33',
+        });
+        const scored = service.scoreResult(
+          result,
+          'IE00BYX5NX33',
+          IdentifierType.ISIN,
+        );
+
+        expect(scored.scoreBreakdown.isinMatch).toBe(SCORE_WEIGHTS.ISIN_MATCH);
+      });
+
       it('should not give ISIN match bonus when ISIN not in result', () => {
         const result = createSearchResult();
         const scored = service.scoreResult(
@@ -303,7 +316,7 @@ describe('ResultScorerService', () => {
         );
       });
 
-      it('should not give F ID bonus for non-fund assets', () => {
+      it('should give extra bonus for ETF with F-prefixed ID', () => {
         const result = createSearchResult({
           morningstarId: 'F00000THA5',
           assetType: MS_ASSET_TYPES.ETF,
@@ -315,7 +328,7 @@ describe('ResultScorerService', () => {
         );
 
         expect(scored.scoreBreakdown.typeMatch).toBe(
-          SCORE_WEIGHTS.HAS_MORNINGSTAR_ID,
+          SCORE_WEIGHTS.HAS_MORNINGSTAR_ID + SCORE_WEIGHTS.FUND_F_ID_BONUS,
         );
       });
 

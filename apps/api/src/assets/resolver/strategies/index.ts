@@ -3,3 +3,5 @@ export * from './api-search.strategy';
 export * from './html-scrape.strategy';
 export * from './global-search.strategy';
 export * from './duckduckgo.strategy';
+export * from './yahoo-finance.strategy';
+export * from './instant-xray-screener.strategy';

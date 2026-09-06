@@ -12,10 +12,16 @@ export interface IAssetsRepository {
   findByIsin(isin: string): Promise<Asset | null>;
 
   /**
-   * Find an asset by its Morningstar ID
+   * Find an asset by its Morningstar ID or Instant X-Ray share-class ID
    * @param morningstarId - Morningstar unique identifier
    */
   findByMorningstarId(morningstarId: string): Promise<Asset | null>;
+
+  /**
+   * Find an asset by its Instant X-Ray share-class ID (F…)
+   * @param shareClassId - Morningstar share-class identifier
+   */
+  findByShareClassId(shareClassId: string): Promise<Asset | null>;
 
   /**
    * Find multiple assets by their Morningstar IDs in a single query
@@ -115,6 +121,7 @@ export interface IAssetsRepository {
 export interface CreateAssetData {
   isin: string;
   morningstarId: string;
+  shareClassId?: string | null;
   name: string;
   type: AssetType;
   url: string;
@@ -128,6 +135,7 @@ export interface CreateAssetData {
 export interface UpsertAssetByIsinData {
   isin: string;
   morningstarId: string;
+  shareClassId?: string | null;
   name: string;
   type: AssetType;
   url: string;
@@ -141,11 +149,12 @@ export interface UpsertAssetByIsinData {
 export interface UpsertAssetByMorningstarIdData {
   isin: string | null;
   morningstarId: string;
+  shareClassId?: string | null;
   name: string;
   type: AssetType;
   url: string;
   source: AssetSource;
-  ticker?: string;
+  ticker?: string | null;
   isinPending?: boolean;
 }
 
@@ -156,6 +165,7 @@ export interface UpsertAssetByMorningstarIdData {
 export interface UpdateAssetData {
   isin?: string | null;
   morningstarId?: string;
+  shareClassId?: string | null;
   ticker?: string | null;
   name?: string;
   type?: AssetType;

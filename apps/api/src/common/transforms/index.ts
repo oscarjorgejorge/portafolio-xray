@@ -1,1 +1,5 @@
-export { trimUppercase, trimString } from './string.transforms';
+export {
+  trimUppercase,
+  trimString,
+  trimResolveInput,
+} from './string.transforms';

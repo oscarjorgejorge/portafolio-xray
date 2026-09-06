@@ -109,6 +109,13 @@ export class ResolvedAssetDto {
   morningstarId!: string;
 
   @ApiPropertyOptional({
+    description: 'Instant X-Ray share-class ID (F…) for funds, ETFs and ETCs',
+    example: 'F00000VYOL',
+    nullable: true,
+  })
+  shareClassId?: string | null;
+
+  @ApiPropertyOptional({
     description: 'Asset ticker symbol',
     example: 'IWDA',
   })

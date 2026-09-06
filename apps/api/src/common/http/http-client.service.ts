@@ -16,7 +16,8 @@ import { createContextLogger } from '../logger';
 import type { AppConfig } from '../../config';
 
 const DEFAULT_HEADERS: Record<string, string> = {
-  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+  'User-Agent':
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
   'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
 };
 
@@ -151,6 +152,34 @@ export class HttpClientService implements IHttpClient {
           body: body ? JSON.stringify(body) : undefined,
           signal: AbortSignal.timeout(timeout),
         });
+
+        const wafAction = response.headers.get('x-amzn-waf-action');
+        const isMorningstarWaf =
+          wafAction === 'challenge' ||
+          (response.status === 202 && this.isMorningstarHostname(url));
+        if (isMorningstarWaf) {
+          lastError = {
+            type: HttpErrorType.HTTP_ERROR,
+            message: `HTTP ${response.status}: Morningstar bot challenge`,
+          };
+          if (attempts < maxAttempts) {
+            this.logger.warn(
+              `[HTTP] ${method} ${url} blocked by bot challenge (${response.status}), retrying in ${retryDelay}ms...`,
+            );
+            await this.delay(retryDelay);
+            continue;
+          }
+          this.logger.warn(
+            `[HTTP] ${method} ${url} blocked by bot challenge (${response.status})`,
+          );
+          return {
+            data: null,
+            status: response.status,
+            ok: false,
+            headers: response.headers,
+            error: lastError,
+          };
+        }
 
         // Handle non-2xx responses with detailed error info
         if (!response.ok) {
@@ -354,6 +383,25 @@ export class HttpClientService implements IHttpClient {
   }
 
   // ==================== Circuit Breaker Methods ====================
+
+  /**
+   * Morningstar hostnames only. Search engines with "morningstar" in the
+   * query string (DuckDuckGo, Bing) also return HTTP 202 with real HTML.
+   */
+  private isMorningstarHostname(url: string): boolean {
+    try {
+      const host = new URL(url).hostname.toLowerCase();
+      return (
+        host === 'morningstar.com' ||
+        host.endsWith('.morningstar.com') ||
+        host === 'morningstar.es' ||
+        host.endsWith('.morningstar.es') ||
+        /(^|\.)morningstar\.[a-z]{2,}$/i.test(host)
+      );
+    } catch {
+      return false;
+    }
+  }
 
   /**
    * Extract domain from URL for circuit breaker tracking

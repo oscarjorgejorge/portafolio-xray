@@ -1,4 +1,4 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, BadRequestException } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { ConfigService } from '@nestjs/config';
 import { Cache } from 'cache-manager';
@@ -6,6 +6,20 @@ import { AssetsRepository } from './assets.repository';
 import { MorningstarResolverService, PageVerifierService } from './resolver';
 import { IsinEnrichmentService } from './isin-enrichment.service';
 import { MS_ASSET_TYPES } from './resolver/utils/constants';
+import { detectAssetTypeFromMorningstarUrl } from './resolver/utils/url-builder';
+import { isPlausibleTicker } from './resolver/utils/quote-page-fields';
+import {
+  extractMorningstarIdFromUrl,
+  extractPreferredFundId,
+  isAssetIdentityComplete,
+  isFundLikeType,
+  isFundShareClassId,
+  isPerformanceId,
+  isPersistedMorningstarIdValid,
+  pickPreferredFundAsset,
+  resolveShareClassId,
+} from './resolver/utils/canonical-fund-id';
+import { isValidIsin } from './resolver/utils/id-extractor';
 import {
   ResolveAssetDto,
   ConfirmAssetDto,
@@ -57,20 +71,37 @@ export class AssetsService implements IAssetsService {
   async resolve(dto: ResolveAssetDto): Promise<ResolveAssetResponse> {
     // Input is already normalized (trimmed & uppercased) by DTO Transform decorator
     const input = dto.input;
-    const identifierType = IdentifierClassifier.classify(input);
-    const cacheKey = `${CACHE_CONFIG.ASSET_KEY_PREFIX}${input}`;
+    const morningstarFromUrl = extractMorningstarIdFromUrl(input);
+    const identifierType = morningstarFromUrl
+      ? IdentifierType.MORNINGSTAR_ID
+      : IdentifierClassifier.classify(input);
+    const lookupKey = morningstarFromUrl ?? input;
+    const cacheKey = `${CACHE_CONFIG.ASSET_KEY_PREFIX}${lookupKey}`;
 
-    // Step 0: Check in-memory cache first (fastest) ONLY for strong identifiers
-    // (ISIN and Morningstar ID). For tickers or free-text we always require
-    // explicit user confirmation, so we skip the cache.
+    // Step 0: Check in-memory cache first (fastest) for ISIN, Morningstar ID,
+    // and tickers. Free-text still skips cache so the user confirms the match.
     const shouldUseCacheForIdentifier =
       identifierType === IdentifierType.ISIN ||
-      identifierType === IdentifierType.MORNINGSTAR_ID;
+      identifierType === IdentifierType.MORNINGSTAR_ID ||
+      identifierType === IdentifierType.TICKER;
 
     const memoryCached = shouldUseCacheForIdentifier
       ? await this.cacheManager.get<ResolveAssetResponse>(cacheKey)
       : null;
-    if (memoryCached) {
+    if (
+      memoryCached?.success &&
+      memoryCached.asset &&
+      isAssetIdentityComplete(memoryCached.asset) &&
+      !this.assetTypeConflictsWithUrl(
+        memoryCached.asset.type,
+        memoryCached.asset.url,
+      ) &&
+      !this.hasStaleFundTicker(
+        memoryCached.asset.type,
+        memoryCached.asset.ticker,
+      ) &&
+      isPersistedMorningstarIdValid(memoryCached.asset.morningstarId)
+    ) {
       this.logger.debug(`[MEMORY CACHE] Hit for: ${input}`);
       return memoryCached;
     }
@@ -79,32 +110,41 @@ export class AssetsService implements IAssetsService {
     let cachedAsset: Asset | null = null;
 
     if (identifierType === IdentifierType.ISIN) {
-      cachedAsset = await this.assetsRepository.findByIsin(input);
+      cachedAsset = await this.assetsRepository.findByIsin(lookupKey);
     } else if (identifierType === IdentifierType.MORNINGSTAR_ID) {
-      cachedAsset = await this.assetsRepository.findByMorningstarId(input);
+      cachedAsset = await this.assetsRepository.findByMorningstarId(lookupKey);
     }
 
     if (cachedAsset) {
-      // If cached asset has no ISIN and enrichment is complete (failed), re-resolve to try again
-      const needsReResolution = !cachedAsset.isin && !cachedAsset.isinPending;
+      const invalidMorningstarId = !isPersistedMorningstarIdValid(
+        cachedAsset.morningstarId,
+      );
+      if (!invalidMorningstarId) {
+        cachedAsset = await this.ensureCompleteAsset(cachedAsset);
+      }
+
+      const needsReResolution =
+        invalidMorningstarId ||
+        (!cachedAsset.isin && !cachedAsset.isinPending) ||
+        this.assetTypeConflictsWithUrl(cachedAsset.type, cachedAsset.url) ||
+        this.hasStaleFundTicker(cachedAsset.type, cachedAsset.ticker);
 
       if (!needsReResolution) {
         this.logger.log(`[DB CACHE] Hit for: ${input}`);
+        const asset = toResolvedAssetDto(cachedAsset);
         const response: ResolveAssetResponse = {
           success: true,
           source: ResolutionSource.CACHE,
-          asset: toResolvedAssetDto(cachedAsset),
-          isinPending: cachedAsset.isinPending,
+          asset,
+          isinPending: asset.isinPending,
         };
-        // Store in memory cache for faster subsequent access
         await this.cacheManager.set(cacheKey, response);
         return response;
       }
 
       this.logger.log(
-        `[DB CACHE] Hit for: ${input}, but ISIN missing - attempting re-resolution`,
+        `[DB CACHE] Hit for: ${input}, but Morningstar identity is incomplete or invalid (${cachedAsset.morningstarId}) - attempting re-resolution`,
       );
-      // Continue to re-resolution logic below
     }
 
     // Step 2: If not in cache, use Morningstar resolver
@@ -114,13 +154,8 @@ export class AssetsService implements IAssetsService {
       const resolution = await this.morningstarResolver.resolve(input);
 
       if (resolution.status === 'resolved' && resolution.morningstarId) {
-        // For any input that is NOT a strong identifier (ISIN or Morningstar ID)
-        // - e.g. ticker or free-text like "gold" - always require user confirmation
-        // instead of auto-adding the asset.
-        if (
-          identifierType !== IdentifierType.ISIN &&
-          identifierType !== IdentifierType.MORNINGSTAR_ID
-        ) {
+        // Exact tickers auto-save; free-text names like "gold" still need confirmation.
+        if (identifierType === IdentifierType.FREE_TEXT) {
           const alternatives = this.buildAlternativesFromResults(
             resolution.allResults,
             resolution.bestMatch,
@@ -138,9 +173,10 @@ export class AssetsService implements IAssetsService {
         }
 
         // Auto-save to cache for future lookups (ISIN, Morningstar ID, or Ticker)
-        const assetType = this.mapAssetType(
+        const assetType = this.resolvePersistedAssetType(
           resolution.bestMatch?.assetType,
           dto.assetType,
+          resolution.morningstarUrl ?? undefined,
         );
 
         const fundName =
@@ -165,6 +201,7 @@ export class AssetsService implements IAssetsService {
         // This rejects garbage like "CANADAFRENCH" which passes format check but fails checksum
         const isin =
           candidateIsin &&
+          isValidIsin(candidateIsin) &&
           IdentifierClassifier.validateISINChecksum(candidateIsin)
             ? candidateIsin.toUpperCase()
             : null;
@@ -186,14 +223,27 @@ export class AssetsService implements IAssetsService {
           resolution.verification?.additionalInfo?.ticker ??
           resolution.bestMatch?.ticker;
 
+        const morningstarId = resolution.morningstarId;
+        const shareClassId = resolveShareClassId(
+          morningstarId,
+          assetType,
+          resolution.morningstarUrl || '',
+          resolution.verification?.additionalInfo?.shareClassId ||
+            resolution.bestMatch?.shareClassId,
+        );
+
         const savedAsset = await this.assetsRepository.upsertByMorningstarId({
           isin: isin,
-          morningstarId: resolution.morningstarId,
+          morningstarId,
+          shareClassId,
           name: fundName,
           type: assetType,
           url: resolution.morningstarUrl || '',
           source: AssetSource.web_search,
-          ticker: assetType === AssetType.STOCK ? tickerForStock : undefined,
+          ticker:
+            assetType === AssetType.STOCK && isPlausibleTicker(tickerForStock)
+              ? tickerForStock
+              : null,
           isinPending: needsIsinEnrichment,
         });
 
@@ -204,7 +254,7 @@ export class AssetsService implements IAssetsService {
         }
 
         this.logger.log(
-          `Resolved and cached: ${input} -> ${resolution.morningstarId}${needsIsinEnrichment ? ' (ISIN enrichment pending)' : ''}`,
+          `Resolved and cached: ${input} -> ${morningstarId}${needsIsinEnrichment ? ' (ISIN enrichment pending)' : ''}`,
         );
 
         // Fire-and-forget: enrich ISIN in background if needed
@@ -215,15 +265,16 @@ export class AssetsService implements IAssetsService {
           );
         }
 
+        const asset = toResolvedAssetDto(savedAsset);
         const response: ResolveAssetResponse = {
           success: true,
           source: ResolutionSource.RESOLVED,
-          asset: toResolvedAssetDto(savedAsset),
-          isinPending: needsIsinEnrichment,
+          asset,
+          isinPending: asset.isinPending,
         };
 
-        // Cache successful resolutions in memory (only if not pending enrichment)
-        if (!needsIsinEnrichment) {
+        // Cache successful resolutions in memory (only if identity is complete)
+        if (isAssetIdentityComplete(savedAsset)) {
           await this.cacheManager.set(cacheKey, response);
         }
 
@@ -397,7 +448,11 @@ export class AssetsService implements IAssetsService {
     const memoryHits = new Set<string>();
 
     for (const { normalized, cached } of memoryCacheResults) {
-      if (cached) {
+      if (
+        cached?.success &&
+        cached.asset &&
+        isAssetIdentityComplete(cached.asset)
+      ) {
         results.set(normalized, cached);
         memoryHits.add(normalized);
       }
@@ -435,20 +490,26 @@ export class AssetsService implements IAssetsService {
       const cachePromises: Promise<unknown>[] = [];
 
       for (const asset of msAssets) {
-        // Skip if needs re-resolution (no ISIN and enrichment complete)
-        if (!asset.isin && !asset.isinPending) continue;
+        const canonical = await this.ensureCompleteAsset(asset);
+        if (!canonical.isin && !canonical.isinPending) continue;
 
+        const dto = toResolvedAssetDto(canonical);
         const response: ResolveAssetResponse = {
           success: true,
           source: ResolutionSource.CACHE,
-          asset: toResolvedAssetDto(asset),
-          isinPending: asset.isinPending,
+          asset: dto,
+          isinPending: dto.isinPending,
         };
         results.set(asset.morningstarId.toUpperCase(), response);
+        results.set(canonical.morningstarId.toUpperCase(), response);
+        if (canonical.shareClassId) {
+          results.set(canonical.shareClassId.toUpperCase(), response);
+        }
 
-        // Queue cache write for parallel execution
-        const cacheKey = `${CACHE_CONFIG.ASSET_KEY_PREFIX}${asset.morningstarId.toUpperCase()}`;
-        cachePromises.push(this.cacheManager.set(cacheKey, response));
+        if (isAssetIdentityComplete(canonical)) {
+          const cacheKey = `${CACHE_CONFIG.ASSET_KEY_PREFIX}${canonical.morningstarId.toUpperCase()}`;
+          cachePromises.push(this.cacheManager.set(cacheKey, response));
+        }
       }
 
       // Execute all cache writes in parallel
@@ -459,23 +520,34 @@ export class AssetsService implements IAssetsService {
     if (isins.length > 0) {
       const isinAssets = await this.assetsRepository.findManyByIsins(isins);
 
+      const preferredByIsin = new Map<string, Asset>();
+      for (const asset of isinAssets) {
+        if (!asset.isin) continue;
+        const key = asset.isin.toUpperCase();
+        const group = preferredByIsin.get(key);
+        preferredByIsin.set(
+          key,
+          pickPreferredFundAsset([...(group ? [group] : []), asset]) ?? asset,
+        );
+      }
+
       const cachePromises: Promise<unknown>[] = [];
 
-      for (const asset of isinAssets) {
-        // Skip if needs re-resolution (no ISIN and enrichment complete)
-        if (!asset.isin && !asset.isinPending) continue;
+      for (const [isin, asset] of preferredByIsin) {
+        const canonical = await this.ensureCompleteAsset(asset);
+        if (!canonical.isin && !canonical.isinPending) continue;
 
-        if (asset.isin) {
-          const response: ResolveAssetResponse = {
-            success: true,
-            source: ResolutionSource.CACHE,
-            asset: toResolvedAssetDto(asset),
-            isinPending: asset.isinPending,
-          };
-          results.set(asset.isin.toUpperCase(), response);
+        const dto = toResolvedAssetDto(canonical);
+        const response: ResolveAssetResponse = {
+          success: true,
+          source: ResolutionSource.CACHE,
+          asset: dto,
+          isinPending: dto.isinPending,
+        };
+        results.set(isin, response);
 
-          // Queue cache write for parallel execution
-          const cacheKey = `${CACHE_CONFIG.ASSET_KEY_PREFIX}${asset.isin.toUpperCase()}`;
+        if (isAssetIdentityComplete(canonical)) {
+          const cacheKey = `${CACHE_CONFIG.ASSET_KEY_PREFIX}${isin}`;
           cachePromises.push(this.cacheManager.set(cacheKey, response));
         }
       }
@@ -492,58 +564,138 @@ export class AssetsService implements IAssetsService {
     if (!asset) {
       throw new EntityNotFoundException('Asset', id);
     }
-    return toResolvedAssetDto(asset);
+    return toResolvedAssetDto(await this.ensureCompleteAsset(asset));
   }
 
   async confirm(dto: ConfirmAssetDto): Promise<ResolvedAssetDto> {
+    const resolvedIdentity = await this.resolveManualMorningstarId(dto);
+    const morningstarId = resolvedIdentity.morningstarId;
+    const url = resolvedIdentity.url;
+
     // If no ticker provided and it's a STOCK, try to extract from page
     let ticker = dto.ticker;
     if (!ticker && dto.type === AssetTypeDto.STOCK) {
       this.logger.log(
-        `[CONFIRM] No ticker provided for STOCK ${dto.morningstarId}, attempting extraction...`,
+        `[CONFIRM] No ticker provided for STOCK ${morningstarId}, attempting extraction...`,
       );
       try {
         const { verification } =
           await this.pageVerifier.verifyFundPageWithFallback(
-            dto.morningstarId,
+            morningstarId,
             '',
             MS_ASSET_TYPES.STOCK,
           );
         if (verification.additionalInfo?.ticker) {
-          ticker = verification.additionalInfo.ticker;
+          ticker = isPlausibleTicker(verification.additionalInfo.ticker)
+            ? verification.additionalInfo.ticker
+            : undefined;
           this.logger.log(`[CONFIRM] Extracted ticker from page: ${ticker}`);
         }
       } catch (error) {
         this.logger.warn(
-          `[CONFIRM] Failed to extract ticker for ${dto.morningstarId}: ${error}`,
+          `[CONFIRM] Failed to extract ticker for ${morningstarId}: ${error}`,
         );
       }
     }
 
     const isStock = dto.type === AssetTypeDto.STOCK;
+    let shareClassFromPage: string | undefined;
+    if (
+      !isStock &&
+      isPerformanceId(morningstarId) &&
+      !extractPreferredFundId(url)
+    ) {
+      try {
+        const msType =
+          dto.type === AssetTypeDto.ETF
+            ? MS_ASSET_TYPES.ETF
+            : MS_ASSET_TYPES.FUND;
+        const { verification } =
+          await this.pageVerifier.verifyFundPageWithFallback(
+            morningstarId,
+            dto.isin ?? '',
+            msType,
+          );
+        shareClassFromPage = verification.additionalInfo?.shareClassId;
+      } catch (error) {
+        this.logger.warn(
+          `[CONFIRM] Failed to extract share-class ID for ${morningstarId}: ${error}`,
+        );
+      }
+    }
+
+    const shareClassId = resolveShareClassId(
+      morningstarId,
+      dto.type as AssetType,
+      url,
+      shareClassFromPage,
+    );
 
     // Create or update asset with manual source
     // Use upsertByMorningstarId since ISIN may be undefined (e.g., when found by ticker)
     const asset = await this.assetsRepository.upsertByMorningstarId({
       isin: dto.isin ?? null,
-      morningstarId: dto.morningstarId,
+      morningstarId,
+      shareClassId,
       name: dto.name,
       type: dto.type as AssetType,
-      url: dto.url,
+      url,
       source: AssetSource.manual,
       // Only persist ticker for stocks; funds/ETFs should not store ticker in DB
-      ticker: isStock ? ticker : undefined,
+      ticker: isStock && isPlausibleTicker(ticker) ? ticker : null,
       isinPending: !dto.isin, // Mark as pending if no ISIN provided
     });
 
     // Invalidate cache for all identifiers (ISIN, Morningstar ID, and ticker)
     await this.invalidateAssetCache({
       isin: dto.isin ?? undefined,
-      morningstarId: dto.morningstarId,
+      morningstarId,
+      shareClassId: asset.shareClassId,
       ticker: asset.ticker,
     });
 
     return toResolvedAssetDto(asset);
+  }
+
+  /**
+   * Manual forms sometimes paste the ISIN into morningstarId. Prefer the quote
+   * URL, then resolve the ISIN, rather than persisting ES0114498027 as the ID.
+   */
+  private async resolveManualMorningstarId(dto: ConfirmAssetDto): Promise<{
+    morningstarId: string;
+    url: string;
+  }> {
+    if (isPersistedMorningstarIdValid(dto.morningstarId)) {
+      return { morningstarId: dto.morningstarId, url: dto.url };
+    }
+
+    const fromUrl = extractMorningstarIdFromUrl(dto.url);
+    if (fromUrl && isPersistedMorningstarIdValid(fromUrl)) {
+      this.logger.log(
+        `[CONFIRM] Replaced invalid Morningstar ID ${dto.morningstarId} with ${fromUrl} from URL`,
+      );
+      return { morningstarId: fromUrl, url: dto.url };
+    }
+
+    const lookup = dto.isin || dto.morningstarId;
+    this.logger.log(
+      `[CONFIRM] Invalid Morningstar ID ${dto.morningstarId}, resolving via ${lookup}`,
+    );
+    const resolution = await this.morningstarResolver.resolve(lookup);
+    if (
+      resolution.status === 'resolved' &&
+      resolution.morningstarId &&
+      isPersistedMorningstarIdValid(resolution.morningstarId)
+    ) {
+      return {
+        morningstarId: resolution.morningstarId,
+        url: resolution.morningstarUrl || dto.url,
+      };
+    }
+
+    throw new BadRequestException(
+      `Morningstar ID "${dto.morningstarId}" is not valid. Use a 0P… or F… ID, or a Morningstar quote URL.`,
+    );
   }
 
   /**
@@ -604,6 +756,140 @@ export class AssetsService implements IAssetsService {
   }
 
   /**
+   * Backfill missing identity fields from the row itself, then from the quote page.
+   * Skips extra Morningstar calls while ISIN enrichment is still in flight.
+   */
+  private async ensureCompleteAsset(asset: Asset): Promise<Asset> {
+    let current = await this.clearStaleIsinPending(asset);
+    current = await this.preferCanonicalFundAsset(current);
+
+    if (!isFundLikeType(current.type)) {
+      return current;
+    }
+
+    const localShareClassId = resolveShareClassId(
+      current.morningstarId,
+      current.type,
+      current.url,
+      current.shareClassId,
+    );
+    if (localShareClassId && current.shareClassId !== localShareClassId) {
+      current = await this.persistIdentityPatch(current, {
+        shareClassId: localShareClassId,
+      });
+    }
+
+    if (isAssetIdentityComplete(current)) {
+      return current;
+    }
+
+    if (current.isinPending && !current.isin) {
+      return current;
+    }
+
+    return this.refreshIncompleteFundAsset(current);
+  }
+
+  private async persistIdentityPatch(
+    asset: Asset,
+    data: {
+      shareClassId?: string | null;
+      isin?: string | null;
+      isinPending?: boolean;
+    },
+  ): Promise<Asset> {
+    try {
+      const updated = await this.assetsRepository.update(asset.id, data);
+      await this.invalidateAssetCache({
+        isin: updated.isin,
+        morningstarId: updated.morningstarId,
+        shareClassId: updated.shareClassId,
+      });
+      return updated;
+    } catch (error) {
+      this.logger.warn(
+        `[ASSET] Failed to persist identity patch for ${asset.morningstarId}: ${error}`,
+      );
+      return asset;
+    }
+  }
+
+  private async refreshIncompleteFundAsset(asset: Asset): Promise<Asset> {
+    try {
+      const { verification } =
+        await this.pageVerifier.verifyFundPageWithFallback(
+          asset.morningstarId,
+          asset.isin ?? '',
+          this.toMorningstarAssetType(asset.type),
+        );
+
+      const shareClassId = resolveShareClassId(
+        asset.morningstarId,
+        asset.type,
+        asset.url,
+        verification.additionalInfo?.shareClassId,
+      );
+      const candidateIsin =
+        asset.isin ??
+        (verification.isinFound &&
+        IdentifierClassifier.validateISINChecksum(verification.isinFound)
+          ? verification.isinFound.toUpperCase()
+          : null);
+
+      const patch: {
+        shareClassId?: string;
+        isin?: string;
+        isinPending?: boolean;
+      } = {};
+      if (shareClassId && shareClassId !== asset.shareClassId) {
+        patch.shareClassId = shareClassId;
+      }
+      if (candidateIsin && candidateIsin !== asset.isin) {
+        patch.isin = candidateIsin;
+        patch.isinPending = false;
+      }
+
+      if (Object.keys(patch).length === 0) {
+        return asset;
+      }
+
+      return this.persistIdentityPatch(asset, patch);
+    } catch (error) {
+      this.logger.warn(
+        `[ASSET] Completeness refresh failed for ${asset.morningstarId}: ${error}`,
+      );
+      return asset;
+    }
+  }
+
+  private toMorningstarAssetType(type: AssetType) {
+    if (type === AssetType.ETF) return MS_ASSET_TYPES.ETF;
+    if (type === AssetType.STOCK) return MS_ASSET_TYPES.STOCK;
+    return MS_ASSET_TYPES.FUND;
+  }
+
+  /**
+   * Persist isinPending=false when the ISIN is already resolved
+   */
+  private async clearStaleIsinPending(asset: Asset): Promise<Asset> {
+    if (!asset.isin || !asset.isinPending) {
+      return asset;
+    }
+
+    this.logger.log(
+      `[ISIN] Clearing stale isinPending for ${asset.morningstarId} (ISIN ${asset.isin})`,
+    );
+    const updated = await this.assetsRepository.markIsinEnrichmentComplete(
+      asset.id,
+    );
+    await this.invalidateAssetCache({
+      isin: updated.isin,
+      morningstarId: updated.morningstarId,
+    });
+    return updated;
+  }
+
+  /**
    * Invalidate in-memory cache for an asset
    * Supports all identifier types that can be used as cache keys
    * @param options - Object containing optional identifiers to invalidate
@@ -611,9 +897,10 @@ export class AssetsService implements IAssetsService {
   private async invalidateAssetCache(options: {
     isin?: string | null;
     morningstarId?: string;
+    shareClassId?: string | null;
     ticker?: string | null;
   }): Promise<void> {
-    const { isin, morningstarId, ticker } = options;
+    const { isin, morningstarId, shareClassId, ticker } = options;
     const keys: string[] = [];
 
     if (isin)
@@ -621,6 +908,10 @@ export class AssetsService implements IAssetsService {
     if (morningstarId)
       keys.push(
         `${CACHE_CONFIG.ASSET_KEY_PREFIX}${morningstarId.toUpperCase()}`,
+      );
+    if (shareClassId)
+      keys.push(
+        `${CACHE_CONFIG.ASSET_KEY_PREFIX}${shareClassId.toUpperCase()}`,
       );
     if (ticker)
       keys.push(`${CACHE_CONFIG.ASSET_KEY_PREFIX}${ticker.toUpperCase()}`);
@@ -660,6 +951,56 @@ export class AssetsService implements IAssetsService {
       default:
         return AssetType.FUND;
     }
+  }
+
+  /**
+   * Quote URL path (/etfs/, /stocks/, …) wins over a wrong search type.
+   */
+  private resolvePersistedAssetType(
+    resolvedType?: string,
+    hintType?: string,
+    morningstarUrl?: string,
+  ): AssetType {
+    const mapped = this.mapAssetType(resolvedType, hintType);
+    if (
+      !morningstarUrl ||
+      !/\/(etfs|stocks|acciones|funds|fondos)\//i.test(morningstarUrl)
+    ) {
+      return mapped;
+    }
+
+    return this.mapAssetType(detectAssetTypeFromMorningstarUrl(morningstarUrl));
+  }
+
+  /**
+   * Re-resolve when a cached row says STOCK but the quote URL is /etfs/.
+   */
+  private assetTypeConflictsWithUrl(
+    type?: string | null,
+    url?: string | null,
+  ): boolean {
+    if (
+      !type ||
+      !url ||
+      !/\/(etfs|stocks|acciones|funds|fondos)\//i.test(url)
+    ) {
+      return false;
+    }
+
+    return this.mapAssetType(detectAssetTypeFromMorningstarUrl(url)) !== type;
+  }
+
+  /**
+   * Funds and ETFs should not keep type-badge leftovers like "ETF" as ticker.
+   */
+  private hasStaleFundTicker(
+    type?: string | null,
+    ticker?: string | null,
+  ): boolean {
+    if (!ticker || type === AssetType.STOCK || type === 'STOCK') {
+      return false;
+    }
+    return !isPlausibleTicker(ticker);
   }
 
   /**
@@ -806,5 +1147,40 @@ export class AssetsService implements IAssetsService {
       assetType: this.mapAssetType(r.assetType ?? undefined),
       market: this.detectMarketFromUrl(r.url),
     }));
+  }
+
+  /**
+   * Prefer a cached F-share-class row when a 0P fund/ETF/ETC is looked up
+   */
+  private async preferCanonicalFundAsset(asset: Asset): Promise<Asset> {
+    if (!isFundLikeType(asset.type)) {
+      return asset;
+    }
+
+    if (isFundShareClassId(asset.shareClassId)) {
+      return asset;
+    }
+
+    const fromUrl = extractPreferredFundId(asset.url);
+    if (fromUrl && fromUrl !== asset.morningstarId) {
+      const existing = await this.assetsRepository.findByMorningstarId(fromUrl);
+      if (existing) {
+        return existing;
+      }
+    }
+
+    if (asset.isin) {
+      const preferred = await this.assetsRepository.findByIsin(asset.isin);
+      if (
+        preferred &&
+        preferred.id !== asset.id &&
+        (isFundShareClassId(preferred.shareClassId) ||
+          !isPerformanceId(preferred.morningstarId))
+      ) {
+        return preferred;
+      }
+    }
+
+    return asset;
   }
 }

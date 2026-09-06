@@ -93,6 +93,93 @@ describe('HttpClientService', () => {
       expect(circuit.failureCount).toBeGreaterThan(0);
       expect(circuit.state).toBe(CircuitState.CLOSED);
     });
+
+    it('should not treat DuckDuckGo HTTP 202 as a Morningstar bot challenge', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        status: 202,
+        statusText: 'Accepted',
+        headers: new Headers(),
+        json: async () => ({}),
+        text: async () =>
+          '<div class="result"><a class="result__a" href="https://global.morningstar.com/en-eu/investments/stocks/0P0001MMYT/quote">SOFI</a></div>',
+      } as Response);
+
+      const result = await service.get<string>(
+        'https://html.duckduckgo.com/html/?q=SOFI+site%3Aglobal.morningstar.com%2Finvestments%2Fstocks',
+        { responseType: 'html' },
+      );
+
+      expect(result.ok).toBe(true);
+      expect(result.status).toBe(202);
+      expect(result.data).toContain('0P0001MMYT');
+    });
+
+    it('should treat Morningstar HTTP 202 as a bot challenge even without the WAF header', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        status: 202,
+        statusText: 'Accepted',
+        headers: new Headers(),
+        json: async () => ({}),
+        text: async () => '<html>challenge</html>',
+      } as Response);
+
+      const result = await service.get(
+        'https://www.morningstar.com/search?query=AMZN',
+      );
+
+      expect(result.ok).toBe(false);
+      expect(result.status).toBe(202);
+      expect(result.error?.message).toContain('bot challenge');
+    });
+
+    it('should treat AWS WAF challenges as HTTP errors', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        status: 202,
+        statusText: 'Accepted',
+        headers: new Headers({ 'x-amzn-waf-action': 'challenge' }),
+        json: async () => ({}),
+        text: async () => '',
+      } as Response);
+
+      const result = await service.get(baseUrl);
+
+      expect(result.ok).toBe(false);
+      expect(result.status).toBe(202);
+      expect(result.error?.message).toContain('bot challenge');
+    });
+
+    it('should retry AWS WAF challenges when retries are configured', async () => {
+      (global.fetch as jest.Mock)
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 202,
+          statusText: 'Accepted',
+          headers: new Headers({ 'x-amzn-waf-action': 'challenge' }),
+          json: async () => ({}),
+          text: async () => '',
+        } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          statusText: 'OK',
+          headers: new Headers(),
+          json: async () => ({}),
+          text: async () => '<html>ok</html>',
+        } as Response);
+
+      const result = await service.get(baseUrl, {
+        retries: 1,
+        retryDelay: 10,
+        responseType: 'html',
+      });
+
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+      expect(result.ok).toBe(true);
+      expect(result.data).toBe('<html>ok</html>');
+    });
   });
 
   describe('network and timeout errors', () => {

@@ -1,4 +1,7 @@
 import { MS_ASSET_TYPES, MorningstarAssetType } from './constants';
+import { detectAssetTypeFromMorningstarUrl } from './www-morningstar-quote';
+
+export { detectAssetTypeFromMorningstarUrl };
 
 /**
  * URL path segments for different asset types
@@ -24,12 +27,43 @@ export function buildMorningstarUrl(
   const paths = PATH_MAP[assetType] || PATH_MAP[MS_ASSET_TYPES.FUND];
 
   // If marketId is provided, use the en-eu format with marketID parameter
+  if (marketId === 'eu') {
+    return `https://global.morningstar.com/en-eu/investments/${paths.en}/${id}/quote`;
+  }
   if (marketId) {
     return `https://global.morningstar.com/en-eu/investments/${paths.en}/${id}/quote?marketID=${marketId}`;
   }
 
   // Default: Spanish market
   return `https://global.morningstar.com/es/inversiones/${paths.es}/${id}/cotizacion`;
+}
+
+/**
+ * Quote URL in original path casing. Chart pages and uppercased pasted
+ * URLs are rewritten to /quote or /cotizacion so verification can run.
+ */
+export function canonicalMorningstarQuoteUrl(
+  pastedInput: string,
+  morningstarId: string,
+): string {
+  const lower = pastedInput.toLowerCase();
+  const assetType = detectAssetTypeFromMorningstarUrl(pastedInput);
+
+  const localeMatch = lower.match(
+    /global\.morningstar\.com\/(en-[a-z]{2}|es|fr|de|it)\//,
+  );
+  const locale = localeMatch?.[1];
+  if (locale && locale !== 'es') {
+    const path =
+      assetType === MS_ASSET_TYPES.ETF
+        ? 'etfs'
+        : assetType === MS_ASSET_TYPES.STOCK
+          ? 'stocks'
+          : 'funds';
+    return `https://global.morningstar.com/${locale}/investments/${path}/${morningstarId}/quote`;
+  }
+
+  return buildMorningstarUrl(morningstarId, assetType);
 }
 
 /**
@@ -48,9 +82,15 @@ export function buildHtmlSearchUrl(query: string): string {
 
 /**
  * Build Global Morningstar API search URL
+ * Default market is Spain; Irish/UCITS ISINs often only appear with another country.
  */
-export function buildGlobalSearchUrl(query: string): string {
-  return `https://global.morningstar.com/api/v1/security/search?q=${encodeURIComponent(query)}&languageId=es-ES&countryId=ES`;
+export function buildGlobalSearchUrl(
+  query: string,
+  options?: { languageId?: string; countryId?: string },
+): string {
+  const languageId = options?.languageId ?? 'es-ES';
+  const countryId = options?.countryId ?? 'ES';
+  return `https://global.morningstar.com/api/v1/security/search?q=${encodeURIComponent(query)}&languageId=${encodeURIComponent(languageId)}&countryId=${encodeURIComponent(countryId)}`;
 }
 
 /**
@@ -58,4 +98,45 @@ export function buildGlobalSearchUrl(query: string): string {
  */
 export function buildDuckDuckGoUrl(searchQuery: string): string {
   return `https://html.duckduckgo.com/html/?q=${encodeURIComponent(searchQuery)}`;
+}
+
+/**
+ * Yahoo Finance search — used when Morningstar search APIs are bot-challenged.
+ * Fund listings often expose the performance ID as a symbol like 0P0001CLDK.F
+ */
+export function buildYahooFinanceSearchUrl(query: string): string {
+  return `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}`;
+}
+
+/**
+ * www.morningstar.com quote page. Global.morningstar.com is often WAF-blocked
+ * from the API; this path still returns ISIN and share-class IDs.
+ */
+export function buildWwwMorningstarQuoteUrl(
+  id: string,
+  assetType: MorningstarAssetType = MS_ASSET_TYPES.FUND,
+): string {
+  const path =
+    assetType === MS_ASSET_TYPES.ETF
+      ? 'etfs'
+      : assetType === MS_ASSET_TYPES.STOCK
+        ? 'stocks'
+        : 'funds';
+  return `https://www.morningstar.com/${path}/_/${id}/quote`;
+}
+
+/**
+ * Quote pages to try when looking up an Instant X-Ray F ID.
+ * www.morningstar.com first — global.morningstar.com is often WAF-blocked.
+ */
+export function shareClassIdLookupUrls(
+  morningstarId: string,
+  storedUrl?: string | null,
+  assetType: MorningstarAssetType = MS_ASSET_TYPES.FUND,
+): string[] {
+  const urls = [buildWwwMorningstarQuoteUrl(morningstarId, assetType)];
+  if (storedUrl) {
+    urls.push(storedUrl);
+  }
+  return [...new Set(urls)];
 }
