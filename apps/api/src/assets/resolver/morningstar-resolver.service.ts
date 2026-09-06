@@ -16,7 +16,10 @@ import {
   MS_ASSET_TYPES,
   MorningstarAssetType,
 } from './utils/constants';
-import { resolveShareClassId } from './utils/canonical-fund-id';
+import {
+  isFundShareClassId,
+  resolveShareClassId,
+} from './utils/canonical-fund-id';
 import { extractMorningstarIdFromUrl } from './utils/id-extractor';
 import {
   canonicalMorningstarQuoteUrl,
@@ -502,19 +505,30 @@ export class MorningstarResolverService implements IMorningstarResolver {
     scoredResults: ScoredResult[];
   }> {
     if (bestMatch.isin?.toUpperCase() === normalizedInput) {
-      const verification: VerificationResult = {
-        verified: true,
-        isinFound: bestMatch.isin,
-        nameFound: bestMatch.title,
-        additionalInfo: bestMatch.shareClassId
-          ? { shareClassId: bestMatch.shareClassId }
-          : {},
-      };
-      this.applyShareClassId(bestMatch, verification);
+      const hasShareClassId =
+        isFundShareClassId(bestMatch.shareClassId) ||
+        isFundShareClassId(bestMatch.morningstarId);
+      const isStock = bestMatch.assetType === MS_ASSET_TYPES.STOCK;
+
+      if (isStock || hasShareClassId) {
+        const verification: VerificationResult = {
+          verified: true,
+          isinFound: bestMatch.isin,
+          nameFound: bestMatch.title,
+          additionalInfo: bestMatch.shareClassId
+            ? { shareClassId: bestMatch.shareClassId }
+            : {},
+        };
+        this.applyShareClassId(bestMatch, verification);
+        this.logger.debug(
+          `[ISIN] Skipping quote-page fetch; search already matched ${normalizedInput}`,
+        );
+        return { bestMatch, verification, scoredResults };
+      }
+
       this.logger.debug(
-        `[ISIN] Skipping quote-page fetch; search already matched ${normalizedInput}`,
+        `[ISIN] Search matched ${normalizedInput} but share-class ID is missing; fetching quote page`,
       );
-      return { bestMatch, verification, scoredResults };
     }
 
     const { verification, workingUrl, marketId, detectedAssetType } =

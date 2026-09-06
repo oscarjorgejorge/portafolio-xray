@@ -127,7 +127,8 @@ export class AssetsService implements IAssetsService {
         invalidMorningstarId ||
         (!cachedAsset.isin && !cachedAsset.isinPending) ||
         this.assetTypeConflictsWithUrl(cachedAsset.type, cachedAsset.url) ||
-        this.hasStaleFundTicker(cachedAsset.type, cachedAsset.ticker);
+        this.hasStaleFundTicker(cachedAsset.type, cachedAsset.ticker) ||
+        !isAssetIdentityComplete(cachedAsset);
 
       if (!needsReResolution) {
         this.logger.log(`[DB CACHE] Hit for: ${input}`);
