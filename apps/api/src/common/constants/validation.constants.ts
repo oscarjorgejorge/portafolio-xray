@@ -38,6 +38,8 @@ export const INPUT_VALIDATION = {
   MAX_MORNINGSTAR_ID_LENGTH: 20,
   /** Maximum length for generic input identifier (ISIN, ticker, etc.) */
   MAX_INPUT_LENGTH: 50,
+  /** Maximum length for resolve input, including pasted Morningstar quote URLs */
+  MAX_RESOLVE_INPUT_LENGTH: 500,
   /** Maximum length for asset name */
   MAX_ASSET_NAME_LENGTH: 255,
   /** Maximum length for ticker symbol */

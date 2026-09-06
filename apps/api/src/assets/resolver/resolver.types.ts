@@ -21,6 +21,7 @@ export interface SearchResult {
   domain: string;
   ticker?: string;
   isin?: string;
+  shareClassId?: string;
   assetType?: MorningstarAssetType;
   rawType?: string;
 }

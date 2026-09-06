@@ -25,6 +25,7 @@ interface UseAssetManagementReturn {
   /** Update asset with the full object from confirm API so UI shows exact type/ticker from backend */
   resolveAssetWithConfirmed: (assetId: string, confirmedAsset: Asset) => void;
   clearAll: () => void;
+  replaceAssets: (nextAssets: PortfolioAsset[]) => void;
   getAssetById: (id: string) => PortfolioAsset | undefined;
 }
 
@@ -78,7 +79,7 @@ export function useAssetManagement({
           ? {
               ...asset,
               asset: updatedAsset,
-              isinPending: updatedAsset.isinPending || false,
+              isinPending: Boolean(updatedAsset.isinPending && !updatedAsset.isin),
             }
           : asset
       )
@@ -126,7 +127,9 @@ export function useAssetManagement({
                 type: confirmedAsset.type ?? portfolioAsset.asset?.type ?? 'FUND',
                 isin: confirmedAsset.isin ?? portfolioAsset.identifier,
               },
-              isinPending: confirmedAsset.isinPending ?? false,
+              isinPending: Boolean(
+                confirmedAsset.isinPending && !confirmedAsset.isin,
+              ),
             }
           : portfolioAsset
       )
@@ -137,6 +140,10 @@ export function useAssetManagement({
     setAssets([]);
     onAssetsChange?.();
   }, [onAssetsChange]);
+
+  const replaceAssets = useCallback((nextAssets: PortfolioAsset[]) => {
+    setAssets(nextAssets);
+  }, []);
 
   // Create indexed Map for O(1) lookups instead of O(n) find()
   const assetsMap = useMemo(
@@ -158,6 +165,7 @@ export function useAssetManagement({
     resolveAssetManually,
     resolveAssetWithConfirmed,
     clearAll,
+    replaceAssets,
     getAssetById,
   };
 }

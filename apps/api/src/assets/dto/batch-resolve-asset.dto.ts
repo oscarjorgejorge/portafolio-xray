@@ -11,7 +11,7 @@ import {
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type, Transform } from 'class-transformer';
-import { trimUppercase } from '../../common/transforms';
+import { trimResolveInput } from '../../common/transforms';
 import { INPUT_VALIDATION } from '../../common/constants';
 import { AssetTypeDto } from './confirm-asset.dto';
 
@@ -20,15 +20,16 @@ import { AssetTypeDto } from './confirm-asset.dto';
  */
 export class BatchResolveAssetItemDto {
   @ApiProperty({
-    description: 'Asset identifier - can be ISIN, Morningstar ID, or ticker',
+    description:
+      'Asset identifier - ISIN, Morningstar ID, ticker, or a Morningstar quote URL',
     example: 'IE00B4L5Y983',
-    maxLength: INPUT_VALIDATION.MAX_INPUT_LENGTH,
+    maxLength: INPUT_VALIDATION.MAX_RESOLVE_INPUT_LENGTH,
   })
-  @Transform(trimUppercase)
+  @Transform(trimResolveInput)
   @IsString()
   @IsNotEmpty()
-  @MaxLength(INPUT_VALIDATION.MAX_INPUT_LENGTH, {
-    message: `Input identifier must not exceed ${INPUT_VALIDATION.MAX_INPUT_LENGTH} characters`,
+  @MaxLength(INPUT_VALIDATION.MAX_RESOLVE_INPUT_LENGTH, {
+    message: `Input identifier must not exceed ${INPUT_VALIDATION.MAX_RESOLVE_INPUT_LENGTH} characters`,
   })
   input!: string;
 

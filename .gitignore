@@ -28,6 +28,6 @@ npm-debug.log*
 # Testing
 coverage/
 
-# Prisma
-**/generated/prisma
+# Repair script leftovers
+repair-morningstar-ids-leftovers.csv
 

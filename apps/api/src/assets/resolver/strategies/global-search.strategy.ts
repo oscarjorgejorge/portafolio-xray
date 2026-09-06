@@ -9,6 +9,9 @@ import { safeJsonParse } from '../utils/error-handler';
 import { HttpClientService } from '../../../common/http';
 import { createContextLogger } from '../../../common/logger';
 import { MS_ASSET_TYPES } from '../utils/constants';
+import { IdentifierClassifier } from '../../../common/utils/identifier-classifier';
+
+type SearchLocale = { languageId: string; countryId: string };
 
 /**
  * Strategy C: Global Morningstar API (backup)
@@ -26,15 +29,47 @@ export class GlobalSearchStrategy implements SearchStrategy {
       `[${this.name}] Searching global.morningstar.com for: ${query}`,
     );
 
-    const endpoint = buildGlobalSearchUrl(query);
+    for (const locale of this.localesFor(query)) {
+      const results = await this.searchLocale(query, locale);
+      if (results.length > 0) {
+        return results;
+      }
+    }
 
+    return [];
+  }
+
+  private localesFor(query: string): SearchLocale[] {
+    const locales: SearchLocale[] = [{ languageId: 'es-ES', countryId: 'ES' }];
+    if (!IdentifierClassifier.isISIN(query)) {
+      return locales;
+    }
+
+    const countryId = query.slice(0, 2).toUpperCase();
+    if (countryId !== 'ES') {
+      locales.push({ languageId: 'en-GB', countryId });
+    }
+    if (countryId !== 'GB') {
+      locales.push({ languageId: 'en-GB', countryId: 'GB' });
+    }
+    return locales;
+  }
+
+  private async searchLocale(
+    query: string,
+    locale: SearchLocale,
+  ): Promise<SearchResult[]> {
+    const endpoint = buildGlobalSearchUrl(query, locale);
     const response = await this.httpClient.get<string>(endpoint, {
       responseType: 'text',
       timeout: 15000,
       headers: {
         Accept: 'application/json',
         Origin: 'https://global.morningstar.com',
-        Referer: 'https://global.morningstar.com/',
+        Referer:
+          locale.countryId === 'ES'
+            ? 'https://global.morningstar.com/'
+            : 'https://global.morningstar.com/en-eu/',
       },
     });
 
@@ -42,14 +77,17 @@ export class GlobalSearchStrategy implements SearchStrategy {
       return [];
     }
 
-    return this.parseApiResponse(response.data);
+    return this.parseApiResponse(response.data, locale.countryId !== 'ES');
   }
 
   /**
    * Parse API response text into search results
    * Uses safe JSON parsing with proper error logging
    */
-  private parseApiResponse(text: string): SearchResult[] {
+  private parseApiResponse(
+    text: string,
+    preferEuQuote: boolean,
+  ): SearchResult[] {
     const data = safeJsonParse<GlobalMorningstarItem[]>(
       text,
       this.logger,
@@ -73,16 +111,20 @@ export class GlobalSearchStrategy implements SearchStrategy {
 
     this.logger.debug(`[${this.name}] Found ${data.length} results`);
 
-    return data.slice(0, 5).map((item: GlobalMorningstarItem) => ({
-      url: buildMorningstarUrl(
-        item.securityId ?? item.id ?? '',
-        MS_ASSET_TYPES.FUND, // Default to fund, will be corrected by main API
-      ),
-      title: item.name ?? item.legalName ?? '',
-      snippet: `${item.isin ?? ''} | ${item.ticker ?? ''}`,
-      morningstarId: item.securityId ?? item.id ?? null,
-      domain: 'global.morningstar.com',
-      ticker: item.ticker,
-    }));
+    return data.slice(0, 5).map((item: GlobalMorningstarItem) => {
+      const id = item.securityId ?? item.id ?? '';
+      return {
+        url: buildMorningstarUrl(
+          id,
+          MS_ASSET_TYPES.FUND,
+          preferEuQuote ? 'eu' : undefined,
+        ),
+        title: item.name ?? item.legalName ?? '',
+        snippet: `${item.isin ?? ''} | ${item.ticker ?? ''}`,
+        morningstarId: item.securityId ?? item.id ?? null,
+        domain: 'global.morningstar.com',
+        ticker: item.ticker,
+      };
+    });
   }
 }

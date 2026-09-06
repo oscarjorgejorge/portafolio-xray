@@ -43,7 +43,8 @@
     "currentPortfolioLabel": "Portfolio",
     "noAssets": "No assets added yet.",
     "noAssetsHint": "Enter an ISIN or Morningstar ID above for instant matching. Name and ticker searches are also supported but may require confirmation.",
-    "successToast": "X-Ray generated successfully!"
+    "successToast": "X-Ray generated successfully!",
+    "xrayIssueHint": "If the X-Ray is incomplete or missing assets, write through the <contactLink>contact form</contactLink> with the missing assets and their ISINs so we can correct them manually."
   },
   "assetInput": {
     "placeholder": "Enter ISIN, Morningstar ID, or ticker (e.g., IE00B4L5Y983)",
@@ -97,6 +98,7 @@
     "description": "The asset could not be resolved automatically. Please enter the Morningstar details manually. Tip: you can find the ISIN and Morningstar ID on the fund's Morningstar page for faster matching next time.",
     "morningstarId": "Morningstar ID",
     "morningstarIdPlaceholder": "e.g., 0P0000YXJO",
+    "isinNotMorningstarId": "That is an ISIN. Paste a Morningstar quote URL or a 0P…/F… ID.",
     "assetName": "Asset Name",
     "assetNamePlaceholder": "e.g., iShares Core MSCI World UCITS ETF",
     "morningstarUrl": "Morningstar URL",

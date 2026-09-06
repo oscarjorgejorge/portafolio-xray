@@ -16,12 +16,20 @@ import {
   MS_ASSET_TYPES,
   MorningstarAssetType,
 } from './utils/constants';
+import { resolveShareClassId } from './utils/canonical-fund-id';
+import { extractMorningstarIdFromUrl } from './utils/id-extractor';
+import {
+  canonicalMorningstarQuoteUrl,
+  detectAssetTypeFromMorningstarUrl,
+} from './utils/url-builder';
 
 // Search strategies
 import { ApiSearchStrategy } from './strategies/api-search.strategy';
 import { HtmlScrapeStrategy } from './strategies/html-scrape.strategy';
 import { GlobalSearchStrategy } from './strategies/global-search.strategy';
 import { DuckDuckGoStrategy } from './strategies/duckduckgo.strategy';
+import { YahooFinanceSearchStrategy } from './strategies/yahoo-finance.strategy';
+import { InstantXrayScreenerStrategy } from './strategies/instant-xray-screener.strategy';
 
 // Scoring and verification
 import { ResultScorerService } from './scoring/result-scorer.service';
@@ -47,6 +55,8 @@ export class MorningstarResolverService implements IMorningstarResolver {
     private readonly htmlScrape: HtmlScrapeStrategy,
     private readonly globalSearch: GlobalSearchStrategy,
     private readonly duckDuckGo: DuckDuckGoStrategy,
+    private readonly yahooSearch: YahooFinanceSearchStrategy,
+    private readonly instantXrayScreener: InstantXrayScreenerStrategy,
     private readonly scorer: ResultScorerService,
     private readonly verifier: PageVerifierService,
   ) {}
@@ -55,6 +65,29 @@ export class MorningstarResolverService implements IMorningstarResolver {
    * Search using all strategies and combine results
    */
   private async searchAll(query: string): Promise<SearchResult[]> {
+    // Instant X-Ray's lt.morningstar.com screener is not WAF-blocked and
+    // returns 0P IDs for stocks/ETFs. Yahoo + www.morningstar.com is fallback.
+    if (
+      IdentifierClassifier.isISIN(query) ||
+      IdentifierClassifier.isTicker(query)
+    ) {
+      const screenerResults = await this.instantXrayScreener.search(query);
+      if (screenerResults.length > 0) {
+        this.logger.debug(
+          `Instant X-Ray screener found ${screenerResults.length} result(s) for ${query}`,
+        );
+        return screenerResults.slice(0, this.config.maxResults);
+      }
+
+      const yahooResults = await this.yahooSearch.search(query);
+      if (yahooResults.length > 0) {
+        this.logger.debug(
+          `Yahoo/www.morningstar found ${yahooResults.length} result(s) for ${query}`,
+        );
+        return yahooResults.slice(0, this.config.maxResults);
+      }
+    }
+
     // Execute primary strategies in parallel
     const [apiResults, globalResults, ddgResults] = await Promise.all([
       this.apiSearch.search(query),
@@ -95,13 +128,19 @@ export class MorningstarResolverService implements IMorningstarResolver {
    * @returns Resolution result with confidence score
    */
   async resolve(input: string): Promise<ResolutionResult> {
-    const normalizedInput = IdentifierClassifier.normalizeInput(input);
-    const inputType = IdentifierClassifier.classify(normalizedInput);
+    const morningstarFromUrl = extractMorningstarIdFromUrl(input);
+    const normalizedInput =
+      morningstarFromUrl ?? IdentifierClassifier.normalizeInput(input);
+    const inputType = morningstarFromUrl
+      ? IdentifierType.MORNINGSTAR_ID
+      : IdentifierClassifier.classify(normalizedInput);
 
     this.logger.log(`Resolving: ${input} (type: ${inputType})`);
 
-    // Search using all strategies
-    const searchResults = await this.searchAll(normalizedInput);
+    // Pasted quote URLs already contain the ID; skip search (often WAF-blocked).
+    const searchResults = morningstarFromUrl
+      ? []
+      : await this.searchAll(normalizedInput);
 
     // Score and sort results
     let scoredResults = this.scorer.scoreAndSortResults(
@@ -122,7 +161,6 @@ export class MorningstarResolverService implements IMorningstarResolver {
     let confidence = 0;
     let verification: VerificationResult | undefined = undefined;
 
-    // Handle different input types
     if (
       inputType === IdentifierType.MORNINGSTAR_ID &&
       bestMatch?.morningstarId
@@ -138,8 +176,10 @@ export class MorningstarResolverService implements IMorningstarResolver {
       verification = result.verification;
       scoredResults = result.scoredResults;
     } else if (inputType === IdentifierType.MORNINGSTAR_ID && !bestMatch) {
-      const result =
-        await this.handleDirectMorningstarIdResolution(normalizedInput);
+      const result = await this.handleDirectMorningstarIdResolution(
+        normalizedInput,
+        morningstarFromUrl ? input : undefined,
+      );
       if (result) {
         bestMatch = result.bestMatch;
         status = result.status;
@@ -266,6 +306,8 @@ export class MorningstarResolverService implements IMorningstarResolver {
       bestMatch.title = verification.nameFound;
     }
 
+    this.applyShareClassId(bestMatch, verification);
+
     this.logger.log(
       `Exact Morningstar ID match found: ${normalizedInput} -> ${bestMatch.morningstarId}${verification?.isinFound ? ` (ISIN: ${verification.isinFound})` : ''}${marketId ? ` (market: ${marketId})` : ''}`,
     );
@@ -284,6 +326,7 @@ export class MorningstarResolverService implements IMorningstarResolver {
    */
   private async handleDirectMorningstarIdResolution(
     normalizedInput: string,
+    pastedUrl?: string,
   ): Promise<{
     bestMatch: ScoredResult;
     status: 'resolved' | 'needs_review' | 'not_found';
@@ -294,11 +337,34 @@ export class MorningstarResolverService implements IMorningstarResolver {
       `[DIRECT] No search results for Morningstar ID ${normalizedInput}, trying direct verification...`,
     );
 
-    const assetTypesToTry: MorningstarAssetType[] = [
-      MS_ASSET_TYPES.FUND,
-      MS_ASSET_TYPES.ETF,
-      MS_ASSET_TYPES.STOCK,
-    ];
+    const pastedAssetType = pastedUrl
+      ? detectAssetTypeFromMorningstarUrl(pastedUrl)
+      : undefined;
+
+    if (pastedUrl && /https?:\/\//i.test(pastedUrl)) {
+      const quoteUrl = canonicalMorningstarQuoteUrl(pastedUrl, normalizedInput);
+      const pastedVerification = await this.verifier.verifyFundPage(
+        quoteUrl,
+        '',
+      );
+      if (pastedVerification.isinFound || pastedVerification.nameFound) {
+        return this.buildDirectResolutionMatch(
+          normalizedInput,
+          quoteUrl,
+          pastedVerification,
+          pastedAssetType || MS_ASSET_TYPES.FUND,
+        );
+      }
+    }
+
+    const assetTypesToTry: MorningstarAssetType[] = pastedAssetType
+      ? [
+          pastedAssetType,
+          MS_ASSET_TYPES.STOCK,
+          MS_ASSET_TYPES.ETF,
+          MS_ASSET_TYPES.FUND,
+        ].filter((type, index, all) => all.indexOf(type) === index)
+      : [MS_ASSET_TYPES.STOCK, MS_ASSET_TYPES.ETF, MS_ASSET_TYPES.FUND];
     let foundAssetType: MorningstarAssetType = MS_ASSET_TYPES.FUND;
     let verResultFound: VerificationResult | null = null;
     let workingUrlFound = '';
@@ -335,39 +401,92 @@ export class MorningstarResolverService implements IMorningstarResolver {
 
     // If we found the fund in any market
     if (verification.isinFound || verification.nameFound) {
-      const syntheticMatch: ScoredResult = {
-        url: workingUrl,
-        title: verification.nameFound || normalizedInput,
-        snippet: `Direct resolution | Tipo: ${foundAssetType}${marketId ? ` | Market: ${marketId.toUpperCase()}` : ''}`,
-        morningstarId: normalizedInput,
-        domain: 'global.morningstar.com',
-        isin: verification.isinFound || undefined,
-        ticker: verification.additionalInfo?.ticker || undefined,
-        assetType: foundAssetType,
-        score: 100,
-        scoreBreakdown: {
-          isinMatch: 0,
-          tickerMatch: 0,
-          nameMatch: 0,
-          morningstarDomain: 20,
-          typeMatch: 10,
-          morningstarIdMatch: 100,
-        },
-      };
-
-      this.logger.log(
-        `[DIRECT] ${foundAssetType} resolved via direct verification: ${normalizedInput}${verification.isinFound ? ` (ISIN: ${verification.isinFound})` : ''}${marketId ? ` (market: ${marketId})` : ''}`,
-      );
-
-      return {
-        bestMatch: syntheticMatch,
-        status: 'resolved',
-        confidence: 1.0,
+      return this.buildDirectResolutionMatch(
+        normalizedInput,
+        workingUrl,
         verification,
-      };
+        foundAssetType,
+        marketId,
+      );
     }
 
     return null;
+  }
+
+  private buildDirectResolutionMatch(
+    morningstarId: string,
+    url: string,
+    verification: VerificationResult,
+    assetType: MorningstarAssetType,
+    marketId?: string,
+  ) {
+    const bestMatch: ScoredResult = {
+      url,
+      title: verification.nameFound || morningstarId,
+      snippet: `Direct resolution | Tipo: ${assetType}${marketId ? ` | Market: ${marketId.toUpperCase()}` : ''}`,
+      morningstarId,
+      domain: 'global.morningstar.com',
+      isin: verification.isinFound || undefined,
+      ticker: verification.additionalInfo?.ticker || undefined,
+      assetType,
+      score: 100,
+      scoreBreakdown: {
+        isinMatch: 0,
+        tickerMatch: 0,
+        nameMatch: 0,
+        morningstarDomain: 20,
+        typeMatch: 10,
+        morningstarIdMatch: 100,
+      },
+    };
+
+    this.logger.log(
+      `[DIRECT] ${assetType} resolved via direct verification: ${morningstarId}${verification.isinFound ? ` (ISIN: ${verification.isinFound})` : ''}${marketId ? ` (market: ${marketId})` : ''}`,
+    );
+
+    this.applyShareClassId(bestMatch, verification);
+
+    return {
+      bestMatch,
+      status: 'resolved' as const,
+      confidence: 1.0,
+      verification,
+    };
+  }
+
+  /**
+   * Prefer the URL search already found (www.morningstar.com ticker/ETF pages).
+   * `/etfs/_/{id}/quote` and `/stocks/_/{id}/quote` often 404.
+   */
+  private async verifyBestMatchPage(
+    bestMatch: ScoredResult,
+    expectedIsin: string,
+  ) {
+    if (bestMatch.url && /morningstar\.com/i.test(bestMatch.url)) {
+      const verification = await this.verifier.verifyFundPage(
+        bestMatch.url,
+        expectedIsin,
+      );
+      if (verification.isinFound || verification.nameFound) {
+        return {
+          verification,
+          workingUrl: bestMatch.url,
+          marketId: bestMatch.url.includes('www.morningstar.com')
+            ? 'www'
+            : undefined,
+          detectedAssetType:
+            (verification.additionalInfo?.detectedAssetType as
+              | MorningstarAssetType
+              | undefined) || bestMatch.assetType,
+        };
+      }
+    }
+
+    return this.verifier.verifyFundPageWithFallback(
+      bestMatch.morningstarId!,
+      expectedIsin,
+      bestMatch.assetType || MS_ASSET_TYPES.FUND,
+    );
   }
 
   /**
@@ -382,12 +501,24 @@ export class MorningstarResolverService implements IMorningstarResolver {
     verification?: VerificationResult;
     scoredResults: ScoredResult[];
   }> {
-    const { verification, workingUrl, marketId, detectedAssetType } =
-      await this.verifier.verifyFundPageWithFallback(
-        bestMatch.morningstarId!,
-        normalizedInput,
-        bestMatch.assetType || MS_ASSET_TYPES.FUND,
+    if (bestMatch.isin?.toUpperCase() === normalizedInput) {
+      const verification: VerificationResult = {
+        verified: true,
+        isinFound: bestMatch.isin,
+        nameFound: bestMatch.title,
+        additionalInfo: bestMatch.shareClassId
+          ? { shareClassId: bestMatch.shareClassId }
+          : {},
+      };
+      this.applyShareClassId(bestMatch, verification);
+      this.logger.debug(
+        `[ISIN] Skipping quote-page fetch; search already matched ${normalizedInput}`,
       );
+      return { bestMatch, verification, scoredResults };
+    }
+
+    const { verification, workingUrl, marketId, detectedAssetType } =
+      await this.verifyBestMatchPage(bestMatch, normalizedInput);
 
     // Update the URL if we found a working market
     if (workingUrl !== bestMatch.url) {
@@ -418,6 +549,8 @@ export class MorningstarResolverService implements IMorningstarResolver {
       scoredResults = scoredResults.sort((a, b) => b.score - a.score);
     }
 
+    this.applyShareClassId(bestMatch, verification);
+
     return { bestMatch, verification, scoredResults };
   }
 
@@ -433,11 +566,7 @@ export class MorningstarResolverService implements IMorningstarResolver {
     );
 
     const { verification, workingUrl, marketId, detectedAssetType } =
-      await this.verifier.verifyFundPageWithFallback(
-        bestMatch.morningstarId!,
-        '',
-        bestMatch.assetType || MS_ASSET_TYPES.FUND,
-      );
+      await this.verifyBestMatchPage(bestMatch, '');
 
     // Update the URL if we found a working market
     if (workingUrl !== bestMatch.url) {
@@ -475,7 +604,38 @@ export class MorningstarResolverService implements IMorningstarResolver {
       bestMatch.title = verification.nameFound;
     }
 
+    this.applyShareClassId(bestMatch, verification);
+
     return { bestMatch, verification };
+  }
+
+  /**
+   * Keep quote 0P IDs on morningstarId; stash the Instant X-Ray F ID on verification
+   */
+  private applyShareClassId(
+    bestMatch: ScoredResult,
+    verification?: VerificationResult,
+  ): void {
+    if (!bestMatch.morningstarId || !verification) return;
+    const shareClassId = resolveShareClassId(
+      bestMatch.morningstarId,
+      bestMatch.assetType,
+      bestMatch.url,
+      verification.additionalInfo?.shareClassId || bestMatch.shareClassId,
+    );
+    if (
+      !shareClassId ||
+      verification.additionalInfo?.shareClassId === shareClassId
+    ) {
+      return;
+    }
+    this.logger.log(
+      `[SHARE CLASS] ${bestMatch.morningstarId} has F ID ${shareClassId}`,
+    );
+    verification.additionalInfo = {
+      ...verification.additionalInfo,
+      shareClassId,
+    };
   }
 
   /**

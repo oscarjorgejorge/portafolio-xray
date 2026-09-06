@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   IdentifierType,
   classifyIdentifier,
+  extractMorningstarIdFromUrl,
   normalizeIdentifierInput,
 } from './identifier-classifier';
 
@@ -31,6 +32,19 @@ describe('identifier-classifier', () => {
       expect(classifyIdentifier('F00000THA5')).toBe(
         IdentifierType.MORNINGSTAR_ID,
       );
+    });
+
+    it('classifies pasted Morningstar fund URLs as Morningstar IDs', () => {
+      expect(
+        classifyIdentifier(
+          'https://global.morningstar.com/en-eu/investments/funds/0P0001CLDK/quote',
+        ),
+      ).toBe(IdentifierType.MORNINGSTAR_ID);
+      expect(
+        extractMorningstarIdFromUrl(
+          'https://global.morningstar.com/es/inversiones/fondos/0P0001CLDK/cotizacion',
+        ),
+      ).toBe('0P0001CLDK');
     });
 
     it('classifies tickers', () => {

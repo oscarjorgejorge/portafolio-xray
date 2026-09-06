@@ -53,7 +53,8 @@ export class ResultScorerService {
     // ISIN appears in result
     if (
       inputType === IdentifierType.ISIN &&
-      textToSearch.includes(normalizedInput)
+      (textToSearch.includes(normalizedInput) ||
+        result.isin?.toUpperCase() === normalizedInput)
     ) {
       breakdown.isinMatch = SCORE_WEIGHTS.ISIN_MATCH;
     }
@@ -100,10 +101,11 @@ export class ResultScorerService {
       breakdown.typeMatch = SCORE_WEIGHTS.HAS_MORNINGSTAR_ID;
     }
 
-    // Fund IDs starting with "F" bonus (preferred format for funds)
+    // Fund/ETF IDs starting with "F" bonus (preferred format for Instant X-Ray)
     if (
       result.morningstarId &&
-      result.assetType === MS_ASSET_TYPES.FUND &&
+      (result.assetType === MS_ASSET_TYPES.FUND ||
+        result.assetType === MS_ASSET_TYPES.ETF) &&
       result.morningstarId.toUpperCase().startsWith('F')
     ) {
       breakdown.typeMatch += SCORE_WEIGHTS.FUND_F_ID_BONUS;

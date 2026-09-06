@@ -51,7 +51,10 @@ describe('useIsinPolling', () => {
     });
 
     expect(mockedGetAssetById).toHaveBeenCalled();
-    expect(onIsinResolved).toHaveBeenCalledWith(assetWithIsin);
+    expect(onIsinResolved).toHaveBeenCalledWith({
+      ...assetWithIsin,
+      isinPending: false,
+    });
   });
 
   it('forces isinPending=false after maxAttempts are exhausted', async () => {

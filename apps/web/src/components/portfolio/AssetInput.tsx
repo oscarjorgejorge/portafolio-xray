@@ -11,6 +11,7 @@ import { useDuplicateCheck } from '@/lib/hooks/useDuplicateCheck';
 import {
   IdentifierType,
   classifyIdentifier,
+  extractMorningstarIdFromUrl,
 } from '@/lib/utils/identifier-classifier';
 import { cn } from '@/lib/utils';
 import type { PortfolioAsset, AssetType } from '@/types';
@@ -23,6 +24,10 @@ interface AssetInputProps {
   onAssetResolved: (asset: PortfolioAsset) => void;
   assetTypeHint?: AssetType;
   existingAssets?: PortfolioAsset[];
+}
+
+function toPortfolioIdentifier(rawInput: string): string {
+  return extractMorningstarIdFromUrl(rawInput) ?? rawInput.trim().toUpperCase();
 }
 
 function getHintConfig(
@@ -64,7 +69,7 @@ export const AssetInput: React.FC<AssetInputProps> = ({
     mutationFn: (identifier: string) =>
       resolveAsset(identifier, assetTypeHint),
     onSuccess: (data) => {
-      const trimmedIdentifier = input.trim().toUpperCase();
+      const trimmedIdentifier = toPortfolioIdentifier(input);
 
       if (data.success && data.asset) {
         if (checkDuplicate(trimmedIdentifier, data.asset)) {
@@ -78,7 +83,9 @@ export const AssetInput: React.FC<AssetInputProps> = ({
           asset: data.asset,
           weight: 0,
           status: 'resolved',
-          isinPending: data.isinPending || data.asset.isinPending || false,
+          isinPending:
+            !data.asset.isin &&
+            (data.isinPending || data.asset.isinPending || false),
         };
         onAssetResolved(portfolioAsset);
         setInput('');
@@ -131,7 +138,7 @@ export const AssetInput: React.FC<AssetInputProps> = ({
       return;
     }
 
-    if (checkDuplicate(trimmedInput.toUpperCase())) {
+    if (checkDuplicate(toPortfolioIdentifier(trimmedInput))) {
       setError(t('duplicateError'));
       return;
     }

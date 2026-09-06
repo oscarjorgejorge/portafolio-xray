@@ -181,7 +181,9 @@ export const AssetRow = memo<AssetRowProps>(function AssetRow({
   const handleMouseLeave = useCallback(() => setShowTooltip(false), []);
 
   const isinPending = asset.isinPending || asset.asset?.isinPending || false;
-  const shouldPollIsin = asset.asset?.type !== 'STOCK' && isinPending;
+  const hasIsin = Boolean(asset.asset?.isin);
+  const shouldPollIsin =
+    asset.asset?.type !== 'STOCK' && isinPending && !hasIsin;
 
   useIsinPolling({
     assetId: shouldPollIsin ? asset.asset?.id : undefined,
@@ -239,7 +241,7 @@ export const AssetRow = memo<AssetRowProps>(function AssetRow({
                 )}
                 {/* For non-stocks: show editable ISIN */}
                 {asset.asset.type !== 'STOCK' && (
-                  isinPending ? (
+                  shouldPollIsin ? (
                     <span className="flex items-center gap-1 text-slate-500">
                       <Spinner size="sm" className="text-blue-500" />
                       <span className="text-xs">{t('fetchingIsin')}</span>

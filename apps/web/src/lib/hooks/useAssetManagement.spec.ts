@@ -208,13 +208,31 @@ describe('useAssetManagement', () => {
         useAssetManagement({ initialAssets })
       );
 
-      const updatedAsset = createMockAsset({ isinPending: true });
+      const updatedAsset = createMockAsset({ isin: null, isinPending: true });
 
       act(() => {
         result.current.updateAsset('1', updatedAsset);
       });
 
       expect(result.current.assets[0].isinPending).toBe(true);
+    });
+
+    it('clears isinPending when the updated asset already has an ISIN', () => {
+      const initialAssets = [createMockPortfolioAsset({ id: '1', isinPending: true })];
+      const { result } = renderHook(() =>
+        useAssetManagement({ initialAssets })
+      );
+
+      const updatedAsset = createMockAsset({
+        isin: 'ES0173311103',
+        isinPending: true,
+      });
+
+      act(() => {
+        result.current.updateAsset('1', updatedAsset);
+      });
+
+      expect(result.current.assets[0].isinPending).toBe(false);
     });
   });
 
@@ -328,6 +346,30 @@ describe('useAssetManagement', () => {
       });
 
       expect(onAssetsChange).toHaveBeenCalled();
+    });
+  });
+
+  describe('replaceAssets', () => {
+    it('should replace the current list without calling onAssetsChange', () => {
+      const onAssetsChange = vi.fn();
+      const initialAssets = [createMockPortfolioAsset({ id: 'old' })];
+      const { result } = renderHook(() =>
+        useAssetManagement({ initialAssets, onAssetsChange })
+      );
+
+      const nextAssets = [
+        createMockPortfolioAsset({ id: 'new-1' }),
+        createMockPortfolioAsset({ id: 'new-2' }),
+      ];
+
+      act(() => {
+        result.current.replaceAssets(nextAssets);
+      });
+
+      expect(result.current.assets).toHaveLength(2);
+      expect(result.current.assets[0].id).toBe('new-1');
+      expect(result.current.assets[1].id).toBe('new-2');
+      expect(onAssetsChange).not.toHaveBeenCalled();
     });
   });
 

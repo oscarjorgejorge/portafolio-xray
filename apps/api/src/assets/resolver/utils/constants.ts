@@ -81,6 +81,7 @@ export const EUROPEAN_MARKETS = [
   'it',
   'ch',
   'gb',
+  'ie', // Ireland - IE ISINs such as Fidelity index funds
   'fr',
   'nl',
   'at',
@@ -132,6 +133,27 @@ export const VALID_ISIN_PREFIXES = [
   'HK',
   'SG',
 ] as const;
+
+/**
+ * Quote-page F-ID lookups. Zero in unit tests so specs stay fast.
+ * Live calls wait between funds and retry www.morningstar.com after WAF 202.
+ */
+export const SHARE_CLASS_LOOKUP_RETRIES =
+  process.env.NODE_ENV === 'test' ? 0 : 2;
+export const SHARE_CLASS_LOOKUP_RETRY_DELAY_MS =
+  process.env.NODE_ENV === 'test' ? 0 : 2500;
+export const SHARE_CLASS_LOOKUP_GAP_MS =
+  process.env.NODE_ENV === 'test' ? 0 : 2000;
+
+export function isMorningstarBotChallenge(
+  status?: number,
+  errorMessage?: string,
+): boolean {
+  if (status === 202 || status === 403) {
+    return true;
+  }
+  return Boolean(errorMessage?.toLowerCase().includes('bot challenge'));
+}
 
 // Note: HTTP headers are now managed by HttpClientService in common/http/
 // See http-client.service.ts for default headers configuration

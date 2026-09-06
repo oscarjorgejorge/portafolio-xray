@@ -9,3 +9,4 @@ export { ManualAssetInput } from './ManualAssetInput';
 export { PortfolioBuilder } from './PortfolioBuilder';
 export { PortfolioSummary } from './PortfolioSummary';
 export { ShareableUrlSection } from './ShareableUrlSection';
+export { XRayIssueHint } from './XRayIssueHint';

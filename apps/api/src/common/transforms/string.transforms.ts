@@ -32,3 +32,18 @@ export const trimUppercase = ({ value }: TransformFnParams): unknown =>
  */
 export const trimString = ({ value }: TransformFnParams): unknown =>
   typeof value === 'string' ? value.trim() : value;
+
+/**
+ * Trim resolve input. Keep Morningstar URLs in original case so path
+ * segments stay valid; uppercase ISIN / ID / ticker values.
+ */
+export const trimResolveInput = ({ value }: TransformFnParams): unknown => {
+  if (typeof value !== 'string') {
+    return value;
+  }
+  const trimmed = value.trim();
+  if (/^https?:\/\//i.test(trimmed) || /morningstar\.com/i.test(trimmed)) {
+    return trimmed;
+  }
+  return trimmed.toUpperCase();
+};

@@ -18,6 +18,7 @@ const createMockAsset = (overrides = {}) => ({
   id: '123e4567-e89b-12d3-a456-426614174000',
   isin: 'IE00B4L5Y983',
   morningstarId: '0P0000YXJO',
+  shareClassId: null as string | null,
   ticker: 'IWDA',
   name: 'iShares Core MSCI World UCITS ETF',
   type: AssetType.ETF,
@@ -81,12 +82,19 @@ describe('AssetsService', () => {
     repository = {
       findByIsin: jest.fn(),
       findByMorningstarId: jest.fn(),
+      findByShareClassId: jest.fn(),
       findById: jest.fn(),
-      findManyByMorningstarIds: jest.fn(),
-      findManyByIsins: jest.fn(),
+      findManyByMorningstarIds: jest.fn().mockResolvedValue([]),
+      findManyByIsins: jest.fn().mockResolvedValue([]),
       upsertByMorningstarId: jest.fn(),
       upsertByIsin: jest.fn(),
+      update: jest
+        .fn()
+        .mockImplementation(async (id: string, data: object) =>
+          createMockAsset({ id, ...data }),
+        ),
       updateIsinWithVerification: jest.fn(),
+      markIsinEnrichmentComplete: jest.fn(),
     } as unknown as jest.Mocked<AssetsRepository>;
 
     morningstarResolver = {
@@ -98,7 +106,21 @@ describe('AssetsService', () => {
     } as unknown as jest.Mocked<IsinEnrichmentService>;
 
     const pageVerifier = {
-      verifyFundPageWithFallback: jest.fn(),
+      verifyFundPage: jest.fn().mockResolvedValue({
+        verified: false,
+        isinFound: null,
+        nameFound: null,
+        additionalInfo: {},
+      }),
+      verifyFundPageWithFallback: jest.fn().mockResolvedValue({
+        verification: {
+          verified: false,
+          isinFound: null,
+          nameFound: null,
+          additionalInfo: {},
+        },
+        workingUrl: '',
+      }),
     } as unknown as jest.Mocked<PageVerifierService>;
 
     const module: TestingModule = await Test.createTestingModule({
@@ -130,7 +152,7 @@ describe('AssetsService', () => {
         const cachedResponse = {
           success: true,
           source: ResolutionSource.CACHE,
-          asset: createMockAsset(),
+          asset: createMockAsset({ shareClassId: 'F00000THA5' }),
         };
         cacheManager.get.mockResolvedValue(cachedResponse);
 
@@ -167,6 +189,62 @@ describe('AssetsService', () => {
         expect(result.asset?.morningstarId).toBe('0P0000YXJO');
       });
 
+      it('should not report isinPending when cache row already has an ISIN', async () => {
+        cacheManager.get.mockResolvedValue(null);
+        repository.findByMorningstarId.mockResolvedValue(
+          createMockAsset({
+            morningstarId: 'F00000VYOL',
+            shareClassId: 'F00000VYOL',
+            isin: 'ES0173311103',
+            isinPending: true,
+            type: AssetType.FUND,
+          }),
+        );
+        repository.markIsinEnrichmentComplete.mockResolvedValue(
+          createMockAsset({
+            morningstarId: 'F00000VYOL',
+            shareClassId: 'F00000VYOL',
+            isin: 'ES0173311103',
+            isinPending: false,
+            type: AssetType.FUND,
+          }),
+        );
+
+        const result = await service.resolve({ input: 'F00000VYOL' });
+
+        expect(result.success).toBe(true);
+        expect(result.asset?.isin).toBe('ES0173311103');
+        expect(result.isinPending).toBe(false);
+        expect(repository.markIsinEnrichmentComplete).toHaveBeenCalled();
+      });
+
+      it('should return the F cache row when a 0P fund URL already has the share-class ID', async () => {
+        cacheManager.get.mockResolvedValue(null);
+        const opAsset = createMockAsset({
+          morningstarId: '0P00016YQ5',
+          type: AssetType.FUND,
+          name: 'Azvalor Internacional FI',
+          isin: 'ES0112611001',
+          url: 'https://global.morningstar.com/es/inversiones/fondos/F00000WI0D/cotizacion',
+        });
+        const fAsset = createMockAsset({
+          morningstarId: 'F00000WI0D',
+          shareClassId: 'F00000WI0D',
+          type: AssetType.FUND,
+          name: 'Azvalor Internacional FI',
+          isin: 'ES0112611001',
+          url: 'https://global.morningstar.com/es/inversiones/fondos/F00000WI0D/cotizacion',
+        });
+        repository.findByMorningstarId
+          .mockResolvedValueOnce(opAsset)
+          .mockResolvedValueOnce(fAsset);
+
+        const result = await service.resolve({ input: '0P00016YQ5' });
+
+        expect(result.success).toBe(true);
+        expect(result.asset?.morningstarId).toBe('F00000WI0D');
+      });
+
       it('should re-resolve asset if ISIN is missing and enrichment is complete', async () => {
         cacheManager.get.mockResolvedValue(null);
         const mockAsset = createMockAsset({ isin: null, isinPending: false });
@@ -194,6 +272,115 @@ describe('AssetsService', () => {
         await service.resolve({ input: '0P0000YXJO' });
 
         expect(morningstarResolver.resolve).toHaveBeenCalled();
+      });
+
+      it('should re-resolve when the cached Morningstar ID is the ISIN', async () => {
+        cacheManager.get.mockResolvedValue(null);
+        repository.findByIsin.mockResolvedValue(
+          createMockAsset({
+            morningstarId: 'ES0114498027',
+            isin: 'ES0114498027',
+            type: AssetType.FUND,
+            ticker: null,
+            name: 'Caixabank Destino 2035 Plus FI',
+            url: '',
+            shareClassId: null,
+          }),
+        );
+
+        morningstarResolver.resolve.mockResolvedValue({
+          status: 'resolved',
+          morningstarId: '0P0001ODL3',
+          morningstarUrl:
+            'https://global.morningstar.com/es/inversiones/fondos/0P0001ODL3/cotizacion',
+          bestMatch: createMockScoredResult({
+            title: 'Caixabank Destino 2035 Plus FI',
+            assetType: MS_ASSET_TYPES.FUND,
+            isin: 'ES0114498027',
+          }),
+          confidence: 1,
+          allResults: [],
+          input: 'ES0114498027',
+          inputType: IdentifierType.ISIN,
+          normalizedInput: 'ES0114498027',
+          timestamp: new Date().toISOString(),
+        });
+
+        repository.upsertByMorningstarId.mockResolvedValue(
+          createMockAsset({
+            morningstarId: '0P0001ODL3',
+            isin: 'ES0114498027',
+            type: AssetType.FUND,
+            ticker: null,
+            name: 'Caixabank Destino 2035 Plus FI',
+          }),
+        );
+
+        const result = await service.resolve({ input: 'ES0114498027' });
+
+        expect(morningstarResolver.resolve).toHaveBeenCalledWith(
+          'ES0114498027',
+        );
+        expect(result.asset?.morningstarId).toBe('0P0001ODL3');
+        expect(repository.upsertByMorningstarId).toHaveBeenCalledWith(
+          expect.objectContaining({
+            morningstarId: '0P0001ODL3',
+            isin: 'ES0114498027',
+          }),
+        );
+      });
+
+      it('should re-resolve a cached STOCK whose quote URL is an ETF page', async () => {
+        cacheManager.get.mockResolvedValue(null);
+        repository.findByMorningstarId.mockResolvedValue(
+          createMockAsset({
+            morningstarId: '0P0000AB7T',
+            type: AssetType.STOCK,
+            ticker: 'ETF',
+            isin: 'LU0328476410',
+            url: 'https://global.morningstar.com/en-eu/investments/etfs/0P0000AB7T/quote',
+            name: 'Xtrackers S&P Select Frontier Swap UCITS ETF 1C XSFD',
+          }),
+        );
+
+        morningstarResolver.resolve.mockResolvedValue({
+          status: 'resolved',
+          morningstarId: '0P0000AB7T',
+          morningstarUrl:
+            'https://global.morningstar.com/en-eu/investments/etfs/0P0000AB7T/quote',
+          bestMatch: createMockScoredResult({
+            title: 'Xtrackers S&P Select Frontier Swap UCITS ETF 1C XSFD',
+            assetType: MS_ASSET_TYPES.ETF,
+            isin: 'LU0328476410',
+          }),
+          confidence: 1,
+          allResults: [],
+          input: '0P0000AB7T',
+          inputType: IdentifierType.MORNINGSTAR_ID,
+          normalizedInput: '0P0000AB7T',
+          timestamp: new Date().toISOString(),
+        });
+
+        repository.upsertByMorningstarId.mockResolvedValue(
+          createMockAsset({
+            morningstarId: '0P0000AB7T',
+            type: AssetType.ETF,
+            isin: 'LU0328476410',
+            ticker: null,
+          }),
+        );
+
+        const result = await service.resolve({ input: '0P0000AB7T' });
+
+        expect(morningstarResolver.resolve).toHaveBeenCalled();
+        expect(result.asset?.type).toBe(AssetType.ETF);
+        expect(repository.upsertByMorningstarId).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: AssetType.ETF,
+            isin: 'LU0328476410',
+            ticker: null,
+          }),
+        );
       });
     });
 
@@ -234,6 +421,94 @@ describe('AssetsService', () => {
         expect(repository.upsertByMorningstarId).toHaveBeenCalled();
       });
 
+      it('should persist shareClassId when Morningstar returns 0P but the URL has F', async () => {
+        cacheManager.get.mockResolvedValue(null);
+        repository.findByIsin.mockResolvedValue(null);
+        repository.findByMorningstarId.mockResolvedValue(null);
+
+        morningstarResolver.resolve.mockResolvedValue({
+          status: 'resolved',
+          morningstarId: '0P00016YQ5',
+          morningstarUrl:
+            'https://global.morningstar.com/es/inversiones/fondos/F00000WI0D/cotizacion',
+          bestMatch: createMockScoredResult({
+            title: 'Azvalor Internacional FI',
+            assetType: MS_ASSET_TYPES.FUND,
+            isin: 'ES0112611001',
+          }),
+          confidence: 0.95,
+          allResults: [],
+          input: '0P00016YQ5',
+          inputType: IdentifierType.MORNINGSTAR_ID,
+          normalizedInput: '0P00016YQ5',
+          timestamp: new Date().toISOString(),
+        });
+
+        repository.upsertByMorningstarId.mockResolvedValue(
+          createMockAsset({
+            morningstarId: '0P00016YQ5',
+            shareClassId: 'F00000WI0D',
+            type: AssetType.FUND,
+          }),
+        );
+
+        await service.resolve({ input: '0P00016YQ5' });
+
+        expect(repository.upsertByMorningstarId).toHaveBeenCalledWith(
+          expect.objectContaining({
+            morningstarId: '0P00016YQ5',
+            shareClassId: 'F00000WI0D',
+          }),
+        );
+      });
+
+      it('should persist shareClassId extracted from the quote page when the URL only has 0P', async () => {
+        cacheManager.get.mockResolvedValue(null);
+        repository.findByIsin.mockResolvedValue(null);
+        repository.findByMorningstarId.mockResolvedValue(null);
+
+        morningstarResolver.resolve.mockResolvedValue({
+          status: 'resolved',
+          morningstarId: '0P000168OI',
+          morningstarUrl:
+            'https://global.morningstar.com/es/inversiones/fondos/0P000168OI/cotizacion',
+          bestMatch: createMockScoredResult({
+            title: 'Renta 4 Multigestión Numantia Patrimonio Global FI',
+            assetType: MS_ASSET_TYPES.FUND,
+            isin: 'ES0173311103',
+            morningstarId: '0P000168OI',
+          }),
+          verification: createMockVerification({
+            isinFound: 'ES0173311103',
+            nameFound: 'Renta 4 Multigestión Numantia Patrimonio Global FI',
+            additionalInfo: { shareClassId: 'F00000VYOL' },
+          }),
+          confidence: 0.95,
+          allResults: [],
+          input: 'ES0173311103',
+          inputType: IdentifierType.ISIN,
+          normalizedInput: 'ES0173311103',
+          timestamp: new Date().toISOString(),
+        });
+
+        repository.upsertByMorningstarId.mockResolvedValue(
+          createMockAsset({
+            morningstarId: '0P000168OI',
+            shareClassId: 'F00000VYOL',
+            type: AssetType.FUND,
+          }),
+        );
+
+        await service.resolve({ input: 'ES0173311103' });
+
+        expect(repository.upsertByMorningstarId).toHaveBeenCalledWith(
+          expect.objectContaining({
+            morningstarId: '0P000168OI',
+            shareClassId: 'F00000VYOL',
+          }),
+        );
+      });
+
       it('should trigger ISIN enrichment when no ISIN found for Morningstar ID', async () => {
         cacheManager.get.mockResolvedValue(null);
         repository.findByIsin.mockResolvedValue(null);
@@ -259,6 +534,7 @@ describe('AssetsService', () => {
         const savedAsset = createMockAsset({
           morningstarId: 'F00000THA5',
           isin: null,
+          isinPending: true,
         });
         repository.upsertByMorningstarId.mockResolvedValue(savedAsset);
 
@@ -304,6 +580,49 @@ describe('AssetsService', () => {
         // Should save with null ISIN (rejecting the garbage)
         expect(repository.upsertByMorningstarId).toHaveBeenCalledWith(
           expect.objectContaining({ isin: null }),
+        );
+      });
+
+      it('should reject YEARLOWPRICE as an ISIN for stocks', async () => {
+        cacheManager.get.mockResolvedValue(null);
+        repository.findByMorningstarId.mockResolvedValue(null);
+
+        morningstarResolver.resolve.mockResolvedValue({
+          status: 'resolved',
+          morningstarId: '0P000000B7',
+          morningstarUrl: 'https://www.morningstar.com/stocks/xnas/amzn/quote',
+          bestMatch: createMockScoredResult({
+            title: 'Amazon.com Inc',
+            assetType: MS_ASSET_TYPES.STOCK,
+            isin: 'YEARLOWPRICE',
+            ticker: 'AMZN',
+          }),
+          confidence: 1,
+          allResults: [],
+          input: 'AMZN',
+          inputType: IdentifierType.TICKER,
+          normalizedInput: 'AMZN',
+          timestamp: new Date().toISOString(),
+        });
+
+        repository.upsertByMorningstarId.mockResolvedValue(
+          createMockAsset({
+            morningstarId: '0P000000B7',
+            type: AssetType.STOCK,
+            isin: null,
+            ticker: 'AMZN',
+          }),
+        );
+
+        const result = await service.resolve({ input: 'AMZN' });
+
+        expect(result.success).toBe(true);
+        expect(repository.upsertByMorningstarId).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: AssetType.STOCK,
+            ticker: 'AMZN',
+            isin: null,
+          }),
         );
       });
     });
@@ -495,6 +814,63 @@ describe('AssetsService', () => {
 
       await expect(service.getById('non-existent-id')).rejects.toThrow();
     });
+
+    it('should persist isinPending=false when the asset already has an ISIN', async () => {
+      const staleAsset = createMockAsset({
+        isin: 'ES0173311103',
+        morningstarId: 'F00000VYOL',
+        shareClassId: 'F00000VYOL',
+        isinPending: true,
+        type: AssetType.FUND,
+      });
+      const clearedAsset = { ...staleAsset, isinPending: false };
+      repository.findById.mockResolvedValue(staleAsset);
+      repository.markIsinEnrichmentComplete.mockResolvedValue(clearedAsset);
+
+      const result = await service.getById(staleAsset.id);
+
+      expect(repository.markIsinEnrichmentComplete).toHaveBeenCalledWith(
+        staleAsset.id,
+      );
+      expect(result.isin).toBe('ES0173311103');
+      expect(result.isinPending).toBe(false);
+    });
+
+    it('should not touch isinPending when the ISIN is still missing', async () => {
+      const pendingAsset = createMockAsset({
+        isin: null,
+        isinPending: true,
+      });
+      repository.findById.mockResolvedValue(pendingAsset);
+
+      const result = await service.getById(pendingAsset.id);
+
+      expect(repository.markIsinEnrichmentComplete).not.toHaveBeenCalled();
+      expect(result.isinPending).toBe(true);
+    });
+
+    it('should backfill shareClassId from an F morningstarId without re-resolving', async () => {
+      const incomplete = createMockAsset({
+        morningstarId: 'F00000VYOL',
+        shareClassId: null,
+        isin: 'ES0173311103',
+        type: AssetType.FUND,
+        url: 'https://global.morningstar.com/es/inversiones/fondos/F00000VYOL/cotizacion',
+      });
+      repository.findById.mockResolvedValue(incomplete);
+      repository.update.mockResolvedValue({
+        ...incomplete,
+        shareClassId: 'F00000VYOL',
+      });
+
+      const result = await service.getById(incomplete.id);
+
+      expect(repository.update).toHaveBeenCalledWith(
+        incomplete.id,
+        expect.objectContaining({ shareClassId: 'F00000VYOL' }),
+      );
+      expect(result.shareClassId).toBe('F00000VYOL');
+    });
   });
 
   describe('confirm', () => {
@@ -513,6 +889,33 @@ describe('AssetsService', () => {
       expect(result.source).toBe(AssetSource.manual);
       expect(repository.upsertByMorningstarId).toHaveBeenCalled();
       expect(cacheManager.del).toHaveBeenCalled();
+    });
+
+    it('should replace an ISIN pasted as Morningstar ID with the ID from the URL', async () => {
+      repository.upsertByMorningstarId.mockResolvedValue(
+        createMockAsset({
+          morningstarId: '0P0001ODL3',
+          isin: 'ES0114498027',
+          source: AssetSource.manual,
+          type: AssetType.FUND,
+        }),
+      );
+
+      await service.confirm({
+        isin: 'ES0114498027',
+        morningstarId: 'ES0114498027',
+        name: 'Caixabank Destino 2035 Plus FI',
+        type: AssetTypeDto.FUND,
+        url: 'https://global.morningstar.com/es/inversiones/fondos/0P0001ODL3/cotizacion',
+      });
+
+      expect(repository.upsertByMorningstarId).toHaveBeenCalledWith(
+        expect.objectContaining({
+          morningstarId: '0P0001ODL3',
+          isin: 'ES0114498027',
+        }),
+      );
+      expect(morningstarResolver.resolve).not.toHaveBeenCalled();
     });
   });
 
@@ -546,9 +949,9 @@ describe('AssetsService', () => {
         }),
         confidence: 0.9,
         allResults: [],
-        input: 'test',
-        inputType: IdentifierType.FREE_TEXT,
-        normalizedInput: 'TEST',
+        input: 'IE00BP3QZB59',
+        inputType: IdentifierType.ISIN,
+        normalizedInput: 'IE00BP3QZB59',
         timestamp: new Date().toISOString(),
       });
 
@@ -557,7 +960,8 @@ describe('AssetsService', () => {
         return createMockAsset({ type: data.type });
       });
 
-      await service.resolve({ input: 'test' });
+      await service.resolve({ input: 'IE00BP3QZB59' });
+      expect(repository.upsertByMorningstarId).toHaveBeenCalled();
     });
 
     it('should map STOCK type correctly', async () => {
@@ -596,9 +1000,9 @@ describe('AssetsService', () => {
         }),
         confidence: 0.9,
         allResults: [],
-        input: 'test',
-        inputType: IdentifierType.FREE_TEXT,
-        normalizedInput: 'TEST',
+        input: 'IE00B4L5Y983',
+        inputType: IdentifierType.ISIN,
+        normalizedInput: 'IE00B4L5Y983',
         timestamp: new Date().toISOString(),
       });
 
@@ -607,7 +1011,49 @@ describe('AssetsService', () => {
         return createMockAsset({ type: data.type });
       });
 
-      await service.resolve({ input: 'test' });
+      await service.resolve({ input: 'IE00B4L5Y983' });
+      expect(repository.upsertByMorningstarId).toHaveBeenCalled();
+    });
+
+    it('should persist the Xtrackers frontier ETF as ETF with ISIN, not STOCK', async () => {
+      morningstarResolver.resolve.mockResolvedValue({
+        status: 'resolved',
+        morningstarId: '0P0000AB7T',
+        morningstarUrl:
+          'https://global.morningstar.com/en-eu/investments/etfs/0P0000AB7T/quote',
+        bestMatch: createMockScoredResult({
+          title: 'Xtrackers S&P Select Frontier Swap UCITS ETF 1C XSFD',
+          assetType: MS_ASSET_TYPES.STOCK,
+          isin: 'LU0328476410',
+          ticker: 'ETF',
+        }),
+        verification: createMockVerification({
+          isinFound: 'LU0328476410',
+          nameFound: 'Xtrackers S&P Select Frontier Swap UCITS ETF 1C XSFD',
+          additionalInfo: { ticker: 'ETF', detectedAssetType: 'ETF' },
+        }),
+        confidence: 0.9,
+        allResults: [],
+        input: 'LU0328476410',
+        inputType: IdentifierType.ISIN,
+        normalizedInput: 'LU0328476410',
+        timestamp: new Date().toISOString(),
+      });
+
+      repository.upsertByMorningstarId.mockImplementation(async (data) => {
+        expect(data.type).toBe(AssetType.ETF);
+        expect(data.isin).toBe('LU0328476410');
+        expect(data.ticker).toBeNull();
+        return createMockAsset({
+          type: data.type,
+          isin: data.isin,
+          ticker: data.ticker ?? null,
+          morningstarId: '0P0000AB7T',
+        });
+      });
+
+      await service.resolve({ input: 'LU0328476410' });
+      expect(repository.upsertByMorningstarId).toHaveBeenCalled();
     });
   });
 });

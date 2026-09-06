@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Asset } from '@prisma/client';
+import { Asset, Prisma } from '@prisma/client';
 import {
   IAssetsRepository,
   CreateAssetData,
@@ -9,25 +9,38 @@ import {
   UpsertAssetByMorningstarIdData,
 } from './interfaces';
 import { EntityNotFoundException } from '../common/exceptions';
+import { pickPreferredFundAsset } from './resolver/utils/canonical-fund-id';
+import { isPersistedMorningstarIdValid } from './resolver/utils/id-extractor';
 
 @Injectable()
 export class AssetsRepository implements IAssetsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async findByIsin(isin: string): Promise<Asset | null> {
-    return this.prisma.asset.findFirst({
+    const matches = await this.prisma.asset.findMany({
       where: { isin: isin.toUpperCase() },
     });
+    return pickPreferredFundAsset(matches);
   }
 
   async findByMorningstarId(morningstarId: string): Promise<Asset | null> {
-    return this.prisma.asset.findUnique({
+    const byQuoteId = await this.prisma.asset.findUnique({
       where: { morningstarId },
+    });
+    if (byQuoteId) {
+      return byQuoteId;
+    }
+    return this.findByShareClassId(morningstarId);
+  }
+
+  async findByShareClassId(shareClassId: string): Promise<Asset | null> {
+    return this.prisma.asset.findUnique({
+      where: { shareClassId },
     });
   }
 
   /**
-   * Find multiple assets by their Morningstar IDs in a single query
+   * Find multiple assets by quote IDs or Instant X-Ray share-class IDs
    * @param morningstarIds - Array of Morningstar IDs to look up
    * @returns Array of found assets (may be fewer than input if some don't exist)
    */
@@ -38,7 +51,10 @@ export class AssetsRepository implements IAssetsRepository {
 
     return this.prisma.asset.findMany({
       where: {
-        morningstarId: { in: morningstarIds },
+        OR: [
+          { morningstarId: { in: morningstarIds } },
+          { shareClassId: { in: morningstarIds } },
+        ],
       },
     });
   }
@@ -72,6 +88,7 @@ export class AssetsRepository implements IAssetsRepository {
       data: {
         isin: data.isin.toUpperCase(),
         morningstarId: data.morningstarId,
+        shareClassId: data.shareClassId ?? null,
         name: data.name,
         type: data.type,
         url: data.url,
@@ -90,6 +107,9 @@ export class AssetsRepository implements IAssetsRepository {
         }),
         ...(data.morningstarId !== undefined && {
           morningstarId: data.morningstarId,
+        }),
+        ...(data.shareClassId !== undefined && {
+          shareClassId: data.shareClassId,
         }),
         ...(data.ticker !== undefined && { ticker: data.ticker }),
         ...(data.name !== undefined && { name: data.name }),
@@ -117,15 +137,19 @@ export class AssetsRepository implements IAssetsRepository {
 
     return this.prisma.$transaction(async (tx) => {
       // First try to find by ISIN within the transaction
-      const existingByIsin = await tx.asset.findFirst({
+      const matches = await tx.asset.findMany({
         where: { isin },
       });
+      const existingByIsin = pickPreferredFundAsset(matches);
 
       if (existingByIsin) {
         return tx.asset.update({
           where: { id: existingByIsin.id },
           data: {
             morningstarId: data.morningstarId,
+            ...(data.shareClassId !== undefined && {
+              shareClassId: data.shareClassId,
+            }),
             name: data.name,
             type: data.type,
             url: data.url,
@@ -140,6 +164,9 @@ export class AssetsRepository implements IAssetsRepository {
         where: { morningstarId: data.morningstarId },
         update: {
           isin,
+          ...(data.shareClassId !== undefined && {
+            shareClassId: data.shareClassId,
+          }),
           name: data.name,
           type: data.type,
           url: data.url,
@@ -149,6 +176,7 @@ export class AssetsRepository implements IAssetsRepository {
         create: {
           isin,
           morningstarId: data.morningstarId,
+          shareClassId: data.shareClassId ?? null,
           name: data.name,
           type: data.type,
           url: data.url,
@@ -167,29 +195,110 @@ export class AssetsRepository implements IAssetsRepository {
   async upsertByMorningstarId(
     data: UpsertAssetByMorningstarIdData,
   ): Promise<Asset> {
-    return this.prisma.asset.upsert({
-      where: { morningstarId: data.morningstarId },
-      update: {
-        isin: data.isin?.toUpperCase() ?? null,
+    return this.prisma.$transaction(async (tx) => {
+      const existingByQuoteId = await tx.asset.findUnique({
+        where: { morningstarId: data.morningstarId },
+      });
+      let existing = existingByQuoteId;
+
+      if (!existing && data.shareClassId) {
+        existing = await tx.asset.findUnique({
+          where: { shareClassId: data.shareClassId },
+        });
+      }
+
+      if (!existing && data.isin) {
+        const siblings = await tx.asset.findMany({
+          where: { isin: data.isin.toUpperCase() },
+        });
+        existing =
+          siblings.find(
+            (row) => !isPersistedMorningstarIdValid(row.morningstarId),
+          ) ?? null;
+      }
+
+      const shareClassId = await this.shareClassIdForWrite(
+        tx,
+        data.shareClassId,
+        existing?.id,
+      );
+
+      const updateData = {
+        ...(data.isin
+          ? {
+              isin: data.isin.toUpperCase(),
+              isinPending: false,
+            }
+          : {
+              isinPending: data.isinPending ?? false,
+            }),
+        ...(shareClassId !== undefined && { shareClassId }),
         name: data.name,
         type: data.type,
         url: data.url,
         source: data.source,
-        // Only update ticker if explicitly provided (preserves existing ticker)
         ...(data.ticker !== undefined && { ticker: data.ticker }),
-        isinPending: data.isinPending ?? false,
-      },
-      create: {
-        isin: data.isin?.toUpperCase() ?? null,
-        morningstarId: data.morningstarId,
-        name: data.name,
-        type: data.type,
-        url: data.url,
-        source: data.source,
-        ticker: data.ticker ?? null,
-        isinPending: data.isinPending ?? false,
-      },
+      };
+
+      if (existing) {
+        if (
+          existing.morningstarId !== data.morningstarId &&
+          !existingByQuoteId
+        ) {
+          const taken = await tx.asset.findUnique({
+            where: { morningstarId: data.morningstarId },
+          });
+          if (!taken) {
+            Object.assign(updateData, { morningstarId: data.morningstarId });
+          } else {
+            existing = taken;
+          }
+        }
+
+        return tx.asset.update({
+          where: { id: existing.id },
+          data: updateData,
+        });
+      }
+
+      return tx.asset.create({
+        data: {
+          isin: data.isin?.toUpperCase() ?? null,
+          morningstarId: data.morningstarId,
+          shareClassId: shareClassId ?? null,
+          name: data.name,
+          type: data.type,
+          url: data.url,
+          source: data.source,
+          ticker: data.ticker ?? null,
+          isinPending: data.isinPending ?? false,
+        },
+      });
     });
+  }
+
+  /**
+   * Keep shareClassId unique: skip writing an F ID already owned by another row
+   */
+  private async shareClassIdForWrite(
+    tx: Prisma.TransactionClient,
+    shareClassId: string | null | undefined,
+    currentAssetId?: string,
+  ): Promise<string | null | undefined> {
+    if (shareClassId === undefined) {
+      return undefined;
+    }
+    if (!shareClassId) {
+      return null;
+    }
+
+    const holder = await tx.asset.findUnique({
+      where: { shareClassId },
+    });
+    if (!holder || holder.id === currentAssetId) {
+      return shareClassId;
+    }
+    return undefined;
   }
 
   /**

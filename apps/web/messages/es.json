@@ -43,7 +43,8 @@
     "currentPortfolioLabel": "Cartera",
     "noAssets": "No hay activos añadidos aún.",
     "noAssetsHint": "Introduce un ISIN o ID de Morningstar arriba para una coincidencia instantánea. También puedes buscar por nombre o ticker, pero puede requerir confirmación.",
-    "successToast": "¡X-Ray generado exitosamente!"
+    "successToast": "¡X-Ray generado exitosamente!",
+    "xrayIssueHint": "Si el X-Ray no se genera bien o faltan activos, escríbenos a través del <contactLink>formulario de contacto</contactLink> indicando los que no aparecen y sus ISINs para poder corregirlos manualmente."
   },
   "assetInput": {
     "placeholder": "Introduce ISIN, ID de Morningstar o ticker (ej., IE00B4L5Y983)",
@@ -98,6 +99,7 @@
     "description": "El activo no se pudo resolver automáticamente. Por favor, introduce los detalles de Morningstar manualmente. Consejo: puedes encontrar el ISIN y el ID de Morningstar en la página del fondo en Morningstar para una búsqueda más rápida la próxima vez.",
     "morningstarId": "ID de Morningstar",
     "morningstarIdPlaceholder": "ej., 0P0000YXJO",
+    "isinNotMorningstarId": "Eso es un ISIN. Pega la URL de cotización de Morningstar o un ID 0P…/F….",
     "assetName": "Nombre del Activo",
     "assetNamePlaceholder": "ej., iShares Core MSCI World UCITS ETF",
     "morningstarUrl": "URL de Morningstar",
