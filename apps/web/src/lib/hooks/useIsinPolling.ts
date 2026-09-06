@@ -54,7 +54,10 @@ export function useIsinPolling({
       // Check if ISIN is now available or enrichment is complete
       if (updatedAsset.isin || !updatedAsset.isinPending) {
         stopPolling();
-        onIsinResolved(updatedAsset);
+        onIsinResolved({
+          ...updatedAsset,
+          isinPending: Boolean(updatedAsset.isinPending && !updatedAsset.isin),
+        });
         return;
       }
 

@@ -1,12 +1,17 @@
-import { describe, it, expect } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { renderHook, act, waitFor } from '@testing-library/react';
 import { usePortfolioBuilder } from './usePortfolioBuilder';
 import { createMockPortfolioAsset, createMockAsset } from '@/test/fixtures';
 import { AllProviders } from '@/test/test-utils';
 
 const wrapper = AllProviders;
+const PORTFOLIO_BUILDER_STORAGE_KEY = 'portfolioBuilderState';
 
 describe('usePortfolioBuilder', () => {
+  beforeEach(() => {
+    window.sessionStorage.clear();
+  });
+
   describe('initial state', () => {
     it('should start with empty assets and percentage mode', () => {
       const { result } = renderHook(() => usePortfolioBuilder(), { wrapper });
@@ -31,6 +36,66 @@ describe('usePortfolioBuilder', () => {
       expect(result.current.assets).toHaveLength(2);
       expect(result.current.totalWeight).toBe(100);
       expect(result.current.isValid).toBe(true);
+    });
+
+    it('should restore assets from sessionStorage after mount', async () => {
+      const storedAsset = createMockPortfolioAsset({
+        id: 'stored-1',
+        weight: 100,
+      });
+      window.sessionStorage.setItem(
+        PORTFOLIO_BUILDER_STORAGE_KEY,
+        JSON.stringify({
+          assets: [storedAsset],
+          allocationMode: 'amount',
+        })
+      );
+
+      const { result } = renderHook(() => usePortfolioBuilder(), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.assets).toHaveLength(1);
+      });
+      expect(result.current.assets[0].id).toBe('stored-1');
+      expect(result.current.allocationMode).toBe('amount');
+    });
+
+    it('should prefer initialAssets over sessionStorage', async () => {
+      window.sessionStorage.setItem(
+        PORTFOLIO_BUILDER_STORAGE_KEY,
+        JSON.stringify({
+          assets: [createMockPortfolioAsset({ id: 'stored-1', weight: 100 })],
+          allocationMode: 'amount',
+        })
+      );
+
+      const initial = [createMockPortfolioAsset({ id: 'prop-1', weight: 100 })];
+      const { result } = renderHook(
+        () => usePortfolioBuilder({ initialAssets: initial }),
+        { wrapper }
+      );
+
+      expect(result.current.assets).toHaveLength(1);
+      expect(result.current.assets[0].id).toBe('prop-1');
+      expect(result.current.allocationMode).toBe('percentage');
+    });
+
+    it('should ignore sessionStorage when reset is true', async () => {
+      window.sessionStorage.setItem(
+        PORTFOLIO_BUILDER_STORAGE_KEY,
+        JSON.stringify({
+          assets: [createMockPortfolioAsset({ id: 'stored-1', weight: 100 })],
+          allocationMode: 'amount',
+        })
+      );
+
+      const { result } = renderHook(
+        () => usePortfolioBuilder({ reset: true }),
+        { wrapper }
+      );
+
+      expect(result.current.assets).toEqual([]);
+      expect(result.current.allocationMode).toBe('percentage');
     });
   });
 

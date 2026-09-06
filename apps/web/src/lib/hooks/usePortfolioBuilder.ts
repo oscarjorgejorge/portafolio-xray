@@ -8,6 +8,34 @@ import { useXRayGeneration } from './useXRayGeneration';
 
 const PORTFOLIO_BUILDER_STORAGE_KEY = 'portfolioBuilderState';
 
+function readStoredPortfolioBuilderState(): {
+  assets: PortfolioAsset[];
+  allocationMode: AllocationMode;
+} | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  try {
+    const stored = window.sessionStorage.getItem(PORTFOLIO_BUILDER_STORAGE_KEY);
+    if (!stored) {
+      return null;
+    }
+
+    const parsed = JSON.parse(stored) as {
+      assets?: PortfolioAsset[];
+      allocationMode?: AllocationMode;
+    };
+
+    return {
+      assets: Array.isArray(parsed.assets) ? parsed.assets : [],
+      allocationMode: parsed.allocationMode || 'percentage',
+    };
+  } catch {
+    return null;
+  }
+}
+
 interface UsePortfolioBuilderOptions {
   initialAssets?: PortfolioAsset[];
   reset?: boolean;
@@ -77,7 +105,10 @@ export function usePortfolioBuilder({
   reset = false,
   initialAllocationMode,
 }: UsePortfolioBuilderOptions = {}): UsePortfolioBuilderReturn {
-  const [initialState] = useState<{
+  // Keep the first render identical on server and client. Restoring from
+  // sessionStorage during useState would add saved assets only on the client
+  // and cause a hydration mismatch (e.g. the Save button appearing).
+  const [initialState, setInitialState] = useState<{
     assets: PortfolioAsset[];
     allocationMode: AllocationMode;
   }>(() => {
@@ -95,40 +126,14 @@ export function usePortfolioBuilder({
       };
     }
 
-    if (typeof window === 'undefined') {
-      return {
-        assets: [],
-        allocationMode: 'percentage',
-      };
-    }
-
-    try {
-      const stored = window.sessionStorage.getItem(
-        PORTFOLIO_BUILDER_STORAGE_KEY
-      );
-      if (!stored) {
-        return {
-          assets: [],
-          allocationMode: 'percentage',
-        };
-      }
-
-      const parsed = JSON.parse(stored) as {
-        assets?: PortfolioAsset[];
-        allocationMode?: AllocationMode;
-      };
-
-      return {
-        assets: Array.isArray(parsed.assets) ? parsed.assets : [],
-        allocationMode: parsed.allocationMode || 'percentage',
-      };
-    } catch {
-      return {
-        assets: [],
-        allocationMode: 'percentage',
-      };
-    }
+    return {
+      assets: [],
+      allocationMode: 'percentage',
+    };
   });
+  const [storageHydrated, setStorageHydrated] = useState(
+    reset || initialAssets.length > 0
+  );
 
   // Allocation mode state
   const [allocationMode, setAllocationMode] = useState<AllocationMode>(
@@ -152,8 +157,30 @@ export function usePortfolioBuilder({
     // onAssetsChange will be set after xrayGeneration is created
   });
 
+  // Restore sessionStorage after mount so the first client render matches SSR.
+  useEffect(() => {
+    if (reset || initialAssets.length > 0) {
+      setStorageHydrated(true);
+      return;
+    }
+
+    const stored = readStoredPortfolioBuilderState();
+    if (
+      stored &&
+      (stored.assets.length > 0 || stored.allocationMode !== 'percentage')
+    ) {
+      setInitialState(stored);
+      assetManagement.replaceAssets(stored.assets);
+      setAllocationMode(stored.allocationMode);
+    }
+    setStorageHydrated(true);
+    // Restore only once after hydration; later prop updates are handled elsewhere.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Persist builder state so portfolio is not lost on redirects (e.g. auth flows)
   useEffect(() => {
+    if (!storageHydrated) return;
     if (typeof window === 'undefined') return;
 
     const hasAssets = assetManagement.assets.length > 0;
@@ -173,7 +200,7 @@ export function usePortfolioBuilder({
     } catch {
       // Ignore storage errors
     }
-  }, [assetManagement.assets, allocationMode]);
+  }, [storageHydrated, assetManagement.assets, allocationMode]);
 
   // Validation hook
   const { totalWeight, isValid } = usePortfolioValidation({

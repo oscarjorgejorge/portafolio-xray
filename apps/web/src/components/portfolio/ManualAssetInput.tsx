@@ -8,6 +8,21 @@ import { Button } from '@/components/ui/Button';
 import { confirmAsset } from '@/lib/api/assets';
 import type { AssetType } from '@/types';
 import { useMutation } from '@tanstack/react-query';
+import { IdentifierType, classifyIdentifier, extractMorningstarIdFromUrl, isMorningstarId } from '@/lib/utils/identifier-classifier';
+
+function inferAssetType(identifier: string, urlValue: string): AssetType {
+  const lowerUrl = urlValue.toLowerCase();
+  if (lowerUrl.includes('/stocks/') || lowerUrl.includes('/acciones/')) {
+    return 'STOCK';
+  }
+  if (lowerUrl.includes('/etfs/')) {
+    return 'ETF';
+  }
+  if (classifyIdentifier(identifier) === IdentifierType.TICKER) {
+    return 'STOCK';
+  }
+  return 'FUND';
+}
 
 interface ManualAssetInputProps {
   identifier: string;
@@ -25,21 +40,26 @@ export const ManualAssetInput: React.FC<ManualAssetInputProps> = ({
   const [morningstarId, setMorningstarId] = useState('');
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
-  const [assetType, setAssetType] = useState<AssetType>('FUND');
+  const [assetType, setAssetType] = useState<AssetType>(() =>
+    inferAssetType(identifier, ''),
+  );
 
   const confirmMutation = useMutation({
     mutationFn: () => {
-      // Check if identifier is a valid ISIN format (12 characters: 2 letters + 10 alphanumeric)
-      // Only use it as ISIN if it matches the format, otherwise send null
       const isIsinFormat = /^[A-Z]{2}[A-Z0-9]{10}$/.test(identifier.toUpperCase());
       const isin = isIsinFormat ? identifier.toUpperCase() : null;
-      
+      const ticker =
+        classifyIdentifier(identifier) === IdentifierType.TICKER
+          ? identifier.toUpperCase()
+          : undefined;
+
       return confirmAsset({
         isin,
         morningstarId,
         name,
         type: assetType,
         url,
+        ticker,
       });
     },
     onSuccess: (asset) => {
@@ -76,6 +96,12 @@ export const ManualAssetInput: React.FC<ManualAssetInputProps> = ({
           onChange={(e) => setMorningstarId(e.target.value.toUpperCase())}
           placeholder={t('morningstarIdPlaceholder')}
           required
+          error={
+            morningstarId &&
+            classifyIdentifier(morningstarId) === IdentifierType.ISIN
+              ? t('isinNotMorningstarId')
+              : undefined
+          }
         />
         <Input
           label={t('assetName')}
@@ -87,7 +113,15 @@ export const ManualAssetInput: React.FC<ManualAssetInputProps> = ({
         <Input
           label={t('morningstarUrl')}
           value={url}
-          onChange={(e) => setUrl(e.target.value)}
+          onChange={(e) => {
+            const nextUrl = e.target.value;
+            setUrl(nextUrl);
+            setAssetType(inferAssetType(identifier, nextUrl));
+            const idFromUrl = extractMorningstarIdFromUrl(nextUrl);
+            if (idFromUrl && (!morningstarId || !isMorningstarId(morningstarId))) {
+              setMorningstarId(idFromUrl);
+            }
+          }}
           placeholder={t('morningstarUrlPlaceholder')}
           type="url"
           required
@@ -118,7 +152,12 @@ export const ManualAssetInput: React.FC<ManualAssetInputProps> = ({
           <Button
             type="submit"
             isLoading={confirmMutation.isPending}
-            disabled={!morningstarId || !name || !url}
+            disabled={
+              !morningstarId ||
+              !name ||
+              !url ||
+              classifyIdentifier(morningstarId) === IdentifierType.ISIN
+            }
           >
             {tCommon('confirm')}
           </Button>

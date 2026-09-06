@@ -142,6 +142,31 @@ describe('AssetInput', () => {
       expect(calledWith.asset).toBeDefined();
     });
 
+    it('should store the Morningstar ID when pasting a quote URL', async () => {
+      mockResolveAsset.mockResolvedValueOnce(
+        createResolveSuccessResponse({ morningstarId: '0P0001CLDK' }),
+      );
+
+      render(<AssetInput onAssetResolved={mockOnAssetResolved} />);
+
+      const url =
+        'https://global.morningstar.com/en-eu/investments/funds/0P0001CLDK/quote';
+      const input = screen.getByLabelText('Asset identifier input');
+      fireEvent.change(input, { target: { value: url } });
+      fireEvent.submit(
+        screen.getByRole('form', { name: /add asset to portfolio/i }),
+      );
+
+      await waitFor(() => {
+        expect(mockOnAssetResolved).toHaveBeenCalledTimes(1);
+      });
+
+      expect(mockResolveAsset).toHaveBeenCalledWith(url, undefined);
+      expect(mockOnAssetResolved.mock.calls[0][0].identifier).toBe(
+        '0P0001CLDK',
+      );
+    });
+
     it('should clear input after successful resolution', async () => {
       const user = userEvent.setup();
       mockResolveAsset.mockResolvedValueOnce(createResolveSuccessResponse());
