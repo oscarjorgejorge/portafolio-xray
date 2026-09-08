@@ -14,6 +14,20 @@ import { useMutation } from '@tanstack/react-query';
 import { useShareableUrl } from '@/lib/hooks/useShareableUrl';
 import { captureException } from '@/lib/services/errorReporting';
 
+function generateErrorMessage(
+  error: unknown,
+  timeoutLabel: string,
+  fallbackLabel: string,
+): string {
+  if (!(error instanceof Error)) {
+    return fallbackLabel;
+  }
+  if (error.message.toLowerCase().includes('timed out')) {
+    return timeoutLabel;
+  }
+  return error.message;
+}
+
 function XRayPageContent() {
   const t = useTranslations('xray');
   const tCommon = useTranslations('common');
@@ -87,9 +101,11 @@ function XRayPageContent() {
             <Alert variant="error">
               <p className="font-medium">{t('error')}</p>
               <p className="text-sm mt-1">
-                {generateMutation.error instanceof Error
-                  ? generateMutation.error.message
-                  : t('unexpectedError')}
+                {generateErrorMessage(
+                  generateMutation.error,
+                  t('timeout'),
+                  t('unexpectedError'),
+                )}
               </p>
             </Alert>
             <div className="mt-4">
@@ -133,6 +149,15 @@ function XRayPageContent() {
             {t('subtitle')}
           </p>
         </div>
+
+        {typeof generateMutation.data?.holdingsUsingFallback === 'number' &&
+          generateMutation.data.holdingsUsingFallback > 0 && (
+            <Alert variant="info" className="mb-6">
+              {t('fallbackHint', {
+                count: generateMutation.data.holdingsUsingFallback,
+              })}
+            </Alert>
+          )}
 
         <div className="space-y-6">
           <Card title={t('pdfCard.title')}>

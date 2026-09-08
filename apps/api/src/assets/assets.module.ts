@@ -3,6 +3,8 @@ import { AssetsController } from './assets.controller';
 import { AssetsService } from './assets.service';
 import { AssetsRepository } from './assets.repository';
 import { IsinEnrichmentService } from './isin-enrichment.service';
+import { ShareClassLookupService } from './share-class-lookup.service';
+import { ShareClassEnrichmentService } from './share-class-enrichment.service';
 
 // Resolver services
 import {
@@ -23,6 +25,8 @@ import {
     AssetsService,
     AssetsRepository,
     IsinEnrichmentService,
+    ShareClassLookupService,
+    ShareClassEnrichmentService,
     // Morningstar resolver and its dependencies
     MorningstarResolverService,
     ApiSearchStrategy,
@@ -34,6 +38,11 @@ import {
     ResultScorerService,
     PageVerifierService,
   ],
-  exports: [AssetsService, AssetsRepository, IsinEnrichmentService],
+  exports: [
+    AssetsService,
+    AssetsRepository,
+    IsinEnrichmentService,
+    ShareClassEnrichmentService,
+  ],
 })
 export class AssetsModule {}

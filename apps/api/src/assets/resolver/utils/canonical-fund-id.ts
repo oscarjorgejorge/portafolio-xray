@@ -119,6 +119,28 @@ export function isAssetIdentityComplete(asset: {
   return isFundShareClassId(asset.shareClassId);
 }
 
+/**
+ * True when a fund-like asset still needs a background quote-page F ID lookup.
+ * Local sources (F morningstarId, persisted shareClassId, F ID in URL) are enough.
+ */
+export function needsShareClassEnrichment(asset: {
+  type: string | null | undefined;
+  morningstarId: string;
+  shareClassId?: string | null;
+  url?: string | null;
+}): boolean {
+  if (!isFundLikeType(asset.type)) {
+    return false;
+  }
+  if (isFundShareClassId(asset.morningstarId)) {
+    return false;
+  }
+  if (isFundShareClassId(asset.shareClassId)) {
+    return false;
+  }
+  return !extractPreferredFundId(asset.url ?? '');
+}
+
 function isStockLikeType(type: string | null | undefined): boolean {
   if (!type) return false;
   return STOCK_LIKE_TYPES.has(type.toUpperCase());

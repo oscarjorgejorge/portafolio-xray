@@ -3,6 +3,8 @@ export * from './assets.service';
 export * from './assets.controller';
 export * from './assets.repository';
 export * from './isin-enrichment.service';
+export * from './share-class-lookup.service';
+export * from './share-class-enrichment.service';
 export * from './dto';
 export * from './interfaces';
 export * from './types';

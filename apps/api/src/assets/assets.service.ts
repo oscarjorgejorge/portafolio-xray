@@ -5,6 +5,7 @@ import { Cache } from 'cache-manager';
 import { AssetsRepository } from './assets.repository';
 import { MorningstarResolverService, PageVerifierService } from './resolver';
 import { IsinEnrichmentService } from './isin-enrichment.service';
+import { ShareClassEnrichmentService } from './share-class-enrichment.service';
 import { MS_ASSET_TYPES } from './resolver/utils/constants';
 import { detectAssetTypeFromMorningstarUrl } from './resolver/utils/url-builder';
 import { isPlausibleTicker } from './resolver/utils/quote-page-fields';
@@ -18,6 +19,7 @@ import {
   isPersistedMorningstarIdValid,
   pickPreferredFundAsset,
   resolveShareClassId,
+  needsShareClassEnrichment,
 } from './resolver/utils/canonical-fund-id';
 import { isValidIsin } from './resolver/utils/id-extractor';
 import {
@@ -58,6 +60,7 @@ export class AssetsService implements IAssetsService {
     private readonly assetsRepository: AssetsRepository,
     private readonly morningstarResolver: MorningstarResolverService,
     private readonly isinEnrichmentService: IsinEnrichmentService,
+    private readonly shareClassEnrichmentService: ShareClassEnrichmentService,
     private readonly pageVerifier: PageVerifierService,
     private readonly configService: ConfigService<AppConfig, true>,
   ) {
@@ -127,10 +130,10 @@ export class AssetsService implements IAssetsService {
         invalidMorningstarId ||
         (!cachedAsset.isin && !cachedAsset.isinPending) ||
         this.assetTypeConflictsWithUrl(cachedAsset.type, cachedAsset.url) ||
-        this.hasStaleFundTicker(cachedAsset.type, cachedAsset.ticker) ||
-        !isAssetIdentityComplete(cachedAsset);
+        this.hasStaleFundTicker(cachedAsset.type, cachedAsset.ticker);
 
       if (!needsReResolution) {
+        this.enqueueShareClassEnrichmentIfNeeded(cachedAsset);
         this.logger.log(`[DB CACHE] Hit for: ${input}`);
         const asset = toResolvedAssetDto(cachedAsset);
         const response: ResolveAssetResponse = {
@@ -139,7 +142,9 @@ export class AssetsService implements IAssetsService {
           asset,
           isinPending: asset.isinPending,
         };
-        await this.cacheManager.set(cacheKey, response);
+        if (isAssetIdentityComplete(cachedAsset)) {
+          await this.cacheManager.set(cacheKey, response);
+        }
         return response;
       }
 
@@ -265,6 +270,7 @@ export class AssetsService implements IAssetsService {
             fundName,
           );
         }
+        this.enqueueShareClassEnrichmentIfNeeded(savedAsset);
 
         const asset = toResolvedAssetDto(savedAsset);
         const response: ResolveAssetResponse = {
@@ -600,36 +606,10 @@ export class AssetsService implements IAssetsService {
     }
 
     const isStock = dto.type === AssetTypeDto.STOCK;
-    let shareClassFromPage: string | undefined;
-    if (
-      !isStock &&
-      isPerformanceId(morningstarId) &&
-      !extractPreferredFundId(url)
-    ) {
-      try {
-        const msType =
-          dto.type === AssetTypeDto.ETF
-            ? MS_ASSET_TYPES.ETF
-            : MS_ASSET_TYPES.FUND;
-        const { verification } =
-          await this.pageVerifier.verifyFundPageWithFallback(
-            morningstarId,
-            dto.isin ?? '',
-            msType,
-          );
-        shareClassFromPage = verification.additionalInfo?.shareClassId;
-      } catch (error) {
-        this.logger.warn(
-          `[CONFIRM] Failed to extract share-class ID for ${morningstarId}: ${error}`,
-        );
-      }
-    }
-
     const shareClassId = resolveShareClassId(
       morningstarId,
       dto.type as AssetType,
       url,
-      shareClassFromPage,
     );
 
     // Create or update asset with manual source
@@ -654,6 +634,8 @@ export class AssetsService implements IAssetsService {
       shareClassId: asset.shareClassId,
       ticker: asset.ticker,
     });
+
+    this.enqueueShareClassEnrichmentIfNeeded(asset);
 
     return toResolvedAssetDto(asset);
   }
@@ -757,8 +739,8 @@ export class AssetsService implements IAssetsService {
   }
 
   /**
-   * Backfill missing identity fields from the row itself, then from the quote page.
-   * Skips extra Morningstar calls while ISIN enrichment is still in flight.
+   * Backfill identity from the row itself (URL / F morningstarId).
+   * Missing F IDs are resolved in the background so add/resolve stay fast.
    */
   private async ensureCompleteAsset(asset: Asset): Promise<Asset> {
     let current = await this.clearStaleIsinPending(asset);
@@ -780,15 +762,15 @@ export class AssetsService implements IAssetsService {
       });
     }
 
-    if (isAssetIdentityComplete(current)) {
-      return current;
-    }
+    this.enqueueShareClassEnrichmentIfNeeded(current);
+    return current;
+  }
 
-    if (current.isinPending && !current.isin) {
-      return current;
+  private enqueueShareClassEnrichmentIfNeeded(asset: Asset): void {
+    if (!needsShareClassEnrichment(asset)) {
+      return;
     }
-
-    return this.refreshIncompleteFundAsset(current);
+    this.shareClassEnrichmentService.enrichShareClassInBackground(asset.id);
   }
 
   private async persistIdentityPatch(
@@ -813,60 +795,6 @@ export class AssetsService implements IAssetsService {
       );
       return asset;
     }
-  }
-
-  private async refreshIncompleteFundAsset(asset: Asset): Promise<Asset> {
-    try {
-      const { verification } =
-        await this.pageVerifier.verifyFundPageWithFallback(
-          asset.morningstarId,
-          asset.isin ?? '',
-          this.toMorningstarAssetType(asset.type),
-        );
-
-      const shareClassId = resolveShareClassId(
-        asset.morningstarId,
-        asset.type,
-        asset.url,
-        verification.additionalInfo?.shareClassId,
-      );
-      const candidateIsin =
-        asset.isin ??
-        (verification.isinFound &&
-        IdentifierClassifier.validateISINChecksum(verification.isinFound)
-          ? verification.isinFound.toUpperCase()
-          : null);
-
-      const patch: {
-        shareClassId?: string;
-        isin?: string;
-        isinPending?: boolean;
-      } = {};
-      if (shareClassId && shareClassId !== asset.shareClassId) {
-        patch.shareClassId = shareClassId;
-      }
-      if (candidateIsin && candidateIsin !== asset.isin) {
-        patch.isin = candidateIsin;
-        patch.isinPending = false;
-      }
-
-      if (Object.keys(patch).length === 0) {
-        return asset;
-      }
-
-      return this.persistIdentityPatch(asset, patch);
-    } catch (error) {
-      this.logger.warn(
-        `[ASSET] Completeness refresh failed for ${asset.morningstarId}: ${error}`,
-      );
-      return asset;
-    }
-  }
-
-  private toMorningstarAssetType(type: AssetType) {
-    if (type === AssetType.ETF) return MS_ASSET_TYPES.ETF;
-    if (type === AssetType.STOCK) return MS_ASSET_TYPES.STOCK;
-    return MS_ASSET_TYPES.FUND;
   }
 
   /**

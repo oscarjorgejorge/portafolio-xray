@@ -8,6 +8,7 @@
   "scripts": {
     "build": "npx prisma generate && nest build",
     "repair:morningstar-ids": "ts-node src/scripts/repair-morningstar-ids.ts",
+    "enrich:share-class-ids": "ts-node src/scripts/enrich-share-class-ids.ts",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",

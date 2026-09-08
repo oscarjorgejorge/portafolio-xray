@@ -199,4 +199,29 @@ describe('instant-xray-screener', () => {
       assetType: MS_ASSET_TYPES.FUND,
     });
   });
+
+  it('keeps F0GBR SecId as shareClassId for French funds', () => {
+    const results = parseInstantXrayScreenerResponse(
+      {
+        total: 1,
+        rows: [
+          {
+            SecId: 'F0GBR04EZP',
+            Name: 'AXA TrAcsor Court Terme C',
+            ISIN: 'FR0000447823',
+            PerformanceId: '0P00000F24',
+          },
+        ],
+      },
+      'FR0000447823',
+      'FOESP$$ALL',
+    );
+
+    expect(results).toHaveLength(1);
+    expect(results[0]).toMatchObject({
+      morningstarId: '0P00000F24',
+      shareClassId: 'F0GBR04EZP',
+      isin: 'FR0000447823',
+    });
+  });
 });
