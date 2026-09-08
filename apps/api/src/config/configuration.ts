@@ -37,6 +37,14 @@ export const configuration = (): AppConfig => ({
       process.env.ISIN_ENRICHMENT_TIMEOUT_MS || '15000',
       10,
     ),
+    shareClassEnrichmentConcurrency: parseInt(
+      process.env.SHARE_CLASS_ENRICHMENT_CONCURRENCY || '2',
+      10,
+    ),
+    shareClassEnrichmentTimeoutMs: parseInt(
+      process.env.SHARE_CLASS_ENRICHMENT_TIMEOUT_MS || '15000',
+      10,
+    ),
   },
   http: {
     defaultTimeoutMs: parseInt(
@@ -117,6 +125,10 @@ export interface ResolutionConfig {
   isinEnrichmentConcurrency: number;
   /** Timeout for ISIN enrichment HTTP requests (ms) */
   isinEnrichmentTimeoutMs: number;
+  /** Max concurrent share-class (F ID) enrichment operations */
+  shareClassEnrichmentConcurrency: number;
+  /** Timeout for share-class quote-page HTTP requests (ms) */
+  shareClassEnrichmentTimeoutMs: number;
 }
 
 /**

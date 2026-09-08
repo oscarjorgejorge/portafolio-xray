@@ -37,6 +37,12 @@ export const envSchema = z.object({
   MAX_ALTERNATIVES: z.coerce.number().min(1).max(20).default(5),
   ISIN_ENRICHMENT_CONCURRENCY: z.coerce.number().min(1).max(20).default(5),
   ISIN_ENRICHMENT_TIMEOUT_MS: z.coerce.number().min(1000).default(15000),
+  SHARE_CLASS_ENRICHMENT_CONCURRENCY: z.coerce
+    .number()
+    .min(1)
+    .max(10)
+    .default(2),
+  SHARE_CLASS_ENRICHMENT_TIMEOUT_MS: z.coerce.number().min(1000).default(15000),
 
   // HTTP Client Settings
   HTTP_DEFAULT_TIMEOUT_MS: z.coerce.number().min(1000).default(10000),

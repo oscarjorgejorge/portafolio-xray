@@ -2,7 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { XRayService } from './xray.service';
 import { AssetsRepository } from '../assets/assets.repository';
-import { HttpClientService } from '../common/http';
 import { AssetType, AssetSource } from '@prisma/client';
 import { MORNINGSTAR_URL } from '../common/constants';
 
@@ -28,7 +27,6 @@ const createMockAsset = (overrides = {}) => ({
 describe('XRayService', () => {
   let service: XRayService;
   let repository: jest.Mocked<AssetsRepository>;
-  let httpClient: jest.Mocked<HttpClientService>;
 
   const mockBaseUrl = 'https://lt.morningstar.com';
 
@@ -43,15 +41,10 @@ describe('XRayService', () => {
         ),
     } as unknown as jest.Mocked<AssetsRepository>;
 
-    httpClient = {
-      get: jest.fn().mockResolvedValue({ ok: false, data: null }),
-    } as unknown as jest.Mocked<HttpClientService>;
-
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         XRayService,
         { provide: AssetsRepository, useValue: repository },
-        { provide: HttpClientService, useValue: httpClient },
         {
           provide: ConfigService,
           useValue: {
@@ -258,9 +251,9 @@ describe('XRayService', () => {
           assets: [{ morningstarId: '0P000168OI', weight: 100 }],
         });
 
-        expect(httpClient.get).not.toHaveBeenCalled();
         expect(result.morningstarUrl).toContain('F00000VYOL');
         expect(result.morningstarUrl).not.toContain('0P000168OI');
+        expect(result.holdingsUsingFallback).toBe(0);
       });
 
       it('should remap 0P fund IDs to F IDs found in the cached URL', async () => {
@@ -312,7 +305,7 @@ describe('XRayService', () => {
         expect(result.morningstarUrl).not.toContain('0P00016YQ5');
       });
 
-      it('should remap 0P fund IDs to the F security-id on the quote page', async () => {
+      it('should not scrape Morningstar when a 0P fund has no persisted F ID', async () => {
         repository.findManyByMorningstarIds.mockResolvedValue([
           createMockAsset({
             morningstarId: '0P000168OI',
@@ -321,58 +314,65 @@ describe('XRayService', () => {
             url: 'https://global.morningstar.com/es/inversiones/fondos/0P000168OI/cotizacion',
           }),
         ]);
-        httpClient.get.mockResolvedValue({
-          ok: true,
-          data: '<sal-components security-id="F00000VYOL" security-type="FO"></sal-components>',
-          status: 200,
-        } as never);
 
         const result = await service.generate({
           assets: [{ morningstarId: '0P000168OI', weight: 100 }],
         });
 
-        expect(httpClient.get).toHaveBeenCalledWith(
-          'https://www.morningstar.com/funds/_/0P000168OI/quote',
-          expect.objectContaining({ responseType: 'html' }),
-        );
-        expect(result.morningstarUrl).toContain('F00000VYOL');
-        expect(result.morningstarUrl).not.toContain('0P000168OI');
-        expect(repository.update).toHaveBeenCalledWith(
-          expect.any(String),
-          expect.objectContaining({ shareClassId: 'F00000VYOL' }),
-        );
-        expect(result.shareableUrl).toContain('F00000VYOL');
+        expect(repository.update).not.toHaveBeenCalled();
+        expect(result.morningstarUrl).toContain('0P000168OI');
+        expect(result.holdingsUsingFallback).toBe(1);
+        expect(result.shareableUrl).toContain('0P000168OI');
       });
 
-      it('should not fetch the stored global URL after a www bot challenge', async () => {
-        repository.findManyByMorningstarIds.mockResolvedValue([
-          createMockAsset({
-            morningstarId: '0P0001ODL3',
-            type: AssetType.FUND,
-            url: 'https://global.morningstar.com/es/inversiones/fondos/0P0001ODL3/cotizacion',
-          }),
-        ]);
-        httpClient.get.mockResolvedValue({
-          ok: false,
-          data: null,
-          status: 202,
-          error: {
-            type: 'HTTP_ERROR',
-            message: 'HTTP 202: Morningstar bot challenge',
-          },
-        } as never);
+      it('should count 0P fallbacks across a large portfolio without HTTP', async () => {
+        const ids = [
+          '0P0001XF3Z',
+          '0P000177J8',
+          '0P0001YE65',
+          '0P0000A9K5',
+          '0P0001CLDI',
+          '0P00000F24',
+          '0P0000SV4E',
+          '0P0001OU74',
+          '0P0001NZKP',
+          '0P0001NF8R',
+          '0P0001BD9S',
+          '0P0001BOL6',
+          '0P0001V3E7',
+          '0P0001S9MR',
+          'F00001019E',
+          'F00000PA9N',
+          'F00000YZS6',
+          'F00000YU4F',
+          'F00000YN5S',
+          'F0GBR04NQN',
+        ];
+        repository.findManyByMorningstarIds.mockResolvedValue(
+          ids.map((morningstarId) =>
+            createMockAsset({
+              morningstarId,
+              type: morningstarId.startsWith('F')
+                ? AssetType.FUND
+                : AssetType.ETF,
+              shareClassId: morningstarId.startsWith('F')
+                ? morningstarId
+                : null,
+              url: `https://global.morningstar.com/es/inversiones/fondos/${morningstarId}/cotizacion`,
+            }),
+          ),
+        );
 
         const result = await service.generate({
-          assets: [{ morningstarId: '0P0001ODL3', weight: 100 }],
+          assets: ids.map((morningstarId) => ({
+            morningstarId,
+            weight: 5,
+          })),
         });
 
-        expect(httpClient.get).toHaveBeenCalledTimes(1);
-        expect(httpClient.get).toHaveBeenCalledWith(
-          'https://www.morningstar.com/funds/_/0P0001ODL3/quote',
-          expect.objectContaining({ responseType: 'html' }),
-        );
         expect(repository.update).not.toHaveBeenCalled();
-        expect(result.morningstarUrl).toContain('0P0001ODL3');
+        expect(result.holdingsUsingFallback).toBe(14);
+        expect(ids).toHaveLength(20);
       });
 
       it('should include security token suffix', async () => {

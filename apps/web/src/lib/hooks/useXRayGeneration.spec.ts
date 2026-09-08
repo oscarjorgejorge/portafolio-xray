@@ -5,7 +5,15 @@ import { createMockPortfolioAsset, createMockAsset } from '@/test/fixtures';
 import { AllProviders } from '@/test/test-utils';
 
 const mockGenerateXRay = vi.fn();
-vi.mock('@/lib/api/xray', () => ({ generateXRay: (...args: unknown[]) => mockGenerateXRay(...args) }));
+vi.mock('@/lib/api/xray', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/api/xray')>(
+    '@/lib/api/xray'
+  );
+  return {
+    ...actual,
+    generateXRay: (...args: unknown[]) => mockGenerateXRay(...args),
+  };
+});
 vi.mock('@/lib/services/errorReporting', () => ({ captureException: vi.fn() }));
 
 const wrapper = AllProviders;
@@ -14,12 +22,18 @@ describe('useXRayGeneration', () => {
   const resolvedAsset = createMockPortfolioAsset({
     id: '1',
     weight: 60,
-    asset: createMockAsset({ morningstarId: '0P0000YXJO' }),
+    asset: createMockAsset({
+      morningstarId: '0P0000YXJO',
+      shareClassId: null,
+    }),
   });
   const resolvedAsset2 = createMockPortfolioAsset({
     id: '2',
     weight: 40,
-    asset: createMockAsset({ morningstarId: 'F00000THA5' }),
+    asset: createMockAsset({
+      morningstarId: 'F00000THA5',
+      shareClassId: 'F00000THA5',
+    }),
   });
 
   beforeEach(() => {
@@ -30,6 +44,7 @@ describe('useXRayGeneration', () => {
     mockGenerateXRay.mockResolvedValue({
       shareableUrl: '/xray?assets=...',
       morningstarUrl: 'https://lt.morningstar.com/...',
+      holdingsUsingFallback: 0,
     });
   });
 
@@ -78,16 +93,91 @@ describe('useXRayGeneration', () => {
       });
     });
 
+    it('should send the persisted shareClassId when available', async () => {
+      const withShareClass = createMockPortfolioAsset({
+        id: '1',
+        weight: 100,
+        asset: createMockAsset({
+          morningstarId: '0P000168OI',
+          shareClassId: 'F00000VYOL',
+        }),
+      });
+      const { result } = renderHook(
+        () =>
+          useXRayGeneration({
+            assets: [withShareClass],
+            allocationMode: 'percentage',
+            isValid: true,
+          }),
+        { wrapper }
+      );
+
+      act(() => {
+        result.current.generate();
+      });
+
+      await waitFor(() => {
+        expect(mockGenerateXRay.mock.calls[0][0]).toEqual([
+          { morningstarId: 'F00000VYOL', weight: 100 },
+        ]);
+      });
+    });
+
+    it('should ignore a second generate while the first is in flight', async () => {
+      let resolveGenerate: ((value: unknown) => void) | undefined;
+      mockGenerateXRay.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveGenerate = resolve;
+          })
+      );
+      const { result } = renderHook(
+        () =>
+          useXRayGeneration({
+            assets: [resolvedAsset],
+            allocationMode: 'percentage',
+            isValid: true,
+          }),
+        { wrapper }
+      );
+
+      act(() => {
+        result.current.generate();
+      });
+      await waitFor(() => {
+        expect(mockGenerateXRay).toHaveBeenCalledTimes(1);
+      });
+
+      act(() => {
+        result.current.generate();
+      });
+      expect(mockGenerateXRay).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        resolveGenerate?.({
+          shareableUrl: '/xray?assets=...',
+          morningstarUrl: 'https://lt.morningstar.com/...',
+          holdingsUsingFallback: 0,
+        });
+      });
+    });
+
     it('should call API with normalized weights when allocationMode is amount', async () => {
       const asset60 = createMockPortfolioAsset({
         id: '1',
         weight: 600,
-        asset: createMockAsset({ morningstarId: '0P0000YXJO' }),
+        asset: createMockAsset({
+          morningstarId: '0P0000YXJO',
+          shareClassId: null,
+        }),
       });
       const asset40 = createMockPortfolioAsset({
         id: '2',
         weight: 400,
-        asset: createMockAsset({ morningstarId: 'F00000THA5' }),
+        asset: createMockAsset({
+          morningstarId: 'F00000THA5',
+          shareClassId: 'F00000THA5',
+        }),
       });
       const { result } = renderHook(
         () =>

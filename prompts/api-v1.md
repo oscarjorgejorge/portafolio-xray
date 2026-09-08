@@ -2137,4 +2137,39 @@ ESTE se introdujo manualmente, deberia comprobar si morningstart id esta bien re
 ### Prompt 152
 estoy probando en produccion y sigue sin anhadirse el share_class_id
 
+### Prompt 153
+porque no puede resolver este class_share_id para este isin? IE00BYX5N771
+
+### Prompt 154
+y ha pasado lo mismo con este FR0000447823
+
+### Prompt 155
+hay algun limite en la generacion de xrayportafolio
+[20-asset payload]
+como podemos gestionar cuando hay muchos assets? en este caso hubo 20
+
+### Prompt 156
+deberia hacerse asi:
+
+al añadir el asset, o
+en background, y persistir shareClassId
+
+### Prompt 157
+tiene que anadirse el shareclass id al anadirse el asset al portafolio, si el shareclassid, no esta en base de datos, que se resuelva en background
+
+### Prompt 158
+puedes hacerme una propuesta con todas las mejoras posibles?
+
+### Prompt 159
+esto cuando se haria? Respuesta de generate enriquecida (opcional)
+{ morningstarUrl, shareableUrl, holdingsUsingFallback: number }. El UI puede mostrar un aviso suave: “N fondos aún se están identificando; el informe puede mejorar en unos segundos. Regenera.”
+
+### Prompt 160
+Aparece cuando pulsa Generar (o al abrir /xray?assets=…), si generate tuvo que usar 0P… porque el F ID aún no estaba en BD.
+
+no entiendo esto, si cada vez que se anade un asset, se va a intentar resolver en background el shareclassid
+
+### Prompt 161
+implementa las 4 primeras fases
+
 

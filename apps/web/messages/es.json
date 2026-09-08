@@ -25,6 +25,8 @@
     "generating": "Generando URL de X-Ray...",
     "error": "Error al generar X-Ray",
     "unexpectedError": "Ocurrió un error inesperado",
+    "timeout": "La petición tardó demasiado. Vuelve a intentarlo.",
+    "fallbackHint": "{count, plural, one {# fondo se está identificando todavía. El informe puede mejorar en unos segundos: genera de nuevo.} other {# fondos se están identificando todavía. El informe puede mejorar en unos segundos: genera de nuevo.}}",
     "noPortfolioData": "No se encontraron datos de cartera en la URL.",
     "backToBuilder": "Crea tu cartera",
     "createNew": "Crear Nueva Cartera",
@@ -44,6 +46,8 @@
     "noAssets": "No hay activos añadidos aún.",
     "noAssetsHint": "Introduce un ISIN o ID de Morningstar arriba para una coincidencia instantánea. También puedes buscar por nombre o ticker, pero puede requerir confirmación.",
     "successToast": "¡X-Ray generado exitosamente!",
+    "generateTimeout": "La petición tardó demasiado. Vuelve a intentarlo.",
+    "fallbackHint": "{count, plural, one {# fondo se está identificando todavía. El informe puede mejorar en unos segundos: genera de nuevo.} other {# fondos se están identificando todavía. El informe puede mejorar en unos segundos: genera de nuevo.}}",
     "xrayIssueHint": "Si el X-Ray no se genera bien o faltan activos, escríbenos a través del <contactLink>formulario de contacto</contactLink> indicando los que no aparecen y sus ISINs para poder corregirlos manualmente."
   },
   "assetInput": {
