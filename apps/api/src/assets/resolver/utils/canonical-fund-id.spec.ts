@@ -7,6 +7,7 @@ import {
   preferShareClassId,
   resolveShareClassId,
   isAssetIdentityComplete,
+  needsShareClassEnrichment,
 } from './canonical-fund-id';
 
 describe('canonical-fund-id', () => {
@@ -202,6 +203,49 @@ describe('canonical-fund-id', () => {
           morningstarId: 'ES0114498027',
           shareClassId: null,
           type: AssetType.FUND,
+        }),
+      ).toBe(false);
+    });
+  });
+
+  describe('needsShareClassEnrichment', () => {
+    it('should be true for a 0P fund without a persisted F ID', () => {
+      expect(
+        needsShareClassEnrichment({
+          type: AssetType.FUND,
+          morningstarId: '0P000168OI',
+          shareClassId: null,
+          url: 'https://global.morningstar.com/es/inversiones/fondos/0P000168OI/cotizacion',
+        }),
+      ).toBe(true);
+    });
+
+    it('should be false when shareClassId or URL already has an F ID', () => {
+      expect(
+        needsShareClassEnrichment({
+          type: AssetType.FUND,
+          morningstarId: '0P000168OI',
+          shareClassId: 'F00000VYOL',
+          url: 'https://global.morningstar.com/es/inversiones/fondos/0P000168OI/cotizacion',
+        }),
+      ).toBe(false);
+      expect(
+        needsShareClassEnrichment({
+          type: AssetType.FUND,
+          morningstarId: '0P00016YQ5',
+          shareClassId: null,
+          url: 'https://global.morningstar.com/es/inversiones/fondos/F00000WI0D/cotizacion',
+        }),
+      ).toBe(false);
+    });
+
+    it('should be false for stocks', () => {
+      expect(
+        needsShareClassEnrichment({
+          type: AssetType.STOCK,
+          morningstarId: '0P0000AAPL',
+          shareClassId: null,
+          url: 'https://global.morningstar.com/es/inversiones/acciones/0P0000AAPL/cotizacion',
         }),
       ).toBe(false);
     });

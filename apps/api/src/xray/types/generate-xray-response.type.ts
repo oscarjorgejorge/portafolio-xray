@@ -16,4 +16,11 @@ export class GenerateXRayResponse {
     example: '/xray?assets=0P0000YXJO:40,F00000THA5:30,0P000168Z7:30',
   })
   shareableUrl!: string;
+
+  @ApiProperty({
+    description:
+      'Number of fund/ETF/ETC holdings that still use a 0P performance ID because the Instant X-Ray F ID is not in cache yet',
+    example: 0,
+  })
+  holdingsUsingFallback!: number;
 }

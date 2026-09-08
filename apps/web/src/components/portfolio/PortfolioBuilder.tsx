@@ -11,6 +11,7 @@ import { ShareableUrlSection } from './ShareableUrlSection';
 import { XRayIssueHint } from './XRayIssueHint';
 import { Card } from '@/components/ui/Card';
 import { Toast } from '@/components/ui/Toast';
+import { Alert } from '@/components/ui/Alert';
 import type { PortfolioAsset, AllocationMode } from '@/types';
 import { usePortfolioBuilder } from '@/lib/hooks/usePortfolioBuilder';
 import { useAuth } from '@/lib/auth';
@@ -108,6 +109,8 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
     isValid,
     isGenerating,
     isDirty,
+    generateError,
+    holdingsUsingFallback,
     setAllocationMode,
     handleAssetResolved,
     handleWeightChange,
@@ -276,6 +279,20 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
               onClearAll={handleClearAll}
               onGenerate={handleGenerate}
             />
+
+            {generateError && (
+              <Alert variant="error" className="mt-4">
+                {generateError.message.toLowerCase().includes('timed out')
+                  ? t('generateTimeout')
+                  : generateError.message}
+              </Alert>
+            )}
+
+            {holdingsUsingFallback > 0 && shareableUrl && (
+              <Alert variant="info" className="mt-4">
+                {t('fallbackHint', { count: holdingsUsingFallback })}
+              </Alert>
+            )}
 
             {/* Shareable URL Section - Show after successful generation */}
             {shareableUrl && fullShareableUrl && (

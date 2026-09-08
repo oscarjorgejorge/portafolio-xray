@@ -25,6 +25,8 @@
     "generating": "Generating X-Ray URL...",
     "error": "Error generating X-Ray",
     "unexpectedError": "An unexpected error occurred",
+    "timeout": "The request took too long. Please try again.",
+    "fallbackHint": "{count, plural, one {# fund is still being identified. The report may improve in a few seconds — generate again.} other {# funds are still being identified. The report may improve in a few seconds — generate again.}}",
     "noPortfolioData": "No portfolio data found in URL.",
     "backToBuilder": "Back to Portfolio Builder",
     "createNew": "Create New Portfolio",
@@ -44,6 +46,8 @@
     "noAssets": "No assets added yet.",
     "noAssetsHint": "Enter an ISIN or Morningstar ID above for instant matching. Name and ticker searches are also supported but may require confirmation.",
     "successToast": "X-Ray generated successfully!",
+    "generateTimeout": "The request took too long. Please try again.",
+    "fallbackHint": "{count, plural, one {# fund is still being identified. The report may improve in a few seconds — generate again.} other {# funds are still being identified. The report may improve in a few seconds — generate again.}}",
     "xrayIssueHint": "If the X-Ray is incomplete or missing assets, write through the <contactLink>contact form</contactLink> with the missing assets and their ISINs so we can correct them manually."
   },
   "assetInput": {

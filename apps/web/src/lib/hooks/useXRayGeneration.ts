@@ -1,9 +1,9 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import type { PortfolioAsset, AllocationMode } from '@/types';
-import { generateXRay } from '@/lib/api/xray';
+import { generateXRay, toXRayTokenId } from '@/lib/api/xray';
 import { useShareableUrl } from './useShareableUrl';
 import { VALIDATION } from '@/lib/constants';
 import { captureException } from '@/lib/services/errorReporting';
@@ -23,6 +23,8 @@ interface UseXRayGenerationReturn {
   fullShareableUrl: string;
   /** Morningstar X-Ray URL */
   morningstarUrl: string | null;
+  /** Holdings that still used a 0P token because the F ID is not cached yet */
+  holdingsUsingFallback: number;
   /** Whether the URL was recently copied */
   copied: boolean;
   /** Whether a copy error occurred */
@@ -51,6 +53,7 @@ export function useXRayGeneration({
   onSuccess,
   onError,
 }: UseXRayGenerationOptions): UseXRayGenerationReturn {
+  const generatingRef = useRef(false);
   const {
     shareableUrl,
     morningstarUrl,
@@ -74,10 +77,15 @@ export function useXRayGeneration({
       clearUrls();
       onError?.(error);
     },
+    onSettled: () => {
+      generatingRef.current = false;
+    },
   });
 
   const generate = useCallback(() => {
-    if (!isValid) return;
+    if (!isValid || generatingRef.current || generateMutation.isPending) {
+      return;
+    }
 
     let xrayAssets;
     if (allocationMode === 'amount') {
@@ -88,7 +96,7 @@ export function useXRayGeneration({
       xrayAssets = assets
         .filter((asset) => asset.asset)
         .map((asset) => ({
-          morningstarId: asset.asset!.morningstarId,
+          morningstarId: toXRayTokenId(asset.asset!),
           weight:
             totalAmount > 0
               ? (asset.weight / totalAmount) * VALIDATION.PERCENTAGE_TOTAL
@@ -98,11 +106,12 @@ export function useXRayGeneration({
       xrayAssets = assets
         .filter((asset) => asset.asset)
         .map((asset) => ({
-          morningstarId: asset.asset!.morningstarId,
+          morningstarId: toXRayTokenId(asset.asset!),
           weight: asset.weight,
         }));
     }
 
+    generatingRef.current = true;
     generateMutation.mutate(xrayAssets);
   }, [isValid, allocationMode, assets, generateMutation]);
 
@@ -119,6 +128,7 @@ export function useXRayGeneration({
     shareableUrl,
     fullShareableUrl,
     morningstarUrl,
+    holdingsUsingFallback: generateMutation.data?.holdingsUsingFallback ?? 0,
     copied,
     copyError,
     isGenerating: generateMutation.isPending,

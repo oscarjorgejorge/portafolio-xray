@@ -203,7 +203,7 @@ class FetchApiClient {
       // Handle abort/timeout
       if (error instanceof DOMException && error.name === 'AbortError') {
         throw new ApiError(
-          'Request timed out. The server took too long to respond.'
+          'Request timed out. Please try again.'
         );
       }
 

@@ -21,7 +21,7 @@ export {
 } from './assets';
 
 // X-Ray API
-export { generateXRay, type XRayAsset, type GenerateXRayRequest } from './xray';
+export { generateXRay, toXRayTokenId, type XRayAsset, type GenerateXRayRequest } from './xray';
 
 // Portfolios API
 export {

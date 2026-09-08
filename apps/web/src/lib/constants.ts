@@ -46,7 +46,9 @@ export const VALIDATION = {
 
 export const API = {
   /** Default timeout for API requests in milliseconds */
-  TIMEOUT_MS: 30000,
+  TIMEOUT_MS: 40000,
+  /** Timeout for X-Ray generation (ms). Generate is DB-only; this covers cold starts. */
+  GENERATE_TIMEOUT_MS: 90000,
   /** Stale time for React Query cache in milliseconds (1 minute) */
   STALE_TIME_MS: 60 * 1000,
   /** Number of retry attempts for failed requests */

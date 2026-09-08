@@ -73,11 +73,11 @@ export const PortfolioSummary = memo<PortfolioSummaryProps>(function PortfolioSu
         <Button variant="secondary" onClick={onClearAll}>
           {t('clearAll')}
         </Button>
-        <Button
-          onClick={onGenerate}
-          disabled={!isValid || (!isDirty && hasGeneratedXRay)}
-          isLoading={isGenerating}
-        >
+          <Button
+            onClick={onGenerate}
+            disabled={!isValid || isGenerating || (!isDirty && hasGeneratedXRay)}
+            isLoading={isGenerating}
+          >
           {t('generateXray')}
         </Button>
       </div>

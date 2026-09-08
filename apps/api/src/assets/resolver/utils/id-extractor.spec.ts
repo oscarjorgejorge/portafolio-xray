@@ -41,6 +41,10 @@ describe('id-extractor utils', () => {
         expect(extractMorningstarId('0P0001CLDK.F')).toBe('0P0001CLDK');
       });
 
+      it('should extract F0GBR share-class IDs', () => {
+        expect(extractMorningstarId('F0GBR04EZP')).toBe('F0GBR04EZP');
+      });
+
       it('should extract ID from a global stock URL', () => {
         expect(
           extractMorningstarId(
