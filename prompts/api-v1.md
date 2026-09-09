@@ -2187,4 +2187,13 @@ sigue sin aparecer bien el xray [mismo payload con 0P0001CLDI y 0P00000F24] IE00
 ### Prompt 166
 vamos a implemantar las 4 fases
 
+### Prompt 167
+so now when I will put again this asset of japan IE00BYX5N771, should I see on the database the share_class_id?
+
+### Prompt 168
+i am requesting it now and it is still null
+
+### Prompt 169
+pero antes tampoco se estaba persistiendo en la base de datos
+
 

@@ -6,6 +6,7 @@ import { AssetsRepository } from './assets.repository';
 import { MorningstarResolverService, PageVerifierService } from './resolver';
 import { IsinEnrichmentService } from './isin-enrichment.service';
 import { ShareClassEnrichmentService } from './share-class-enrichment.service';
+import { ShareClassLookupService } from './share-class-lookup.service';
 import { MS_ASSET_TYPES } from './resolver/utils/constants';
 import { detectAssetTypeFromMorningstarUrl } from './resolver/utils/url-builder';
 import { isPlausibleTicker } from './resolver/utils/quote-page-fields';
@@ -62,6 +63,7 @@ export class AssetsService implements IAssetsService {
     private readonly morningstarResolver: MorningstarResolverService,
     private readonly isinEnrichmentService: IsinEnrichmentService,
     private readonly shareClassEnrichmentService: ShareClassEnrichmentService,
+    private readonly shareClassLookup: ShareClassLookupService,
     private readonly pageVerifier: PageVerifierService,
     private readonly configService: ConfigService<AppConfig, true>,
   ) {
@@ -787,6 +789,7 @@ export class AssetsService implements IAssetsService {
       }
     }
 
+    current = await this.applyScreenerShareClass(current);
     this.enqueueShareClassEnrichmentIfNeeded(current);
     if (!current.isin) {
       this.isinEnrichmentService.enrichIsinInBackground(
@@ -795,6 +798,66 @@ export class AssetsService implements IAssetsService {
       );
     }
     return current;
+  }
+
+  /**
+   * Fill a missing F ID from the Instant X-Ray screener during resolve.
+   * Quote-page scrapes stay in the background queue so add stays fast
+   * even when the screener has no hit.
+   */
+  private async applyScreenerShareClass(asset: Asset): Promise<Asset> {
+    if (!needsShareClassEnrichment(asset)) {
+      return asset;
+    }
+
+    try {
+      const identity = await this.shareClassLookup.lookupIdentityFromScreener({
+        morningstarId: asset.morningstarId,
+        isin: asset.isin,
+        url: asset.url,
+      });
+
+      let current = asset;
+      if (
+        identity.shareClassId &&
+        current.shareClassId !== identity.shareClassId
+      ) {
+        const assigned = await this.assetsRepository.tryAssignShareClassId(
+          current.id,
+          identity.shareClassId,
+        );
+        if (assigned) {
+          await this.invalidateAssetCache({
+            isin: assigned.isin,
+            morningstarId: assigned.morningstarId,
+            shareClassId: assigned.shareClassId,
+          });
+          current = assigned;
+          this.logger.log(
+            `[ASSET] Saved shareClassId ${identity.shareClassId} for ${asset.morningstarId} from screener`,
+          );
+        }
+      }
+
+      if (identity.isin && !current.isin) {
+        current = await this.assetsRepository.updateIsin(
+          current.id,
+          identity.isin,
+        );
+        await this.invalidateAssetCache({
+          isin: current.isin,
+          morningstarId: current.morningstarId,
+          shareClassId: current.shareClassId,
+        });
+      }
+
+      return current;
+    } catch (error) {
+      this.logger.warn(
+        `[ASSET] Screener identity lookup failed for ${asset.morningstarId}: ${error}`,
+      );
+      return asset;
+    }
   }
 
   private enqueueShareClassEnrichmentIfNeeded(asset: Asset): void {
