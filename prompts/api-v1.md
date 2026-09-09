@@ -2196,4 +2196,10 @@ i am requesting it now and it is still null
 ### Prompt 169
 pero antes tampoco se estaba persistiendo en la base de datos
 
+### Prompt 170
+still share_class_id it is not being saved on the database
+
+### Prompt 171
+pero ya esta todo desplegado y sigue sin persistir el share_class_id
+
 

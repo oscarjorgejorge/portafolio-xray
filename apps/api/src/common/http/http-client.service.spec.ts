@@ -115,6 +115,32 @@ describe('HttpClientService', () => {
       expect(result.data).toContain('0P0001MMYT');
     });
 
+    it('should parse Instant X-Ray screener JSON even when Morningstar returns HTTP 202', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        status: 202,
+        statusText: 'Accepted',
+        headers: new Headers({ 'content-type': 'application/json' }),
+        json: async () => ({
+          total: 1,
+          rows: [{ SecId: 'F00001019C', ISIN: 'IE00BYX5N771' }],
+        }),
+        text: async () => '',
+      } as Response);
+
+      const result = await service.get(
+        'https://lt.morningstar.com/api/rest.svc/klr5zyak8x/security/screener?term=IE00BYX5N771',
+        { responseType: 'json' },
+      );
+
+      expect(result.ok).toBe(true);
+      expect(result.status).toBe(202);
+      expect(result.data).toEqual({
+        total: 1,
+        rows: [{ SecId: 'F00001019C', ISIN: 'IE00BYX5N771' }],
+      });
+    });
+
     it('should treat Morningstar HTTP 202 as a bot challenge even without the WAF header', async () => {
       (global.fetch as jest.Mock).mockResolvedValue({
         ok: true,

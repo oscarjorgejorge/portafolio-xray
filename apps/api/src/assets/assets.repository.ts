@@ -372,20 +372,45 @@ export class AssetsRepository implements IAssetsRepository {
     assetId: string,
     shareClassId: string,
   ): Promise<Asset | null> {
-    return this.prisma.$transaction(async (tx) => {
-      const assigned = await this.shareClassIdForWrite(
-        tx,
-        shareClassId,
-        assetId,
-      );
-      if (!assigned) {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const current = await tx.asset.findUnique({
+          where: { id: assetId },
+        });
+        if (!current) {
+          return null;
+        }
+
+        const holder = await tx.asset.findUnique({
+          where: { shareClassId },
+        });
+        if (holder && holder.id !== assetId) {
+          const sameIsin =
+            Boolean(current.isin) && current.isin === holder.isin;
+          const holderIsCanonicalFRow = holder.morningstarId === shareClassId;
+          if (!sameIsin && !holderIsCanonicalFRow) {
+            return null;
+          }
+          await tx.asset.update({
+            where: { id: holder.id },
+            data: { shareClassId: null },
+          });
+        }
+
+        return tx.asset.update({
+          where: { id: assetId },
+          data: { shareClassId },
+        });
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
         return null;
       }
-      return tx.asset.update({
-        where: { id: assetId },
-        data: { shareClassId: assigned },
-      });
-    });
+      throw error;
+    }
   }
 
   /**
