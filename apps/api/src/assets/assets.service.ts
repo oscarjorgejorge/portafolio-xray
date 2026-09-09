@@ -46,6 +46,7 @@ import {
   BatchResolveResultItem,
   ResolvedAssetDto,
 } from './types';
+import { correctedType } from './resolver/utils/identity-repair';
 import { toResolvedAssetDto } from './mappers';
 import type { AppConfig } from '../config';
 
@@ -739,30 +740,60 @@ export class AssetsService implements IAssetsService {
   }
 
   /**
-   * Backfill identity from the row itself (URL / F morningstarId).
-   * Missing F IDs are resolved in the background so add/resolve stay fast.
+   * Backfill identity from the row itself (type, URL F ID) and enqueue missing
+   * share-class / ISIN lookups so add/resolve stay fast.
    */
   private async ensureCompleteAsset(asset: Asset): Promise<Asset> {
     let current = await this.clearStaleIsinPending(asset);
+
+    const nextType = correctedType(current.type, current.url);
+    if (nextType) {
+      this.logger.log(
+        `[ASSET] Retagging ${current.morningstarId} from ${current.type} to ${nextType}`,
+      );
+      current = await this.persistIdentityPatch(current, { type: nextType });
+    }
+
     current = await this.preferCanonicalFundAsset(current);
 
     if (!isFundLikeType(current.type)) {
+      if (!current.isin) {
+        this.isinEnrichmentService.enrichIsinInBackground(
+          current.id,
+          current.name,
+        );
+      }
       return current;
     }
 
-    const localShareClassId = resolveShareClassId(
+    const localId = resolveShareClassId(
       current.morningstarId,
       current.type,
       current.url,
       current.shareClassId,
     );
-    if (localShareClassId && current.shareClassId !== localShareClassId) {
-      current = await this.persistIdentityPatch(current, {
-        shareClassId: localShareClassId,
-      });
+    if (localId && current.shareClassId !== localId) {
+      const assigned = await this.assetsRepository.tryAssignShareClassId(
+        current.id,
+        localId,
+      );
+      if (assigned) {
+        await this.invalidateAssetCache({
+          isin: assigned.isin,
+          morningstarId: assigned.morningstarId,
+          shareClassId: assigned.shareClassId,
+        });
+        current = assigned;
+      }
     }
 
     this.enqueueShareClassEnrichmentIfNeeded(current);
+    if (!current.isin) {
+      this.isinEnrichmentService.enrichIsinInBackground(
+        current.id,
+        current.name,
+      );
+    }
     return current;
   }
 
@@ -779,10 +810,12 @@ export class AssetsService implements IAssetsService {
       shareClassId?: string | null;
       isin?: string | null;
       isinPending?: boolean;
+      type?: AssetType;
     },
   ): Promise<Asset> {
     try {
-      const updated = await this.assetsRepository.update(asset.id, data);
+      await this.assetsRepository.update(asset.id, data);
+      const updated = { ...asset, ...data };
       await this.invalidateAssetCache({
         isin: updated.isin,
         morningstarId: updated.morningstarId,
@@ -908,15 +941,10 @@ export class AssetsService implements IAssetsService {
     type?: string | null,
     url?: string | null,
   ): boolean {
-    if (
-      !type ||
-      !url ||
-      !/\/(etfs|stocks|acciones|funds|fondos)\//i.test(url)
-    ) {
+    if (!type || !url) {
       return false;
     }
-
-    return this.mapAssetType(detectAssetTypeFromMorningstarUrl(url)) !== type;
+    return correctedType(type as AssetType, url) !== null;
   }
 
   /**

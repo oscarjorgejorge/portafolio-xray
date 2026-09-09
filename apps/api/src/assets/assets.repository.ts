@@ -368,6 +368,26 @@ export class AssetsRepository implements IAssetsRepository {
     });
   }
 
+  async tryAssignShareClassId(
+    assetId: string,
+    shareClassId: string,
+  ): Promise<Asset | null> {
+    return this.prisma.$transaction(async (tx) => {
+      const assigned = await this.shareClassIdForWrite(
+        tx,
+        shareClassId,
+        assetId,
+      );
+      if (!assigned) {
+        return null;
+      }
+      return tx.asset.update({
+        where: { id: assetId },
+        data: { shareClassId: assigned },
+      });
+    });
+  }
+
   /**
    * Verify asset exists and update ticker atomically using a transaction
    * This method ensures no race conditions between checking existence and updating

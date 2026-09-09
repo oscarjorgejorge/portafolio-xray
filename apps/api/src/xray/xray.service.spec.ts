@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { XRayService } from './xray.service';
 import { AssetsRepository } from '../assets/assets.repository';
+import { ShareClassLookupService } from '../assets/share-class-lookup.service';
 import { AssetType, AssetSource } from '@prisma/client';
 import { MORNINGSTAR_URL } from '../common/constants';
 
@@ -27,6 +28,7 @@ const createMockAsset = (overrides = {}) => ({
 describe('XRayService', () => {
   let service: XRayService;
   let repository: jest.Mocked<AssetsRepository>;
+  let shareClassLookup: { lookupShareClassIdFromScreener: jest.Mock };
 
   const mockBaseUrl = 'https://lt.morningstar.com';
 
@@ -39,12 +41,22 @@ describe('XRayService', () => {
         .mockImplementation(async (id: string, data: object) =>
           createMockAsset({ id, ...data }),
         ),
+      tryAssignShareClassId: jest
+        .fn()
+        .mockImplementation(async (id: string, shareClassId: string) =>
+          createMockAsset({ id, shareClassId }),
+        ),
     } as unknown as jest.Mocked<AssetsRepository>;
+
+    shareClassLookup = {
+      lookupShareClassIdFromScreener: jest.fn().mockResolvedValue(null),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         XRayService,
         { provide: AssetsRepository, useValue: repository },
+        { provide: ShareClassLookupService, useValue: shareClassLookup },
         {
           provide: ConfigService,
           useValue: {
@@ -305,7 +317,7 @@ describe('XRayService', () => {
         expect(result.morningstarUrl).not.toContain('0P00016YQ5');
       });
 
-      it('should not scrape Morningstar when a 0P fund has no persisted F ID', async () => {
+      it('should keep 0P when the screener has no F ID', async () => {
         repository.findManyByMorningstarIds.mockResolvedValue([
           createMockAsset({
             morningstarId: '0P000168OI',
@@ -319,13 +331,42 @@ describe('XRayService', () => {
           assets: [{ morningstarId: '0P000168OI', weight: 100 }],
         });
 
-        expect(repository.update).not.toHaveBeenCalled();
+        expect(
+          shareClassLookup.lookupShareClassIdFromScreener,
+        ).toHaveBeenCalled();
+        expect(repository.tryAssignShareClassId).not.toHaveBeenCalled();
         expect(result.morningstarUrl).toContain('0P000168OI');
         expect(result.holdingsUsingFallback).toBe(1);
         expect(result.shareableUrl).toContain('0P000168OI');
       });
 
-      it('should count 0P fallbacks across a large portfolio without HTTP', async () => {
+      it('should remap a 0P Japan fund to the Instant X-Ray F ID from the screener', async () => {
+        repository.findManyByMorningstarIds.mockResolvedValue([
+          createMockAsset({
+            morningstarId: '0P0001CLDI',
+            isin: 'IE00BYX5N771',
+            type: AssetType.FUND,
+            name: 'Fidelity MSCI Japan Index EUR P Acc',
+          }),
+        ]);
+        shareClassLookup.lookupShareClassIdFromScreener.mockResolvedValue(
+          'F00001019C',
+        );
+
+        const result = await service.generate({
+          assets: [{ morningstarId: '0P0001CLDI', weight: 100 }],
+        });
+
+        expect(result.morningstarUrl).toContain('F00001019C');
+        expect(result.morningstarUrl).not.toContain('0P0001CLDI');
+        expect(result.holdingsUsingFallback).toBe(0);
+        expect(repository.tryAssignShareClassId).toHaveBeenCalledWith(
+          expect.any(String),
+          'F00001019C',
+        );
+      });
+
+      it('should count 0P fallbacks across a large portfolio when the screener finds nothing', async () => {
         const ids = [
           '0P0001XF3Z',
           '0P000177J8',
@@ -370,7 +411,7 @@ describe('XRayService', () => {
           })),
         });
 
-        expect(repository.update).not.toHaveBeenCalled();
+        expect(repository.tryAssignShareClassId).not.toHaveBeenCalled();
         expect(result.holdingsUsingFallback).toBe(14);
         expect(ids).toHaveLength(20);
       });

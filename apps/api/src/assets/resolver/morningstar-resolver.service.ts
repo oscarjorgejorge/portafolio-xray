@@ -72,7 +72,8 @@ export class MorningstarResolverService implements IMorningstarResolver {
     // returns 0P IDs for stocks/ETFs. Yahoo + www.morningstar.com is fallback.
     if (
       IdentifierClassifier.isISIN(query) ||
-      IdentifierClassifier.isTicker(query)
+      IdentifierClassifier.isTicker(query) ||
+      IdentifierClassifier.isMorningstarId(query)
     ) {
       const screenerResults = await this.instantXrayScreener.search(query);
       if (screenerResults.length > 0) {

@@ -268,6 +268,22 @@ export function pickShareClassIdFromScreenerResults(
   return null;
 }
 
+export type ScreenerIdentityHit = {
+  shareClassId: string | null;
+  isin?: string;
+};
+
+export function pickIdentityFromScreenerResults(
+  results: SearchResult[],
+): ScreenerIdentityHit {
+  const shareClassId = pickShareClassIdFromScreenerResults(results);
+  const withIsin = results.find((result) => result.isin);
+  return {
+    shareClassId,
+    isin: withIsin?.isin,
+  };
+}
+
 function exchangeFromSnippet(snippet: string): string | undefined {
   const parts = snippet.split('|').map((part) => part.trim());
   return parts[2] || undefined;

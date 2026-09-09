@@ -59,6 +59,31 @@ describe('ShareClassLookupService', () => {
     expect(httpClient.get).not.toHaveBeenCalled();
   });
 
+  it('should return F ID and ISIN from the screener without scraping quote pages', async () => {
+    screener.search.mockResolvedValue([
+      {
+        morningstarId: '0P00000F24',
+        shareClassId: 'F0GBR04EZP',
+        isin: 'FR0000447823',
+        title: 'AXA Tresor',
+        url: 'https://global.morningstar.com/en-eu/investments/funds/0P00000F24/quote',
+        domain: 'lt.morningstar.com',
+        assetType: MS_ASSET_TYPES.FUND,
+      },
+    ]);
+
+    const identity = await service.lookupIdentityFromScreener({
+      morningstarId: '0P00000F24',
+    });
+
+    expect(identity).toEqual({
+      shareClassId: 'F0GBR04EZP',
+      isin: 'FR0000447823',
+    });
+    expect(screener.search).toHaveBeenCalledWith('0P00000F24');
+    expect(httpClient.get).not.toHaveBeenCalled();
+  });
+
   it('should fall back to quote pages when the screener has no F ID', async () => {
     screener.search.mockResolvedValue([]);
     httpClient.get.mockResolvedValue({

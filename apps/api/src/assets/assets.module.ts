@@ -43,6 +43,7 @@ import {
     AssetsRepository,
     IsinEnrichmentService,
     ShareClassEnrichmentService,
+    ShareClassLookupService,
   ],
 })
 export class AssetsModule {}

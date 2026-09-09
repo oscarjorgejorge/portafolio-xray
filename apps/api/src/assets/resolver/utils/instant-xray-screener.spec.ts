@@ -10,6 +10,7 @@ import {
   rowMatchesQuery,
   screenerUniversesForQuery,
   pickShareClassIdFromScreenerResults,
+  pickIdentityFromScreenerResults,
 } from './instant-xray-screener';
 
 describe('instant-xray-screener', () => {
@@ -255,5 +256,25 @@ describe('instant-xray-screener', () => {
       isin: 'IE00BYX5N771',
     });
     expect(pickShareClassIdFromScreenerResults(results)).toBe('F00001019C');
+  });
+
+  it('picks shareClassId and ISIN together from screener results', () => {
+    expect(
+      pickIdentityFromScreenerResults([
+        {
+          morningstarId: '0P0001CLDI',
+          shareClassId: 'F00001019C',
+          isin: 'IE00BYX5N771',
+          title: 'Fidelity MSCI Japan Index EUR P Acc',
+          snippet: '',
+          url: 'https://global.morningstar.com/en-eu/investments/funds/0P0001CLDI/quote',
+          domain: 'lt.morningstar.com',
+          assetType: MS_ASSET_TYPES.FUND,
+        },
+      ]),
+    ).toEqual({
+      shareClassId: 'F00001019C',
+      isin: 'IE00BYX5N771',
+    });
   });
 });

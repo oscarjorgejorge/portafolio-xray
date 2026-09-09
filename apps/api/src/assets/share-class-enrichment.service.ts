@@ -131,25 +131,48 @@ export class ShareClassEnrichmentService implements IShareClassEnrichmentService
       this.logger.log(
         `[SHARE-CLASS] Looking up F ID for ${asset.morningstarId}`,
       );
-      const shareClassId = await this.shareClassLookup.lookupForAsset(asset);
-      if (!shareClassId) {
+      const identity =
+        await this.shareClassLookup.lookupIdentityForAsset(asset);
+      if (!identity.shareClassId && !(identity.isin && !asset.isin)) {
         this.logger.warn(
           `[SHARE-CLASS] Could not find F ID for ${asset.morningstarId}`,
         );
         return;
       }
 
-      const updated = await this.assetsRepository.update(asset.id, {
-        shareClassId,
-      });
+      let updated = asset;
+      if (identity.shareClassId) {
+        const assigned = await this.assetsRepository.tryAssignShareClassId(
+          asset.id,
+          identity.shareClassId,
+        );
+        if (assigned) {
+          updated = assigned;
+          this.logger.log(
+            `[SHARE-CLASS] Saved shareClassId ${identity.shareClassId} for ${asset.morningstarId}`,
+          );
+        } else {
+          this.logger.debug(
+            `[SHARE-CLASS] shareClassId ${identity.shareClassId} already owned; skipped persist for ${asset.morningstarId}`,
+          );
+        }
+      }
+
+      if (identity.isin && !updated.isin) {
+        updated = await this.assetsRepository.updateIsin(
+          updated.id,
+          identity.isin,
+        );
+        this.logger.log(
+          `[SHARE-CLASS] Saved ISIN ${identity.isin} for ${asset.morningstarId}`,
+        );
+      }
+
       await this.invalidateAssetCache({
         isin: updated.isin,
         morningstarId: updated.morningstarId,
         shareClassId: updated.shareClassId,
       });
-      this.logger.log(
-        `[SHARE-CLASS] Saved shareClassId ${shareClassId} for ${asset.morningstarId}`,
-      );
     } catch (error) {
       this.logger.error(
         `[SHARE-CLASS] Error enriching share class for ${assetId}: ${getErrorMessage(error)}`,
