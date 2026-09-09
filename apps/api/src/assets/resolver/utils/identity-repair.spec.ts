@@ -152,6 +152,7 @@ describe('identity-repair', () => {
           id: '1',
           morningstarId: 'F00001SELW',
           shareClassId: 'F00001SELW',
+          shareClassVerified: true,
           type: AssetType.FUND,
           url: null,
           name: 'iShares Emerging Markets',

@@ -12,6 +12,7 @@ const createMockAsset = (overrides = {}) => ({
   isin: 'ES0173311103',
   morningstarId: '0P000168OI',
   shareClassId: null as string | null,
+  shareClassVerified: false,
   ticker: null,
   name: 'Test Fund',
   type: AssetType.FUND,
@@ -42,6 +43,7 @@ describe('ShareClassEnrichmentService', () => {
     lookup = {
       lookupForAsset: jest.fn(),
       lookupIdentityForAsset: jest.fn(),
+      lookupIdentityFromScreener: jest.fn(),
     } as unknown as jest.Mocked<ShareClassLookupService>;
 
     cacheManager = {
@@ -72,22 +74,24 @@ describe('ShareClassEnrichmentService', () => {
   it('should persist shareClassId and invalidate cache', async () => {
     const asset = createMockAsset();
     repository.findById.mockResolvedValue(asset);
-    lookup.lookupIdentityForAsset.mockResolvedValue({
+    lookup.lookupIdentityFromScreener.mockResolvedValue({
       shareClassId: 'F00000VYOL',
     });
     repository.tryAssignShareClassId.mockResolvedValue({
       ...asset,
       shareClassId: 'F00000VYOL',
+      shareClassVerified: true,
     });
 
     service.enrichShareClassInBackground(asset.id);
     await new Promise((resolve) => setImmediate(resolve));
     await new Promise((resolve) => setImmediate(resolve));
 
-    expect(lookup.lookupIdentityForAsset).toHaveBeenCalledWith(asset);
+    expect(lookup.lookupIdentityFromScreener).toHaveBeenCalledWith(asset);
     expect(repository.tryAssignShareClassId).toHaveBeenCalledWith(
       asset.id,
       'F00000VYOL',
+      { verified: true },
     );
     expect(cacheManager.del).toHaveBeenCalled();
   });
@@ -95,7 +99,7 @@ describe('ShareClassEnrichmentService', () => {
   it('should persist an ISIN from the screener when the F ID is already taken', async () => {
     const asset = createMockAsset({ isin: null, isinPending: true });
     repository.findById.mockResolvedValue(asset);
-    lookup.lookupIdentityForAsset.mockResolvedValue({
+    lookup.lookupIdentityFromScreener.mockResolvedValue({
       shareClassId: 'F00000VYOL',
       isin: 'ES0173311103',
     });
@@ -113,6 +117,7 @@ describe('ShareClassEnrichmentService', () => {
     expect(repository.tryAssignShareClassId).toHaveBeenCalledWith(
       asset.id,
       'F00000VYOL',
+      { verified: true },
     );
     expect(repository.updateIsin).toHaveBeenCalledWith(
       asset.id,
@@ -120,10 +125,11 @@ describe('ShareClassEnrichmentService', () => {
     );
   });
 
-  it('should skip lookup when the asset already has an F ID', async () => {
+  it('should skip lookup when the asset already has a verified F ID', async () => {
     const asset = createMockAsset({
       morningstarId: 'F00000VYOL',
       shareClassId: 'F00000VYOL',
+      shareClassVerified: true,
     });
     repository.findById.mockResolvedValue(asset);
 
@@ -131,7 +137,7 @@ describe('ShareClassEnrichmentService', () => {
     await new Promise((resolve) => setImmediate(resolve));
     await new Promise((resolve) => setImmediate(resolve));
 
-    expect(lookup.lookupIdentityForAsset).not.toHaveBeenCalled();
+    expect(lookup.lookupIdentityFromScreener).not.toHaveBeenCalled();
     expect(repository.tryAssignShareClassId).not.toHaveBeenCalled();
   });
 

@@ -84,6 +84,29 @@ describe('ShareClassLookupService', () => {
     expect(httpClient.get).not.toHaveBeenCalled();
   });
 
+  it('should ignore a screener F ID that belongs to a different ISIN', async () => {
+    screener.search.mockResolvedValue([
+      {
+        morningstarId: '0P0001AAAA',
+        shareClassId: 'F00000ZQ6Y',
+        isin: 'LU1675172180',
+        title: 'Robeco QI Chinese A-share Active Equities Z €',
+        url: 'https://global.morningstar.com/en-eu/investments/funds/0P0001AAAA/quote',
+        domain: 'lt.morningstar.com',
+        assetType: MS_ASSET_TYPES.FUND,
+      },
+    ]);
+
+    const identity = await service.lookupIdentityFromScreener({
+      morningstarId: '0P0000A9K5',
+      isin: 'LU0329355670',
+      name: 'Robeco QI Emerging Markets Active Equities D €',
+    });
+
+    expect(identity.shareClassId).toBeNull();
+    expect(httpClient.get).not.toHaveBeenCalled();
+  });
+
   it('should fall back to quote pages when the screener has no F ID', async () => {
     screener.search.mockResolvedValue([]);
     httpClient.get.mockResolvedValue({

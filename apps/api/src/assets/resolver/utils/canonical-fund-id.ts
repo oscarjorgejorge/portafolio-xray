@@ -100,12 +100,14 @@ export function preferShareClassId(
 
 /**
  * True when cached identity fields are ready to reuse without hitting Morningstar
- * Funds/ETFs/ETCs need ISIN + quote ID + share-class F ID. Stocks need ISIN + quote ID.
+ * Funds/ETFs/ETCs need ISIN + quote ID + an Instant X-Ray F ID verified against that ISIN.
+ * Stocks need ISIN + quote ID.
  */
 export function isAssetIdentityComplete(asset: {
   isin?: string | null;
   morningstarId?: string | null;
   shareClassId?: string | null;
+  shareClassVerified?: boolean | null;
   type: string | null | undefined;
 }): boolean {
   if (!isPersistedMorningstarIdValid(asset.morningstarId)) {
@@ -117,7 +119,9 @@ export function isAssetIdentityComplete(asset: {
   if (!isFundLikeType(asset.type)) {
     return true;
   }
-  return isFundShareClassId(asset.shareClassId);
+  return (
+    isFundShareClassId(asset.shareClassId) && asset.shareClassVerified === true
+  );
 }
 
 /**
@@ -145,32 +149,49 @@ export function resolveShareClassLookupId(asset: {
 }
 
 /**
- * True when a fund-like asset still needs a background quote-page F ID lookup.
- * Local sources (F morningstarId, persisted shareClassId, F ID in URL) are enough.
- * Garbage IDs (tickers, ISINs, free text) are not scraped.
+ * True when a fund-like asset still needs Instant X-Ray screener confirmation.
+ * An F ID is not enough: it must be verified against the ISIN.
+ * Garbage IDs (tickers, ISINs, free text) are not looked up.
  */
-export function needsShareClassEnrichment(asset: {
+export function needsShareClassVerification(asset: {
   type: string | null | undefined;
   morningstarId: string;
   shareClassId?: string | null;
+  shareClassVerified?: boolean | null;
   url?: string | null;
 }): boolean {
   if (!isFundLikeType(asset.type)) {
     return false;
   }
-  if (isFundShareClassId(asset.morningstarId)) {
+  if (
+    isFundShareClassId(asset.shareClassId) &&
+    asset.shareClassVerified === true
+  ) {
     return false;
   }
-  if (isFundShareClassId(asset.shareClassId)) {
-    return false;
-  }
-  if (extractPreferredFundId(asset.url ?? '')) {
-    return false;
-  }
-  if (extractPreferredFundId(asset.morningstarId)) {
+  if (
+    isFundShareClassId(asset.morningstarId) &&
+    asset.shareClassVerified === true &&
+    (asset.shareClassId === asset.morningstarId ||
+      isFundShareClassId(asset.shareClassId))
+  ) {
     return false;
   }
   return resolveShareClassLookupId(asset) !== null;
+}
+
+/**
+ * True when a fund-like asset still needs a share-class lookup (screener).
+ * Quote-page HTML is not a verified source.
+ */
+export function needsShareClassEnrichment(asset: {
+  type: string | null | undefined;
+  morningstarId: string;
+  shareClassId?: string | null;
+  shareClassVerified?: boolean | null;
+  url?: string | null;
+}): boolean {
+  return needsShareClassVerification(asset);
 }
 
 function isStockLikeType(type: string | null | undefined): boolean {

@@ -11,6 +11,7 @@ import {
   screenerUniversesForQuery,
   pickShareClassIdFromScreenerResults,
   pickIdentityFromScreenerResults,
+  pickVerifiedIdentityFromScreenerResults,
 } from './instant-xray-screener';
 
 describe('instant-xray-screener', () => {
@@ -275,6 +276,60 @@ describe('instant-xray-screener', () => {
     ).toEqual({
       shareClassId: 'F00001019C',
       isin: 'IE00BYX5N771',
+    });
+  });
+
+  it('rejects an F ID whose ISIN does not match the user ISIN', () => {
+    expect(
+      pickVerifiedIdentityFromScreenerResults(
+        [
+          {
+            morningstarId: '0P0001AAAA',
+            shareClassId: 'F00000ZQ6Y',
+            isin: 'LU1675172180',
+            title: 'Robeco QI Chinese A-share Active Equities Z €',
+            snippet: '',
+            url: 'https://global.morningstar.com/en-eu/investments/funds/0P0001AAAA/quote',
+            domain: 'lt.morningstar.com',
+            assetType: MS_ASSET_TYPES.FUND,
+          },
+        ],
+        {
+          isin: 'LU0329355670',
+          performanceId: '0P0000A9K5',
+          name: 'Robeco QI Emerging Markets Active Equities D €',
+        },
+      ),
+    ).toEqual({
+      shareClassId: null,
+      isin: 'LU0329355670',
+    });
+  });
+
+  it('picks the F ID whose ISIN matches the Emerging Markets fund', () => {
+    expect(
+      pickVerifiedIdentityFromScreenerResults(
+        [
+          {
+            morningstarId: '0P0000A9K5',
+            shareClassId: 'F000000RB9',
+            isin: 'LU0329355670',
+            title: 'Robeco QI EM Active Equities D €',
+            snippet: '',
+            url: 'https://global.morningstar.com/en-eu/investments/funds/0P0000A9K5/quote',
+            domain: 'lt.morningstar.com',
+            assetType: MS_ASSET_TYPES.FUND,
+          },
+        ],
+        {
+          isin: 'LU0329355670',
+          performanceId: '0P0000A9K5',
+          name: 'Robeco QI Emerging Markets Active Equities D €',
+        },
+      ),
+    ).toEqual({
+      shareClassId: 'F000000RB9',
+      isin: 'LU0329355670',
     });
   });
 });

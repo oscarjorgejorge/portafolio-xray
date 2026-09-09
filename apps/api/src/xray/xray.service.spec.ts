@@ -12,6 +12,7 @@ const createMockAsset = (overrides = {}) => ({
   isin: 'IE00B4L5Y983',
   morningstarId: '0P0000YXJO',
   shareClassId: null as string | null,
+  shareClassVerified: false,
   ticker: 'IWDA',
   name: 'iShares Core MSCI World UCITS ETF',
   type: AssetType.ETF,
@@ -43,8 +44,17 @@ describe('XRayService', () => {
         ),
       tryAssignShareClassId: jest
         .fn()
-        .mockImplementation(async (id: string, shareClassId: string) =>
-          createMockAsset({ id, shareClassId }),
+        .mockImplementation(
+          async (
+            id: string,
+            shareClassId: string,
+            options?: { verified?: boolean },
+          ) =>
+            createMockAsset({
+              id,
+              shareClassId,
+              shareClassVerified: options?.verified ?? true,
+            }),
         ),
     } as unknown as jest.Mocked<AssetsRepository>;
 
@@ -249,11 +259,12 @@ describe('XRayService', () => {
     });
 
     describe('security token format', () => {
-      it('should remap 0P fund IDs to the persisted shareClassId', async () => {
+      it('should remap 0P fund IDs to the verified shareClassId', async () => {
         repository.findManyByMorningstarIds.mockResolvedValue([
           createMockAsset({
             morningstarId: '0P000168OI',
             shareClassId: 'F00000VYOL',
+            shareClassVerified: true,
             type: AssetType.FUND,
             url: 'https://global.morningstar.com/es/inversiones/fondos/0P000168OI/cotizacion',
           }),
@@ -266,9 +277,12 @@ describe('XRayService', () => {
         expect(result.morningstarUrl).toContain('F00000VYOL');
         expect(result.morningstarUrl).not.toContain('0P000168OI');
         expect(result.holdingsUsingFallback).toBe(0);
+        expect(
+          shareClassLookup.lookupShareClassIdFromScreener,
+        ).not.toHaveBeenCalled();
       });
 
-      it('should remap 0P fund IDs to F IDs found in the cached URL', async () => {
+      it('should not send an unverified F ID from the cached URL', async () => {
         repository.findManyByMorningstarIds.mockResolvedValue([
           createMockAsset({
             morningstarId: '0P00016YQ5',
@@ -282,11 +296,14 @@ describe('XRayService', () => {
           assets: [{ morningstarId: '0P00016YQ5', weight: 100 }],
         });
 
-        expect(result.morningstarUrl).toContain('F00000WI0D');
-        expect(result.morningstarUrl).not.toContain('0P00016YQ5');
+        expect(
+          shareClassLookup.lookupShareClassIdFromScreener,
+        ).toHaveBeenCalled();
+        expect(result.morningstarUrl).toContain('0P00016YQ5');
+        expect(result.morningstarUrl).not.toContain('F00000WI0D');
       });
 
-      it('should remap 0P fund IDs to an F sibling sharing the same ISIN', async () => {
+      it('should remap 0P fund IDs to a verified F sibling sharing the same ISIN', async () => {
         repository.findManyByMorningstarIds.mockResolvedValue([
           createMockAsset({
             morningstarId: '0P00016YQ5',
@@ -305,6 +322,8 @@ describe('XRayService', () => {
             morningstarId: 'F00000WI0D',
             isin: 'ES0112611001',
             type: AssetType.FUND,
+            shareClassId: 'F00000WI0D',
+            shareClassVerified: true,
             name: 'Azvalor Internacional FI',
           }),
         ]);
@@ -363,6 +382,38 @@ describe('XRayService', () => {
         expect(repository.tryAssignShareClassId).toHaveBeenCalledWith(
           expect.any(String),
           'F00001019C',
+          { verified: true },
+        );
+      });
+
+      it('should replace an unverified Robeco F ID with the screener F ID for that ISIN', async () => {
+        repository.findManyByMorningstarIds.mockResolvedValue([
+          createMockAsset({
+            morningstarId: '0P0000A9K5',
+            isin: 'LU0329355670',
+            shareClassId: 'F00000ZQ6Y',
+            shareClassVerified: false,
+            type: AssetType.FUND,
+            name: 'Robeco QI Emerging Markets Active Equities D €',
+            url: 'https://global.morningstar.com/es/inversiones/fondos/0P0000A9K5/cotizacion',
+          }),
+        ]);
+        shareClassLookup.lookupShareClassIdFromScreener.mockResolvedValue(
+          'F000000RB9',
+        );
+
+        const result = await service.generate({
+          assets: [{ morningstarId: '0P0000A9K5', weight: 100 }],
+        });
+
+        expect(result.morningstarUrl).toContain('F000000RB9');
+        expect(result.morningstarUrl).not.toContain('F00000ZQ6Y');
+        expect(result.shareableUrl).toContain('F000000RB9');
+        expect(result.holdingsUsingFallback).toBe(0);
+        expect(repository.tryAssignShareClassId).toHaveBeenCalledWith(
+          expect.any(String),
+          'F000000RB9',
+          { verified: true },
         );
       });
 
