@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GenerateXRayDto, XRayAssetDto } from './dto';
 import { AssetsRepository } from '../assets/assets.repository';
+import { ShareClassLookupService } from '../assets/share-class-lookup.service';
 import type { AppConfig } from '../config';
 import type { Asset } from '@prisma/client';
 import { IXRayService } from './interfaces';
@@ -20,6 +21,22 @@ import {
 } from '../assets/resolver/utils/canonical-fund-id';
 import { createContextLogger } from '../common/logger';
 
+const SCREENER_REMAP_CONCURRENCY = 4;
+
+type XRayHolding = {
+  tokenId: string;
+  weight: number;
+  typeCode: string;
+  exchangeCode: string;
+  usedFallback: boolean;
+  assetId?: string;
+  lookup?: {
+    morningstarId: string;
+    isin?: string | null;
+    url?: string | null;
+  };
+};
+
 @Injectable()
 export class XRayService implements IXRayService {
   private readonly logger = createContextLogger(XRayService.name);
@@ -27,6 +44,7 @@ export class XRayService implements IXRayService {
 
   constructor(
     private readonly assetsRepository: AssetsRepository,
+    private readonly shareClassLookup: ShareClassLookupService,
     private readonly configService: ConfigService<AppConfig, true>,
   ) {
     this.morningstarBaseUrl = this.configService.get('morningstarBaseUrl', {
@@ -36,12 +54,13 @@ export class XRayService implements IXRayService {
 
   /**
    * Generate Morningstar X-Ray URL from cached portfolio assets.
-   * Share-class F IDs are resolved at add time (and in background); this
-   * method never scrapes Morningstar.
+   * Missing F IDs are filled from the Instant X-Ray screener (JSON), never
+   * from quote-page HTML, so generate stays well under the client timeout.
    */
   async generate(dto: GenerateXRayDto): Promise<GenerateXRayResponse> {
     const startedAt = Date.now();
     const holdings = await this.resolveXRayHoldings(dto.assets);
+    await this.fillMissingShareClassIds(holdings);
     const holdingsUsingFallback = holdings.filter(
       (holding) => holding.usedFallback,
     ).length;
@@ -62,15 +81,9 @@ export class XRayService implements IXRayService {
   /**
    * Resolve Instant X-Ray tokens from the database (shareClassId, URL, ISIN sibling).
    */
-  private async resolveXRayHoldings(assets: XRayAssetDto[]): Promise<
-    Array<{
-      tokenId: string;
-      weight: number;
-      typeCode: string;
-      exchangeCode: string;
-      usedFallback: boolean;
-    }>
-  > {
+  private async resolveXRayHoldings(
+    assets: XRayAssetDto[],
+  ): Promise<XRayHolding[]> {
     const morningstarIds = assets.map((a) => a.morningstarId);
     const dbAssets =
       await this.assetsRepository.findManyByMorningstarIds(morningstarIds);
@@ -119,8 +132,72 @@ export class XRayService implements IXRayService {
           tokenId,
           dbAsset,
         ),
+        assetId: dbAsset?.id,
+        lookup: {
+          morningstarId: dbAsset?.morningstarId ?? asset.morningstarId,
+          isin: dbAsset?.isin,
+          url: dbAsset?.url,
+        },
       };
     });
+  }
+
+  /**
+   * Instant X-Ray blank rows are 0P tokens. Fill F IDs from the screener
+   * and persist them when possible so the next generate is DB-only.
+   */
+  private async fillMissingShareClassIds(
+    holdings: XRayHolding[],
+  ): Promise<void> {
+    const missing = holdings.filter(
+      (holding) => holding.usedFallback && holding.lookup,
+    );
+    if (missing.length === 0) {
+      return;
+    }
+
+    await this.runPool(missing, SCREENER_REMAP_CONCURRENCY, async (holding) => {
+      const shareClassId =
+        await this.shareClassLookup.lookupShareClassIdFromScreener(
+          holding.lookup!,
+        );
+      if (!shareClassId) {
+        return;
+      }
+      holding.tokenId = shareClassId;
+      holding.usedFallback = false;
+      if (!holding.assetId) {
+        return;
+      }
+      const assigned = await this.assetsRepository.tryAssignShareClassId(
+        holding.assetId,
+        shareClassId,
+      );
+      if (!assigned) {
+        this.logger.debug(
+          `[XRAY] shareClassId ${shareClassId} already owned; token still used for ${holding.lookup?.morningstarId}`,
+        );
+      }
+    });
+  }
+
+  private async runPool<T>(
+    items: T[],
+    limit: number,
+    worker: (item: T) => Promise<void>,
+  ): Promise<void> {
+    const queue = [...items];
+    const size = Math.min(limit, queue.length);
+    await Promise.all(
+      Array.from({ length: size }, async () => {
+        while (queue.length > 0) {
+          const item = queue.shift();
+          if (item) {
+            await worker(item);
+          }
+        }
+      }),
+    );
   }
 
   private formatMorningstarUrl(

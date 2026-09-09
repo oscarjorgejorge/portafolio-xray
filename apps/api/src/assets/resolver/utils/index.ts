@@ -6,4 +6,5 @@ export * from './url-builder';
 export * from './www-morningstar-quote';
 export * from './quote-page-fields';
 export * from './instant-xray-screener';
+export * from './identity-repair';
 export * from './error-handler';
