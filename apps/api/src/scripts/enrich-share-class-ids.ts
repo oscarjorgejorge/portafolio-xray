@@ -16,6 +16,12 @@ import {
   type BackfillPlan,
   type BackfillSkipReason,
 } from './enrich-share-class-ids.logic';
+import {
+  buildInstantXrayScreenerUrl,
+  parseInstantXrayScreenerResponse,
+  pickShareClassIdFromScreenerResults,
+  screenerUniversesForQuery,
+} from '../assets/resolver/utils/instant-xray-screener';
 
 loadEnv({ path: join(__dirname, '..', '..', '.env') });
 
@@ -135,6 +141,7 @@ async function loadCandidates(prisma: PrismaClient): Promise<BackfillAsset[]> {
     type: true,
     url: true,
     name: true,
+    isin: true,
   } as const;
 
   const [fundLike, mistypedStocks] = await Promise.all([
@@ -199,6 +206,22 @@ async function applyShareClassPlan(args: {
     bumpSkip(skipped, 'BOT_STOP');
     logLine('SKIP BOT_STOP', asset);
     return { saved: false, lookedUp: false, botHit: false };
+  }
+
+  const fromScreener = await lookupShareClassFromScreener(
+    plan.morningstarId,
+    asset.isin,
+  );
+  if (fromScreener) {
+    const persisted = await persistShareClassPlan(
+      prisma,
+      dryRun,
+      asset,
+      fromScreener,
+      skipped,
+    );
+    await sleep(Math.min(LOOKUP_GAP_MS, 1000));
+    return { ...persisted, lookedUp: true, botHit: false };
   }
 
   const result = await lookupShareClassId(plan.morningstarId, asset);
@@ -283,6 +306,58 @@ async function persistShareClassPlan(
     }
   }
   return { saved: true, lookedUp: false, botHit: false };
+}
+
+async function lookupShareClassFromScreener(
+  morningstarId: string,
+  isin?: string | null,
+): Promise<string | null> {
+  const terms = [isin?.trim().toUpperCase(), morningstarId].filter(
+    (term): term is string => Boolean(term),
+  );
+  const seen = new Set<string>();
+  for (const term of terms) {
+    if (seen.has(term)) continue;
+    seen.add(term);
+    const universes = screenerUniversesForQuery(term);
+    const merged: ReturnType<typeof parseInstantXrayScreenerResponse> = [];
+    for (const universeId of universes) {
+      const payload = await fetchJson(
+        buildInstantXrayScreenerUrl(term, universeId),
+      );
+      if (!payload) continue;
+      merged.push(
+        ...parseInstantXrayScreenerResponse(payload, term, universeId),
+      );
+    }
+    const shareClassId = pickShareClassIdFromScreenerResults(merged);
+    if (shareClassId) {
+      return shareClassId;
+    }
+  }
+  return null;
+}
+
+async function fetchJson(url: string): Promise<unknown> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), LOOKUP_TIMEOUT_MS);
+  try {
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        ...BROWSER_HEADERS,
+        Accept: 'application/json',
+      },
+    });
+    if (!response.ok) {
+      return null;
+    }
+    return await response.json();
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function lookupShareClassId(

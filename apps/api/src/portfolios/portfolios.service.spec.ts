@@ -3,6 +3,7 @@ import { NotFoundException } from '@nestjs/common';
 import { PortfoliosService, type PortfolioAsset } from './portfolios.service';
 import { PrismaService } from '../prisma/prisma.service';
 import type { AuthenticatedUser } from '../auth/interfaces';
+import { UpdatePortfolioDto } from './dto';
 
 describe('PortfoliosService', () => {
   let service: PortfoliosService;
@@ -102,7 +103,7 @@ describe('PortfoliosService', () => {
       prisma.portfolio.findFirst.mockResolvedValue(null);
 
       await expect(
-        service.update(user.id, 'missing', { name: 'New' } as any),
+        service.update(user.id, 'missing', { name: 'New' }),
       ).rejects.toBeInstanceOf(NotFoundException);
     });
 
@@ -118,7 +119,7 @@ describe('PortfoliosService', () => {
       };
       prisma.portfolio.update.mockResolvedValue(updated);
 
-      const dto = {
+      const dto: UpdatePortfolioDto = {
         name: ' Updated ',
         description: ' New desc ',
         isPublic: false,
@@ -126,7 +127,7 @@ describe('PortfoliosService', () => {
         xrayShareableUrl: '/xray?assets=...',
         xrayMorningstarUrl: 'https://example.com',
         xrayGeneratedAt: '2024-01-03T00:00:00.000Z',
-      } as any;
+      };
 
       const result = await service.update(user.id, basePortfolio.id, dto);
 

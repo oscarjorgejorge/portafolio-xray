@@ -100,6 +100,15 @@ export interface IAssetsRepository {
   markIsinEnrichmentComplete(assetId: string): Promise<Asset>;
 
   /**
+   * Persist a share-class F ID, skipping when another row already owns it.
+   * @returns Updated asset, or null when the F ID is taken
+   */
+  tryAssignShareClassId(
+    assetId: string,
+    shareClassId: string,
+  ): Promise<Asset | null>;
+
+  /**
    * Verify asset exists and update ticker atomically using a transaction
    * This method ensures no race conditions between checking existence and updating
    * @param assetId - Asset UUID

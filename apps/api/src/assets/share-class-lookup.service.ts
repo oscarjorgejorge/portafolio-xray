@@ -8,7 +8,7 @@ import {
   extractShareClassIdFromHtml,
   resolveShareClassLookupId,
 } from './resolver/utils/canonical-fund-id';
-import { pickShareClassIdFromScreenerResults } from './resolver/utils/instant-xray-screener';
+import { pickIdentityFromScreenerResults } from './resolver/utils/instant-xray-screener';
 import {
   MS_ASSET_TYPES,
   SHARE_CLASS_LOOKUP_RETRIES,
@@ -21,7 +21,7 @@ import { InstantXrayScreenerStrategy } from './resolver/strategies/instant-xray-
 
 /**
  * Fetches Instant X-Ray F IDs from the screener (preferred) or quote pages.
- * Used only by background enrichment — not by X-Ray URL generation.
+ * Generate uses the screener path only; quote pages stay in background enrichment.
  */
 @Injectable()
 export class ShareClassLookupService {
@@ -39,34 +39,71 @@ export class ShareClassLookupService {
     this.timeoutMs = resolutionConfig.shareClassEnrichmentTimeoutMs;
   }
 
+  /**
+   * Instant X-Ray F ID from the screener only (no quote-page scrape).
+   * Safe to call from generate: lt.morningstar.com is the same API Instant X-Ray uses.
+   */
+  async lookupShareClassIdFromScreener(asset: {
+    morningstarId: string;
+    isin?: string | null;
+    url?: string | null;
+  }): Promise<string | null> {
+    const identity = await this.lookupIdentityFromScreener(asset);
+    return identity.shareClassId;
+  }
+
+  async lookupIdentityFromScreener(asset: {
+    morningstarId: string;
+    isin?: string | null;
+    url?: string | null;
+  }): Promise<{ shareClassId: string | null; isin?: string }> {
+    return this.lookupFromScreener(asset);
+  }
+
+  async lookupIdentityForAsset(asset: {
+    morningstarId: string;
+    url?: string | null;
+    type?: string | null;
+    isin?: string | null;
+  }): Promise<{ shareClassId: string | null; isin?: string }> {
+    const fromScreener = await this.lookupFromScreener(asset);
+    if (fromScreener.shareClassId) {
+      return fromScreener;
+    }
+    const fromQuote = await this.lookupFromQuotePages(asset);
+    return {
+      shareClassId: fromQuote,
+      isin: fromScreener.isin,
+    };
+  }
+
   async lookupForAsset(asset: {
     morningstarId: string;
     url?: string | null;
     type?: string | null;
     isin?: string | null;
   }): Promise<string | null> {
-    const fromScreener = await this.lookupFromScreener(asset);
-    if (fromScreener) {
-      return fromScreener;
-    }
-    return this.lookupFromQuotePages(asset);
+    const identity = await this.lookupIdentityForAsset(asset);
+    return identity.shareClassId;
   }
 
   private async lookupFromScreener(asset: {
     morningstarId: string;
     isin?: string | null;
     url?: string | null;
-  }): Promise<string | null> {
+  }): Promise<{ shareClassId: string | null; isin?: string }> {
     const terms = this.screenerTerms(asset);
     for (const term of terms) {
       try {
         const results = await this.screener.search(term);
-        const shareClassId = pickShareClassIdFromScreenerResults(results);
-        if (shareClassId) {
-          this.logger.log(
-            `[SHARE-CLASS] Share-class ID from Instant X-Ray screener ${term}: ${shareClassId}`,
-          );
-          return shareClassId;
+        const identity = pickIdentityFromScreenerResults(results);
+        if (identity.shareClassId || identity.isin) {
+          if (identity.shareClassId) {
+            this.logger.log(
+              `[SHARE-CLASS] Share-class ID from Instant X-Ray screener ${term}: ${identity.shareClassId}`,
+            );
+          }
+          return identity;
         }
       } catch (error) {
         this.logger.warn(
@@ -74,7 +111,7 @@ export class ShareClassLookupService {
         );
       }
     }
-    return null;
+    return { shareClassId: null };
   }
 
   private screenerTerms(asset: {

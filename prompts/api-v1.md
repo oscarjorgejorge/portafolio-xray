@@ -2181,4 +2181,10 @@ el backfill APPLY termina en Unique constraint failed on share_class_id (F00001S
 ### Prompt 164
 este fondo de japon no sale: IE00BYX5N771
 
+### Prompt 165
+sigue sin aparecer bien el xray [mismo payload con 0P0001CLDI y 0P00000F24] IE00BYX5N771
+
+### Prompt 166
+vamos a implemantar las 4 fases
+
 

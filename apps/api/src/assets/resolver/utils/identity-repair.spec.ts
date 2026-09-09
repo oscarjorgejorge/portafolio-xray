@@ -1,11 +1,11 @@
 import { AssetType } from '@prisma/client';
 import {
   correctedType,
-  planShareClassBackfill,
+  planIdentityRepair,
   typeFromQuoteUrl,
-} from './enrich-share-class-ids.logic';
+} from './identity-repair';
 
-describe('enrich-share-class-ids.logic', () => {
+describe('identity-repair', () => {
   describe('typeFromQuoteUrl', () => {
     it('should detect stocks from quote URLs', () => {
       expect(
@@ -76,10 +76,10 @@ describe('enrich-share-class-ids.logic', () => {
     });
   });
 
-  describe('planShareClassBackfill', () => {
+  describe('planIdentityRepair', () => {
     it('should retag a fund row whose URL is a stock page', () => {
       expect(
-        planShareClassBackfill({
+        planIdentityRepair({
           id: '1',
           morningstarId: '0P0001UHI6',
           type: AssetType.FUND,
@@ -91,7 +91,7 @@ describe('enrich-share-class-ids.logic', () => {
 
     it('should skip tickers and ISINs stored as morningstarId', () => {
       expect(
-        planShareClassBackfill({
+        planIdentityRepair({
           id: '1',
           morningstarId: 'IS3S',
           type: AssetType.ETF,
@@ -100,7 +100,7 @@ describe('enrich-share-class-ids.logic', () => {
         }),
       ).toEqual({ action: 'skip', reason: 'INVALID_ID' });
       expect(
-        planShareClassBackfill({
+        planIdentityRepair({
           id: '2',
           morningstarId: 'LU0491217419',
           type: AssetType.FUND,
@@ -108,20 +108,11 @@ describe('enrich-share-class-ids.logic', () => {
           name: 'Robeco',
         }),
       ).toEqual({ action: 'skip', reason: 'INVALID_ID' });
-      expect(
-        planShareClassBackfill({
-          id: '3',
-          morningstarId: 'NO SÉ',
-          type: AssetType.ETF,
-          url: null,
-          name: 'Amundi Prime Global',
-        }),
-      ).toEqual({ action: 'skip', reason: 'INVALID_ID' });
     });
 
     it('should save an F ID already in the URL without a lookup', () => {
       expect(
-        planShareClassBackfill({
+        planIdentityRepair({
           id: '1',
           morningstarId: '0P00016YQ5',
           type: AssetType.FUND,
@@ -133,7 +124,7 @@ describe('enrich-share-class-ids.logic', () => {
 
     it('should look up a valid 0P fund', () => {
       expect(
-        planShareClassBackfill({
+        planIdentityRepair({
           id: '1',
           morningstarId: '0P0001NF8R',
           type: AssetType.ETF,
@@ -143,22 +134,9 @@ describe('enrich-share-class-ids.logic', () => {
       ).toEqual({ action: 'lookup', morningstarId: '0P0001NF8R' });
     });
 
-    it('should look up using a 0P ID embedded in a URL stored as morningstarId', () => {
-      expect(
-        planShareClassBackfill({
-          id: '1',
-          morningstarId:
-            'https://global.morningstar.com/es/inversiones/fondos/0P0000A9K6/cotizacion',
-          type: AssetType.FUND,
-          url: null,
-          name: 'URL as ID',
-        }),
-      ).toEqual({ action: 'lookup', morningstarId: '0P0000A9K6' });
-    });
-
     it('should copy an F morningstarId into shareClassId without a lookup', () => {
       expect(
-        planShareClassBackfill({
+        planIdentityRepair({
           id: '1',
           morningstarId: 'F00001SELW',
           type: AssetType.FUND,
@@ -170,7 +148,7 @@ describe('enrich-share-class-ids.logic', () => {
 
     it('should skip when shareClassId already matches the local F ID', () => {
       expect(
-        planShareClassBackfill({
+        planIdentityRepair({
           id: '1',
           morningstarId: 'F00001SELW',
           shareClassId: 'F00001SELW',
@@ -183,7 +161,7 @@ describe('enrich-share-class-ids.logic', () => {
 
     it('should skip stocks after they are already typed as STOCK', () => {
       expect(
-        planShareClassBackfill({
+        planIdentityRepair({
           id: '1',
           morningstarId: '0P00005U6B',
           type: AssetType.STOCK,

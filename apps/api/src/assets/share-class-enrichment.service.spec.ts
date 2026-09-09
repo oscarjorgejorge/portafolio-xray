@@ -35,10 +35,13 @@ describe('ShareClassEnrichmentService', () => {
     repository = {
       findById: jest.fn(),
       update: jest.fn(),
+      tryAssignShareClassId: jest.fn(),
+      updateIsin: jest.fn(),
     } as unknown as jest.Mocked<AssetsRepository>;
 
     lookup = {
       lookupForAsset: jest.fn(),
+      lookupIdentityForAsset: jest.fn(),
     } as unknown as jest.Mocked<ShareClassLookupService>;
 
     cacheManager = {
@@ -69,8 +72,10 @@ describe('ShareClassEnrichmentService', () => {
   it('should persist shareClassId and invalidate cache', async () => {
     const asset = createMockAsset();
     repository.findById.mockResolvedValue(asset);
-    lookup.lookupForAsset.mockResolvedValue('F00000VYOL');
-    repository.update.mockResolvedValue({
+    lookup.lookupIdentityForAsset.mockResolvedValue({
+      shareClassId: 'F00000VYOL',
+    });
+    repository.tryAssignShareClassId.mockResolvedValue({
       ...asset,
       shareClassId: 'F00000VYOL',
     });
@@ -79,11 +84,40 @@ describe('ShareClassEnrichmentService', () => {
     await new Promise((resolve) => setImmediate(resolve));
     await new Promise((resolve) => setImmediate(resolve));
 
-    expect(lookup.lookupForAsset).toHaveBeenCalledWith(asset);
-    expect(repository.update).toHaveBeenCalledWith(asset.id, {
-      shareClassId: 'F00000VYOL',
-    });
+    expect(lookup.lookupIdentityForAsset).toHaveBeenCalledWith(asset);
+    expect(repository.tryAssignShareClassId).toHaveBeenCalledWith(
+      asset.id,
+      'F00000VYOL',
+    );
     expect(cacheManager.del).toHaveBeenCalled();
+  });
+
+  it('should persist an ISIN from the screener when the F ID is already taken', async () => {
+    const asset = createMockAsset({ isin: null, isinPending: true });
+    repository.findById.mockResolvedValue(asset);
+    lookup.lookupIdentityForAsset.mockResolvedValue({
+      shareClassId: 'F00000VYOL',
+      isin: 'ES0173311103',
+    });
+    repository.tryAssignShareClassId.mockResolvedValue(null);
+    repository.updateIsin.mockResolvedValue({
+      ...asset,
+      isin: 'ES0173311103',
+      isinPending: false,
+    });
+
+    service.enrichShareClassInBackground(asset.id);
+    await new Promise((resolve) => setImmediate(resolve));
+    await new Promise((resolve) => setImmediate(resolve));
+
+    expect(repository.tryAssignShareClassId).toHaveBeenCalledWith(
+      asset.id,
+      'F00000VYOL',
+    );
+    expect(repository.updateIsin).toHaveBeenCalledWith(
+      asset.id,
+      'ES0173311103',
+    );
   });
 
   it('should skip lookup when the asset already has an F ID', async () => {
@@ -97,8 +131,8 @@ describe('ShareClassEnrichmentService', () => {
     await new Promise((resolve) => setImmediate(resolve));
     await new Promise((resolve) => setImmediate(resolve));
 
-    expect(lookup.lookupForAsset).not.toHaveBeenCalled();
-    expect(repository.update).not.toHaveBeenCalled();
+    expect(lookup.lookupIdentityForAsset).not.toHaveBeenCalled();
+    expect(repository.tryAssignShareClassId).not.toHaveBeenCalled();
   });
 
   it('should ignore duplicate enqueue for the same asset', () => {

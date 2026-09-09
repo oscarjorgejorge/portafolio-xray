@@ -95,6 +95,11 @@ describe('AssetsService', () => {
         .mockImplementation(async (id: string, data: object) =>
           createMockAsset({ id, ...data }),
         ),
+      tryAssignShareClassId: jest
+        .fn()
+        .mockImplementation(async (id: string, shareClassId: string) =>
+          createMockAsset({ id, shareClassId }),
+        ),
       updateIsinWithVerification: jest.fn(),
       markIsinEnrichmentComplete: jest.fn(),
     } as unknown as jest.Mocked<AssetsRepository>;
@@ -362,6 +367,55 @@ describe('AssetsService', () => {
         expect(result.success).toBe(true);
         expect(result.source).toBe(ResolutionSource.CACHE);
         expect(result.asset?.morningstarId).toBe('0P0001ODL3');
+      });
+
+      it('should retag a cached fund whose quote URL is a stock page', async () => {
+        cacheManager.get.mockResolvedValue(null);
+        const cached = createMockAsset({
+          morningstarId: '0P0001UHI6',
+          isin: 'US6541061031',
+          type: AssetType.FUND,
+          ticker: null,
+          name: 'Nike Inc Class B',
+          url: 'https://global.morningstar.com/es/inversiones/acciones/0P0001UHI6/cotizacion',
+          shareClassId: null,
+        });
+        repository.findByMorningstarId.mockResolvedValue(cached);
+
+        const result = await service.resolve({ input: '0P0001UHI6' });
+
+        expect(morningstarResolver.resolve).not.toHaveBeenCalled();
+        expect(repository.update).toHaveBeenCalledWith(
+          cached.id,
+          expect.objectContaining({ type: AssetType.STOCK }),
+        );
+        expect(result.success).toBe(true);
+        expect(result.asset?.type).toBe(AssetType.STOCK);
+      });
+
+      it('should enqueue ISIN enrichment on a cache hit missing an ISIN', async () => {
+        cacheManager.get.mockResolvedValue(null);
+        const cached = createMockAsset({
+          morningstarId: '0P0001CLDI',
+          isin: null,
+          isinPending: true,
+          type: AssetType.FUND,
+          ticker: null,
+          name: 'Fidelity MSCI Japan Index EUR P Acc',
+          url: 'https://global.morningstar.com/es/inversiones/fondos/0P0001CLDI/cotizacion',
+          shareClassId: null,
+        });
+        repository.findByMorningstarId.mockResolvedValue(cached);
+
+        const result = await service.resolve({ input: '0P0001CLDI' });
+
+        expect(morningstarResolver.resolve).not.toHaveBeenCalled();
+        expect(isinEnrichment.enrichIsinInBackground).toHaveBeenCalledWith(
+          cached.id,
+          cached.name,
+        );
+        expect(result.success).toBe(true);
+        expect(result.source).toBe(ResolutionSource.CACHE);
       });
 
       it('should re-resolve a cached STOCK whose quote URL is an ETF page', async () => {
@@ -933,16 +987,16 @@ describe('AssetsService', () => {
         url: 'https://global.morningstar.com/es/inversiones/fondos/F00000VYOL/cotizacion',
       });
       repository.findById.mockResolvedValue(incomplete);
-      repository.update.mockResolvedValue({
+      repository.tryAssignShareClassId.mockResolvedValue({
         ...incomplete,
         shareClassId: 'F00000VYOL',
       });
 
       const result = await service.getById(incomplete.id);
 
-      expect(repository.update).toHaveBeenCalledWith(
+      expect(repository.tryAssignShareClassId).toHaveBeenCalledWith(
         incomplete.id,
-        expect.objectContaining({ shareClassId: 'F00000VYOL' }),
+        'F00000VYOL',
       );
       expect(result.shareClassId).toBe('F00000VYOL');
     });
