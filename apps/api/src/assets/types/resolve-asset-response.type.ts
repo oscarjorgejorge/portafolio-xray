@@ -116,6 +116,13 @@ export class ResolvedAssetDto {
   shareClassId?: string | null;
 
   @ApiPropertyOptional({
+    description:
+      'True when shareClassId was confirmed against this ISIN by Instant X-Ray',
+    example: true,
+  })
+  shareClassVerified?: boolean;
+
+  @ApiPropertyOptional({
     description: 'Asset ticker symbol',
     example: 'IWDA',
   })

@@ -111,6 +111,9 @@ export class AssetsRepository implements IAssetsRepository {
         ...(data.shareClassId !== undefined && {
           shareClassId: data.shareClassId,
         }),
+        ...(data.shareClassVerified !== undefined && {
+          shareClassVerified: data.shareClassVerified,
+        }),
         ...(data.ticker !== undefined && { ticker: data.ticker }),
         ...(data.name !== undefined && { name: data.name }),
         ...(data.type !== undefined && { type: data.type }),
@@ -371,7 +374,9 @@ export class AssetsRepository implements IAssetsRepository {
   async tryAssignShareClassId(
     assetId: string,
     shareClassId: string,
+    options?: { verified?: boolean },
   ): Promise<Asset | null> {
+    const shareClassVerified = options?.verified ?? true;
     try {
       return await this.prisma.$transaction(async (tx) => {
         const current = await tx.asset.findUnique({
@@ -393,13 +398,13 @@ export class AssetsRepository implements IAssetsRepository {
           }
           await tx.asset.update({
             where: { id: holder.id },
-            data: { shareClassId: null },
+            data: { shareClassId: null, shareClassVerified: false },
           });
         }
 
         return tx.asset.update({
           where: { id: assetId },
-          data: { shareClassId },
+          data: { shareClassId, shareClassVerified },
         });
       });
     } catch (error) {

@@ -15,6 +15,7 @@ export function toResolvedAssetDto(asset: Asset): ResolvedAssetDto {
     isin: asset.isin,
     morningstarId: asset.morningstarId,
     shareClassId: asset.shareClassId,
+    shareClassVerified: asset.shareClassVerified,
     ticker: asset.ticker,
     name: asset.name,
     type: asset.type,

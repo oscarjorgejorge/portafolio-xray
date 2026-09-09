@@ -7,6 +7,7 @@ describe('asset.mapper', () => {
     isin: 'IE00B4L5Y983',
     morningstarId: '0P0000YXJO',
     shareClassId: null as string | null,
+    shareClassVerified: false,
     ticker: 'IWDA',
     name: 'iShares Core MSCI World UCITS ETF',
     type: AssetType.ETF,
@@ -29,6 +30,7 @@ describe('asset.mapper', () => {
       expect(dto.isin).toBe(asset.isin);
       expect(dto.morningstarId).toBe(asset.morningstarId);
       expect(dto.shareClassId).toBe(asset.shareClassId);
+      expect(dto.shareClassVerified).toBe(false);
       expect(dto.ticker).toBe(asset.ticker);
       expect(dto.name).toBe(asset.name);
       expect(dto.type).toBe(asset.type);
