@@ -166,15 +166,25 @@ describe('canonical-fund-id', () => {
   });
 
   describe('isAssetIdentityComplete', () => {
-    it('should require ISIN, quote ID and F share-class ID for funds', () => {
+    it('should require ISIN, quote ID, verified F share-class ID for funds', () => {
       expect(
         isAssetIdentityComplete({
           isin: 'ES0173311103',
           morningstarId: '0P000168OI',
           shareClassId: 'F00000VYOL',
+          shareClassVerified: true,
           type: AssetType.FUND,
         }),
       ).toBe(true);
+      expect(
+        isAssetIdentityComplete({
+          isin: 'ES0173311103',
+          morningstarId: '0P000168OI',
+          shareClassId: 'F00000VYOL',
+          shareClassVerified: false,
+          type: AssetType.FUND,
+        }),
+      ).toBe(false);
       expect(
         isAssetIdentityComplete({
           isin: 'ES0173311103',
@@ -220,21 +230,26 @@ describe('canonical-fund-id', () => {
       ).toBe(true);
     });
 
-    it('should be false when shareClassId or URL already has an F ID', () => {
+    it('should be true when an F ID exists but is not verified', () => {
+      expect(
+        needsShareClassEnrichment({
+          type: AssetType.FUND,
+          morningstarId: '0P000168OI',
+          shareClassId: 'F00000ZQ6Y',
+          shareClassVerified: false,
+          url: 'https://global.morningstar.com/es/inversiones/fondos/0P000168OI/cotizacion',
+        }),
+      ).toBe(true);
+    });
+
+    it('should be false when shareClassId is verified', () => {
       expect(
         needsShareClassEnrichment({
           type: AssetType.FUND,
           morningstarId: '0P000168OI',
           shareClassId: 'F00000VYOL',
+          shareClassVerified: true,
           url: 'https://global.morningstar.com/es/inversiones/fondos/0P000168OI/cotizacion',
-        }),
-      ).toBe(false);
-      expect(
-        needsShareClassEnrichment({
-          type: AssetType.FUND,
-          morningstarId: '0P00016YQ5',
-          shareClassId: null,
-          url: 'https://global.morningstar.com/es/inversiones/fondos/F00000WI0D/cotizacion',
         }),
       ).toBe(false);
     });

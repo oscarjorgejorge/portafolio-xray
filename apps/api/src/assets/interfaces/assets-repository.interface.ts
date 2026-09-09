@@ -103,11 +103,13 @@ export interface IAssetsRepository {
    * Persist a share-class F ID on this row.
    * If another row already owns it, reclaim when that row is the same fund
    * (same ISIN) or the canonical F-ID row (morningstarId === F ID).
+   * @param verified - True when Instant X-Ray screener confirmed this F ID for the ISIN
    * @returns Updated asset, or null when the F ID is taken by an unrelated row
    */
   tryAssignShareClassId(
     assetId: string,
     shareClassId: string,
+    options?: { verified?: boolean },
   ): Promise<Asset | null>;
 
   /**
@@ -177,6 +179,7 @@ export interface UpdateAssetData {
   isin?: string | null;
   morningstarId?: string;
   shareClassId?: string | null;
+  shareClassVerified?: boolean;
   ticker?: string | null;
   name?: string;
   type?: AssetType;

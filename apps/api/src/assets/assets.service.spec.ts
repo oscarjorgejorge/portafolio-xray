@@ -21,6 +21,7 @@ const createMockAsset = (overrides = {}) => ({
   isin: 'IE00B4L5Y983',
   morningstarId: '0P0000YXJO',
   shareClassId: null as string | null,
+  shareClassVerified: false,
   ticker: 'IWDA',
   name: 'iShares Core MSCI World UCITS ETF',
   type: AssetType.ETF,
@@ -99,8 +100,17 @@ describe('AssetsService', () => {
         ),
       tryAssignShareClassId: jest
         .fn()
-        .mockImplementation(async (id: string, shareClassId: string) =>
-          createMockAsset({ id, shareClassId }),
+        .mockImplementation(
+          async (
+            id: string,
+            shareClassId: string,
+            options?: { verified?: boolean },
+          ) =>
+            createMockAsset({
+              id,
+              shareClassId,
+              shareClassVerified: options?.verified ?? true,
+            }),
         ),
       updateIsinWithVerification: jest.fn(),
       updateIsin: jest.fn(),
@@ -177,7 +187,10 @@ describe('AssetsService', () => {
         const cachedResponse = {
           success: true,
           source: ResolutionSource.CACHE,
-          asset: createMockAsset({ shareClassId: 'F00000THA5' }),
+          asset: createMockAsset({
+            shareClassId: 'F00000THA5',
+            shareClassVerified: true,
+          }),
         };
         cacheManager.get.mockResolvedValue(cachedResponse);
 
@@ -191,7 +204,10 @@ describe('AssetsService', () => {
     describe('database cache hit', () => {
       it('should return asset from database when found by ISIN', async () => {
         cacheManager.get.mockResolvedValue(null);
-        const mockAsset = createMockAsset({ shareClassId: 'F00000THA5' });
+        const mockAsset = createMockAsset({
+          shareClassId: 'F00000THA5',
+          shareClassVerified: true,
+        });
         repository.findByIsin.mockResolvedValue(mockAsset);
 
         const result = await service.resolve({ input: 'IE00B4L5Y983' });
@@ -204,7 +220,10 @@ describe('AssetsService', () => {
 
       it('should return asset from database when found by Morningstar ID', async () => {
         cacheManager.get.mockResolvedValue(null);
-        const mockAsset = createMockAsset({ shareClassId: 'F00000THA5' });
+        const mockAsset = createMockAsset({
+          shareClassId: 'F00000THA5',
+          shareClassVerified: true,
+        });
         repository.findByMorningstarId.mockResolvedValue(mockAsset);
 
         const result = await service.resolve({ input: '0P0000YXJO' });
@@ -220,6 +239,7 @@ describe('AssetsService', () => {
           createMockAsset({
             morningstarId: 'F00000VYOL',
             shareClassId: 'F00000VYOL',
+            shareClassVerified: true,
             isin: 'ES0173311103',
             isinPending: true,
             type: AssetType.FUND,
@@ -229,6 +249,7 @@ describe('AssetsService', () => {
           createMockAsset({
             morningstarId: 'F00000VYOL',
             shareClassId: 'F00000VYOL',
+            shareClassVerified: true,
             isin: 'ES0173311103',
             isinPending: false,
             type: AssetType.FUND,
@@ -398,6 +419,7 @@ describe('AssetsService', () => {
         repository.tryAssignShareClassId.mockResolvedValue({
           ...cached,
           shareClassId: 'F00001019C',
+          shareClassVerified: true,
         });
 
         const result = await service.resolve({ input: 'IE00BYX5N771' });
@@ -414,6 +436,7 @@ describe('AssetsService', () => {
         expect(repository.tryAssignShareClassId).toHaveBeenCalledWith(
           cached.id,
           'F00001019C',
+          { verified: true },
         );
         expect(
           shareClassEnrichment.enrichShareClassInBackground,
@@ -421,6 +444,40 @@ describe('AssetsService', () => {
         expect(result.success).toBe(true);
         expect(result.source).toBe(ResolutionSource.CACHE);
         expect(result.asset?.shareClassId).toBe('F00001019C');
+      });
+
+      it('should replace an unverified Robeco F ID with the screener F ID', async () => {
+        cacheManager.get.mockResolvedValue(null);
+        const cached = createMockAsset({
+          morningstarId: '0P0000A9K5',
+          isin: 'LU0329355670',
+          type: AssetType.FUND,
+          ticker: null,
+          name: 'Robeco QI Emerging Markets Active Equities D €',
+          url: 'https://global.morningstar.com/es/inversiones/fondos/0P0000A9K5/cotizacion',
+          shareClassId: 'F00000ZQ6Y',
+          shareClassVerified: false,
+        });
+        repository.findByIsin.mockResolvedValue(cached);
+        shareClassLookup.lookupIdentityFromScreener.mockResolvedValue({
+          shareClassId: 'F000000RB9',
+          isin: 'LU0329355670',
+        });
+        repository.tryAssignShareClassId.mockResolvedValue({
+          ...cached,
+          shareClassId: 'F000000RB9',
+          shareClassVerified: true,
+        });
+
+        const result = await service.resolve({ input: 'LU0329355670' });
+
+        expect(repository.tryAssignShareClassId).toHaveBeenCalledWith(
+          cached.id,
+          'F000000RB9',
+          { verified: true },
+        );
+        expect(result.asset?.shareClassId).toBe('F000000RB9');
+        expect(result.asset?.shareClassVerified).toBe(true);
       });
 
       it('should retag a cached fund whose quote URL is a stock page', async () => {
@@ -925,10 +982,13 @@ describe('AssetsService', () => {
         isin: 'IE00B4L5Y983',
         morningstarId: '0P0000YXJO',
         shareClassId: 'F00000THA5',
+        shareClassVerified: true,
       });
       const mockAsset2 = createMockAsset({
         isin: 'LU0996182563',
         morningstarId: 'F00000THA5',
+        shareClassId: 'F00000THA5',
+        shareClassVerified: true,
       });
 
       // Cache hit for first, miss for second
@@ -1051,6 +1111,7 @@ describe('AssetsService', () => {
       expect(repository.tryAssignShareClassId).toHaveBeenCalledWith(
         incomplete.id,
         'F00000VYOL',
+        { verified: false },
       );
       expect(result.shareClassId).toBe('F00000VYOL');
     });

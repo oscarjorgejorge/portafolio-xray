@@ -2202,4 +2202,7 @@ still share_class_id it is not being saved on the database
 ### Prompt 171
 pero ya esta todo desplegado y sigue sin persistir el share_class_id
 
+### Prompt 172
+implementa el plan
+
 

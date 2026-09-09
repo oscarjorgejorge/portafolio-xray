@@ -17,19 +17,14 @@ export interface GenerateXRayRequest {
 // Re-export type for backward compatibility
 export type { GenerateXRayResponse };
 
-const FUND_SHARE_CLASS_ID_PATTERN = /^F0[A-Z0-9]{8,12}$/i;
-
 /**
- * Prefer the Instant X-Ray F ID when the resolved asset already has one.
+ * Quote/performance Morningstar ID. Generate revalidates F IDs on the server
+ * so a stale shareClassId cannot reach Instant X-Ray.
  */
 export function toXRayTokenId(asset: {
   morningstarId: string;
   shareClassId?: string | null;
 }): string {
-  const shareClassId = asset.shareClassId?.trim();
-  if (shareClassId && FUND_SHARE_CLASS_ID_PATTERN.test(shareClassId)) {
-    return shareClassId.toUpperCase();
-  }
   return asset.morningstarId;
 }
 

@@ -14,6 +14,7 @@ export type IdentityAsset = {
   id: string;
   morningstarId: string;
   shareClassId?: string | null;
+  shareClassVerified?: boolean | null;
   type: AssetType;
   url: string | null;
   name: string;
@@ -104,13 +105,15 @@ export function planIdentityRepair(asset: IdentityAsset): IdentityPlan {
 
   const fromLocal = localShareClassId(asset);
   if (fromLocal) {
-    if (asset.shareClassId === fromLocal) {
+    if (asset.shareClassId === fromLocal && asset.shareClassVerified) {
       return { action: 'skip', reason: 'NO_LOOKUP_NEEDED' };
     }
-    return { action: 'save_share_class', shareClassId: fromLocal };
+    if (asset.shareClassId !== fromLocal) {
+      return { action: 'save_share_class', shareClassId: fromLocal };
+    }
   }
 
-  if (isFundShareClassId(asset.morningstarId)) {
+  if (isFundShareClassId(asset.morningstarId) && asset.shareClassVerified) {
     return { action: 'skip', reason: 'NO_LOOKUP_NEEDED' };
   }
 

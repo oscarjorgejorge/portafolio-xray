@@ -123,7 +123,7 @@ export class ShareClassEnrichmentService implements IShareClassEnrichmentService
 
       if (!needsShareClassEnrichment(asset)) {
         this.logger.debug(
-          `[SHARE-CLASS] Asset ${asset.morningstarId} already has an F ID, skipping`,
+          `[SHARE-CLASS] Asset ${asset.morningstarId} already has a verified F ID, skipping`,
         );
         return;
       }
@@ -132,7 +132,7 @@ export class ShareClassEnrichmentService implements IShareClassEnrichmentService
         `[SHARE-CLASS] Looking up F ID for ${asset.morningstarId}`,
       );
       const identity =
-        await this.shareClassLookup.lookupIdentityForAsset(asset);
+        await this.shareClassLookup.lookupIdentityFromScreener(asset);
       if (!identity.shareClassId && !(identity.isin && !asset.isin)) {
         this.logger.warn(
           `[SHARE-CLASS] Could not find F ID for ${asset.morningstarId}`,
@@ -145,6 +145,7 @@ export class ShareClassEnrichmentService implements IShareClassEnrichmentService
         const assigned = await this.assetsRepository.tryAssignShareClassId(
           asset.id,
           identity.shareClassId,
+          { verified: true },
         );
         if (assigned) {
           updated = assigned;

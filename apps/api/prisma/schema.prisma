@@ -14,8 +14,9 @@ model Asset {
   id            String      @id @default(uuid())
   isin          String?     // Can be null when pending enrichment
   morningstarId String      @unique @map("morningstar_id")
-  shareClassId  String?     @unique @map("share_class_id") // Instant X-Ray F ID for funds/ETFs/ETCs
-  ticker        String?
+  shareClassId        String?  @unique @map("share_class_id") // Instant X-Ray F ID for funds/ETFs/ETCs
+  shareClassVerified  Boolean  @default(false) @map("share_class_verified") // True when F ID was confirmed against this ISIN by Instant X-Ray screener
+  ticker              String?
   name          String
   type          AssetType
   url           String      // Morningstar URL from resolution

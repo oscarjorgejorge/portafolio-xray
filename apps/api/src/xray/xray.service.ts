@@ -34,6 +34,7 @@ type XRayHolding = {
     morningstarId: string;
     isin?: string | null;
     url?: string | null;
+    name?: string | null;
   };
 };
 
@@ -137,14 +138,15 @@ export class XRayService implements IXRayService {
           morningstarId: dbAsset?.morningstarId ?? asset.morningstarId,
           isin: dbAsset?.isin,
           url: dbAsset?.url,
+          name: dbAsset?.name,
         },
       };
     });
   }
 
   /**
-   * Instant X-Ray blank rows are 0P tokens. Fill F IDs from the screener
-   * and persist them when possible so the next generate is DB-only.
+   * Instant X-Ray blank rows are 0P tokens. Unverified F IDs are also
+   * re-resolved from the screener so a stale mapping cannot reach the PDF.
    */
   private async fillMissingShareClassIds(
     holdings: XRayHolding[],
@@ -172,6 +174,7 @@ export class XRayService implements IXRayService {
       const assigned = await this.assetsRepository.tryAssignShareClassId(
         holding.assetId,
         shareClassId,
+        { verified: true },
       );
       if (!assigned) {
         this.logger.debug(
@@ -238,7 +241,7 @@ export class XRayService implements IXRayService {
 
   /**
    * Instant X-Ray needs F share-class IDs for funds/ETFs/ETCs.
-   * Prefer the persisted shareClassId, then URL, then ISIN sibling.
+   * Only a screener-verified shareClassId is safe to send to the PDF.
    */
   private resolveCanonicalTokenId(
     requestedId: string,
@@ -248,35 +251,35 @@ export class XRayService implements IXRayService {
     if (!dbAsset || !isFundLikeType(dbAsset.type)) {
       return requestedId;
     }
-    if (isFundShareClassId(requestedId)) {
-      return requestedId;
-    }
-    if (isFundShareClassId(dbAsset.shareClassId)) {
-      return dbAsset.shareClassId!;
-    }
 
-    const fromUrl = extractPreferredFundId(dbAsset.url);
-    if (fromUrl) {
-      return fromUrl;
+    if (
+      dbAsset.shareClassVerified &&
+      isFundShareClassId(dbAsset.shareClassId)
+    ) {
+      return dbAsset.shareClassId!;
     }
 
     if (dbAsset.isin) {
       const preferred = pickPreferredFundAsset(
         siblingMap.get(dbAsset.isin.toUpperCase()) ?? [],
       );
-      const siblingId =
-        preferred &&
-        (isFundShareClassId(preferred.shareClassId)
-          ? preferred.shareClassId
-          : isFundShareClassId(preferred.morningstarId)
-            ? preferred.morningstarId
-            : null);
-      if (siblingId) {
-        return siblingId;
+      if (
+        preferred?.shareClassVerified &&
+        isFundShareClassId(preferred.shareClassId)
+      ) {
+        return preferred.shareClassId!;
+      }
+      if (
+        preferred?.shareClassVerified &&
+        isFundShareClassId(preferred.morningstarId)
+      ) {
+        return preferred.morningstarId;
       }
     }
 
-    return requestedId;
+    return isPerformanceId(dbAsset.morningstarId)
+      ? dbAsset.morningstarId
+      : requestedId;
   }
 
   private isUsingPerformanceFallback(

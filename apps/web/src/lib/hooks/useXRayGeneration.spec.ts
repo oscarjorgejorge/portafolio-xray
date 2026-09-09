@@ -93,7 +93,7 @@ describe('useXRayGeneration', () => {
       });
     });
 
-    it('should send the persisted shareClassId when available', async () => {
+    it('should send the quote Morningstar ID even when shareClassId is cached', async () => {
       const withShareClass = createMockPortfolioAsset({
         id: '1',
         weight: 100,
@@ -118,7 +118,7 @@ describe('useXRayGeneration', () => {
 
       await waitFor(() => {
         expect(mockGenerateXRay.mock.calls[0][0]).toEqual([
-          { morningstarId: 'F00000VYOL', weight: 100 },
+          { morningstarId: '0P000168OI', weight: 100 },
         ]);
       });
     });

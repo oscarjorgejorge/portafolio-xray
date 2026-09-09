@@ -21,6 +21,7 @@ import {
   pickPreferredFundAsset,
   resolveShareClassId,
   needsShareClassEnrichment,
+  needsShareClassVerification,
 } from './resolver/utils/canonical-fund-id';
 import { isValidIsin } from './resolver/utils/id-extractor';
 import {
@@ -241,7 +242,7 @@ export class AssetsService implements IAssetsService {
             resolution.bestMatch?.shareClassId,
         );
 
-        const savedAsset = await this.assetsRepository.upsertByMorningstarId({
+        let savedAsset = await this.assetsRepository.upsertByMorningstarId({
           isin: isin,
           morningstarId,
           shareClassId,
@@ -273,6 +274,7 @@ export class AssetsService implements IAssetsService {
             fundName,
           );
         }
+        savedAsset = await this.applyScreenerShareClass(savedAsset);
         this.enqueueShareClassEnrichmentIfNeeded(savedAsset);
 
         const asset = toResolvedAssetDto(savedAsset);
@@ -630,17 +632,19 @@ export class AssetsService implements IAssetsService {
       isinPending: !dto.isin, // Mark as pending if no ISIN provided
     });
 
+    const verified = await this.applyScreenerShareClass(asset);
+
     // Invalidate cache for all identifiers (ISIN, Morningstar ID, and ticker)
     await this.invalidateAssetCache({
       isin: dto.isin ?? undefined,
       morningstarId,
-      shareClassId: asset.shareClassId,
-      ticker: asset.ticker,
+      shareClassId: verified.shareClassId,
+      ticker: verified.ticker,
     });
 
-    this.enqueueShareClassEnrichmentIfNeeded(asset);
+    this.enqueueShareClassEnrichmentIfNeeded(verified);
 
-    return toResolvedAssetDto(asset);
+    return toResolvedAssetDto(verified);
   }
 
   /**
@@ -778,12 +782,14 @@ export class AssetsService implements IAssetsService {
       const assigned = await this.assetsRepository.tryAssignShareClassId(
         current.id,
         localId,
+        { verified: false },
       );
       if (assigned) {
         await this.invalidateAssetCache({
           isin: assigned.isin,
           morningstarId: assigned.morningstarId,
           shareClassId: assigned.shareClassId,
+          previousShareClassId: current.shareClassId,
         });
         current = assigned;
       }
@@ -801,12 +807,11 @@ export class AssetsService implements IAssetsService {
   }
 
   /**
-   * Fill a missing F ID from the Instant X-Ray screener during resolve.
-   * Quote-page scrapes stay in the background queue so add stays fast
-   * even when the screener has no hit.
+   * Fill or revalidate the Instant X-Ray F ID from the screener during resolve.
+   * Quote-page scrapes stay in the background queue and never mark the F ID verified.
    */
   private async applyScreenerShareClass(asset: Asset): Promise<Asset> {
-    if (!needsShareClassEnrichment(asset)) {
+    if (!needsShareClassVerification(asset)) {
       return asset;
     }
 
@@ -815,33 +820,43 @@ export class AssetsService implements IAssetsService {
         morningstarId: asset.morningstarId,
         isin: asset.isin,
         url: asset.url,
+        name: asset.name,
       });
 
       let current = asset;
-      if (
-        identity.shareClassId &&
-        current.shareClassId !== identity.shareClassId
-      ) {
-        const assigned = await this.assetsRepository.tryAssignShareClassId(
-          current.id,
-          identity.shareClassId,
-        );
-        if (assigned) {
-          await this.invalidateAssetCache({
-            isin: assigned.isin,
-            morningstarId: assigned.morningstarId,
-            shareClassId: assigned.shareClassId,
-          });
-          current = assigned;
-          this.logger.log(
-            `[ASSET] Saved shareClassId ${identity.shareClassId} for ${asset.morningstarId} from screener`,
+      if (identity.shareClassId) {
+        if (current.shareClassId !== identity.shareClassId) {
+          const previousShareClassId = current.shareClassId;
+          const assigned = await this.assetsRepository.tryAssignShareClassId(
+            current.id,
+            identity.shareClassId,
+            { verified: true },
           );
-        } else {
-          this.logger.warn(
-            `[ASSET] Could not persist shareClassId ${identity.shareClassId} for ${asset.morningstarId}; already owned by another row`,
+          if (assigned) {
+            await this.invalidateAssetCache({
+              isin: assigned.isin,
+              morningstarId: assigned.morningstarId,
+              shareClassId: assigned.shareClassId,
+              previousShareClassId,
+            });
+            current = assigned;
+            this.logger.log(
+              `[ASSET] Saved verified shareClassId ${identity.shareClassId} for ${asset.morningstarId} from screener`,
+            );
+          } else {
+            this.logger.warn(
+              `[ASSET] Could not persist shareClassId ${identity.shareClassId} for ${asset.morningstarId}; already owned by another row`,
+            );
+          }
+        } else if (!current.shareClassVerified) {
+          current = await this.persistIdentityPatch(current, {
+            shareClassVerified: true,
+          });
+          this.logger.log(
+            `[ASSET] Marked shareClassId ${current.shareClassId} verified for ${asset.morningstarId}`,
           );
         }
-      } else if (!identity.shareClassId) {
+      } else {
         this.logger.warn(
           `[ASSET] Instant X-Ray screener returned no F ID for ${asset.morningstarId}`,
         );
@@ -879,6 +894,7 @@ export class AssetsService implements IAssetsService {
     asset: Asset,
     data: {
       shareClassId?: string | null;
+      shareClassVerified?: boolean;
       isin?: string | null;
       isinPending?: boolean;
       type?: AssetType;
@@ -931,9 +947,11 @@ export class AssetsService implements IAssetsService {
     isin?: string | null;
     morningstarId?: string;
     shareClassId?: string | null;
+    previousShareClassId?: string | null;
     ticker?: string | null;
   }): Promise<void> {
-    const { isin, morningstarId, shareClassId, ticker } = options;
+    const { isin, morningstarId, shareClassId, previousShareClassId, ticker } =
+      options;
     const keys: string[] = [];
 
     if (isin)
@@ -946,6 +964,14 @@ export class AssetsService implements IAssetsService {
       keys.push(
         `${CACHE_CONFIG.ASSET_KEY_PREFIX}${shareClassId.toUpperCase()}`,
       );
+    if (
+      previousShareClassId &&
+      previousShareClassId.toUpperCase() !== shareClassId?.toUpperCase()
+    ) {
+      keys.push(
+        `${CACHE_CONFIG.ASSET_KEY_PREFIX}${previousShareClassId.toUpperCase()}`,
+      );
+    }
     if (ticker)
       keys.push(`${CACHE_CONFIG.ASSET_KEY_PREFIX}${ticker.toUpperCase()}`);
 

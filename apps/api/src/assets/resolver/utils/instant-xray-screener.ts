@@ -1,7 +1,12 @@
 import { IdentifierClassifier } from '../../../common/utils/identifier-classifier';
 import { SearchResult } from '../resolver.types';
+import { namesLookSimilar } from './canonical-fund-id';
 import { MS_ASSET_TYPES, MorningstarAssetType } from './constants';
-import { extractMorningstarId, isFundShareClassId } from './id-extractor';
+import {
+  extractMorningstarId,
+  isFundShareClassId,
+  isPerformanceId,
+} from './id-extractor';
 import { buildMorningstarUrl } from './url-builder';
 
 export const INSTANT_XRAY_SCREENER_BASE_URL =
@@ -273,9 +278,80 @@ export type ScreenerIdentityHit = {
   isin?: string;
 };
 
+export type ScreenerIdentityExpected = {
+  isin?: string | null;
+  performanceId?: string | null;
+  name?: string | null;
+};
+
+function fundShareClassIdFromResult(result: SearchResult): string | null {
+  if (isFundShareClassId(result.shareClassId)) {
+    return result.shareClassId as string;
+  }
+  if (isFundShareClassId(result.morningstarId)) {
+    return result.morningstarId;
+  }
+  return null;
+}
+
+/**
+ * Instant X-Ray F ID that matches the user's ISIN (and 0P / name when no ISIN).
+ * Never returns an F ID from a different share class.
+ */
+export function pickVerifiedIdentityFromScreenerResults(
+  results: SearchResult[],
+  expected?: ScreenerIdentityExpected,
+): ScreenerIdentityHit {
+  const expectedIsin = expected?.isin?.trim().toUpperCase();
+  const expectedPerf = expected?.performanceId?.trim().toUpperCase();
+  const expectedName = expected?.name?.trim();
+  const requireMatch = Boolean(
+    expectedIsin || (expectedPerf && isPerformanceId(expectedPerf)),
+  );
+
+  const matched = results.filter((result) => {
+    if (!fundShareClassIdFromResult(result)) {
+      return false;
+    }
+    if (expectedIsin) {
+      return result.isin?.toUpperCase() === expectedIsin;
+    }
+    if (expectedPerf && isPerformanceId(expectedPerf)) {
+      if (result.morningstarId?.toUpperCase() !== expectedPerf) {
+        return false;
+      }
+      if (expectedName && result.title) {
+        return namesLookSimilar(expectedName, result.title);
+      }
+      return true;
+    }
+    return true;
+  });
+
+  if (matched.length === 0) {
+    const withIsin = results.find((result) => result.isin);
+    return {
+      shareClassId: requireMatch
+        ? null
+        : pickShareClassIdFromScreenerResults(results),
+      isin: expectedIsin || withIsin?.isin,
+    };
+  }
+
+  const best = matched[0];
+  return {
+    shareClassId: fundShareClassIdFromResult(best),
+    isin: best.isin || expectedIsin,
+  };
+}
+
 export function pickIdentityFromScreenerResults(
   results: SearchResult[],
+  expected?: ScreenerIdentityExpected,
 ): ScreenerIdentityHit {
+  if (expected) {
+    return pickVerifiedIdentityFromScreenerResults(results, expected);
+  }
   const shareClassId = pickShareClassIdFromScreenerResults(results);
   const withIsin = results.find((result) => result.isin);
   return {

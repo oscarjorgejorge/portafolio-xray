@@ -47,6 +47,7 @@ export class ShareClassLookupService {
     morningstarId: string;
     isin?: string | null;
     url?: string | null;
+    name?: string | null;
   }): Promise<string | null> {
     const identity = await this.lookupIdentityFromScreener(asset);
     return identity.shareClassId;
@@ -56,6 +57,7 @@ export class ShareClassLookupService {
     morningstarId: string;
     isin?: string | null;
     url?: string | null;
+    name?: string | null;
   }): Promise<{ shareClassId: string | null; isin?: string }> {
     return this.lookupFromScreener(asset);
   }
@@ -65,6 +67,7 @@ export class ShareClassLookupService {
     url?: string | null;
     type?: string | null;
     isin?: string | null;
+    name?: string | null;
   }): Promise<{ shareClassId: string | null; isin?: string }> {
     const fromScreener = await this.lookupFromScreener(asset);
     if (fromScreener.shareClassId) {
@@ -91,12 +94,17 @@ export class ShareClassLookupService {
     morningstarId: string;
     isin?: string | null;
     url?: string | null;
+    name?: string | null;
   }): Promise<{ shareClassId: string | null; isin?: string }> {
     const terms = this.screenerTerms(asset);
     for (const term of terms) {
       try {
         const results = await this.screener.search(term);
-        const identity = pickIdentityFromScreenerResults(results);
+        const identity = pickIdentityFromScreenerResults(results, {
+          isin: asset.isin,
+          performanceId: asset.morningstarId,
+          name: asset.name,
+        });
         if (identity.shareClassId || identity.isin) {
           if (identity.shareClassId) {
             this.logger.log(
