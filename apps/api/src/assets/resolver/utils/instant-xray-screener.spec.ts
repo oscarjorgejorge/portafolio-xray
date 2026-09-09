@@ -9,6 +9,7 @@ import {
   rankInstantXrayResults,
   rowMatchesQuery,
   screenerUniversesForQuery,
+  pickShareClassIdFromScreenerResults,
 } from './instant-xray-screener';
 
 describe('instant-xray-screener', () => {
@@ -23,8 +24,13 @@ describe('instant-xray-screener', () => {
     expect(url).toContain('SecId');
   });
 
-  it('uses broad universes for ISINs and exchange universes for tickers', () => {
+  it('uses broad universes for ISINs, Morningstar IDs and exchange universes for tickers', () => {
     expect(screenerUniversesForQuery('LU0328476410')).toEqual([
+      'ETALL$$ALL',
+      'FOESP$$ALL',
+      'E0WWE$$ALL',
+    ]);
+    expect(screenerUniversesForQuery('0P0001CLDI')).toEqual([
       'ETALL$$ALL',
       'FOESP$$ALL',
       'E0WWE$$ALL',
@@ -223,5 +229,31 @@ describe('instant-xray-screener', () => {
       shareClassId: 'F0GBR04EZP',
       isin: 'FR0000447823',
     });
+  });
+
+  it('matches a 0P performance ID and exposes the F SecId as shareClassId', () => {
+    const results = parseInstantXrayScreenerResponse(
+      {
+        total: 1,
+        rows: [
+          {
+            SecId: 'F00001019C',
+            Name: 'Fidelity MSCI Japan Index EUR P Acc',
+            ISIN: 'IE00BYX5N771',
+            PerformanceId: '0P0001CLDI',
+          },
+        ],
+      },
+      '0P0001CLDI',
+      'FOESP$$ALL',
+    );
+
+    expect(results).toHaveLength(1);
+    expect(results[0]).toMatchObject({
+      morningstarId: '0P0001CLDI',
+      shareClassId: 'F00001019C',
+      isin: 'IE00BYX5N771',
+    });
+    expect(pickShareClassIdFromScreenerResults(results)).toBe('F00001019C');
   });
 });

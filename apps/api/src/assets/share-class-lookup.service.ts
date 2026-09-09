@@ -4,7 +4,11 @@ import { AssetType } from '@prisma/client';
 import { HttpClientService } from '../common/http';
 import { createContextLogger } from '../common/logger';
 import type { AppConfig } from '../config';
-import { extractShareClassIdFromHtml } from './resolver/utils/canonical-fund-id';
+import {
+  extractShareClassIdFromHtml,
+  resolveShareClassLookupId,
+} from './resolver/utils/canonical-fund-id';
+import { pickShareClassIdFromScreenerResults } from './resolver/utils/instant-xray-screener';
 import {
   MS_ASSET_TYPES,
   SHARE_CLASS_LOOKUP_RETRIES,
@@ -13,9 +17,10 @@ import {
   type MorningstarAssetType,
 } from './resolver/utils/constants';
 import { shareClassIdLookupUrls } from './resolver/utils/url-builder';
+import { InstantXrayScreenerStrategy } from './resolver/strategies/instant-xray-screener.strategy';
 
 /**
- * Fetches Instant X-Ray F IDs from Morningstar quote pages.
+ * Fetches Instant X-Ray F IDs from the screener (preferred) or quote pages.
  * Used only by background enrichment — not by X-Ray URL generation.
  */
 @Injectable()
@@ -26,6 +31,7 @@ export class ShareClassLookupService {
   constructor(
     private readonly httpClient: HttpClientService,
     private readonly configService: ConfigService<AppConfig, true>,
+    private readonly screener: InstantXrayScreenerStrategy,
   ) {
     const resolutionConfig = this.configService.get('resolution', {
       infer: true,
@@ -37,9 +43,67 @@ export class ShareClassLookupService {
     morningstarId: string;
     url?: string | null;
     type?: string | null;
+    isin?: string | null;
   }): Promise<string | null> {
+    const fromScreener = await this.lookupFromScreener(asset);
+    if (fromScreener) {
+      return fromScreener;
+    }
+    return this.lookupFromQuotePages(asset);
+  }
+
+  private async lookupFromScreener(asset: {
+    morningstarId: string;
+    isin?: string | null;
+    url?: string | null;
+  }): Promise<string | null> {
+    const terms = this.screenerTerms(asset);
+    for (const term of terms) {
+      try {
+        const results = await this.screener.search(term);
+        const shareClassId = pickShareClassIdFromScreenerResults(results);
+        if (shareClassId) {
+          this.logger.log(
+            `[SHARE-CLASS] Share-class ID from Instant X-Ray screener ${term}: ${shareClassId}`,
+          );
+          return shareClassId;
+        }
+      } catch (error) {
+        this.logger.warn(
+          `[SHARE-CLASS] Screener lookup failed for ${term}: ${error}`,
+        );
+      }
+    }
+    return null;
+  }
+
+  private screenerTerms(asset: {
+    morningstarId: string;
+    isin?: string | null;
+    url?: string | null;
+  }): string[] {
+    const terms: string[] = [];
+    if (asset.isin) {
+      terms.push(asset.isin.trim().toUpperCase());
+    }
+    const lookupId = resolveShareClassLookupId(asset);
+    if (lookupId && !terms.includes(lookupId)) {
+      terms.push(lookupId);
+    }
+    return terms;
+  }
+
+  private async lookupFromQuotePages(asset: {
+    morningstarId: string;
+    url?: string | null;
+    type?: string | null;
+  }): Promise<string | null> {
+    const lookupId = resolveShareClassLookupId(asset);
+    if (!lookupId) {
+      return null;
+    }
     const urls = shareClassIdLookupUrls(
-      asset.morningstarId,
+      lookupId,
       asset.url,
       this.toMsAssetType(asset.type),
     );
@@ -50,7 +114,7 @@ export class ShareClassLookupService {
       }
       if (blocked) {
         this.logger.warn(
-          `[SHARE-CLASS] Stopped lookup for ${asset.morningstarId} after bot challenge`,
+          `[SHARE-CLASS] Stopped quote lookup for ${asset.morningstarId} after bot challenge`,
         );
         break;
       }
