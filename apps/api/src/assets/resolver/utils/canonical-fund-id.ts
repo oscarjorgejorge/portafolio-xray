@@ -1,5 +1,6 @@
 import { AssetType } from '@prisma/client';
 import {
+  extractMorningstarId,
   extractPreferredFundId,
   isFundShareClassId,
   isPersistedMorningstarIdValid,
@@ -120,8 +121,33 @@ export function isAssetIdentityComplete(asset: {
 }
 
 /**
+ * Quote/share-class ID we can actually request from Morningstar.
+ * Ignores tickers, ISINs and free text stored in morningstarId.
+ */
+export function resolveShareClassLookupId(asset: {
+  morningstarId: string;
+  url?: string | null;
+}): string | null {
+  if (isPersistedMorningstarIdValid(asset.morningstarId)) {
+    return asset.morningstarId.trim().toUpperCase();
+  }
+  const fromUrl = extractMorningstarId(asset.url ?? '');
+  if (isPersistedMorningstarIdValid(fromUrl)) {
+    return fromUrl;
+  }
+  if (/morningstar\.com/i.test(asset.morningstarId)) {
+    const fromField = extractMorningstarId(asset.morningstarId);
+    if (isPersistedMorningstarIdValid(fromField)) {
+      return fromField;
+    }
+  }
+  return null;
+}
+
+/**
  * True when a fund-like asset still needs a background quote-page F ID lookup.
  * Local sources (F morningstarId, persisted shareClassId, F ID in URL) are enough.
+ * Garbage IDs (tickers, ISINs, free text) are not scraped.
  */
 export function needsShareClassEnrichment(asset: {
   type: string | null | undefined;
@@ -138,7 +164,13 @@ export function needsShareClassEnrichment(asset: {
   if (isFundShareClassId(asset.shareClassId)) {
     return false;
   }
-  return !extractPreferredFundId(asset.url ?? '');
+  if (extractPreferredFundId(asset.url ?? '')) {
+    return false;
+  }
+  if (extractPreferredFundId(asset.morningstarId)) {
+    return false;
+  }
+  return resolveShareClassLookupId(asset) !== null;
 }
 
 function isStockLikeType(type: string | null | undefined): boolean {
@@ -199,5 +231,6 @@ export {
   isPersistedMorningstarIdValid,
   extractPreferredFundId,
   extractShareClassIdFromHtml,
+  extractMorningstarId,
   extractMorningstarIdFromUrl,
 } from './id-extractor';
