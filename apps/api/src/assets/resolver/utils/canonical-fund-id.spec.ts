@@ -249,5 +249,24 @@ describe('canonical-fund-id', () => {
         }),
       ).toBe(false);
     });
+
+    it('should be false for tickers and ISINs stored as morningstarId', () => {
+      expect(
+        needsShareClassEnrichment({
+          type: AssetType.ETF,
+          morningstarId: 'IS3S',
+          shareClassId: null,
+          url: null,
+        }),
+      ).toBe(false);
+      expect(
+        needsShareClassEnrichment({
+          type: AssetType.FUND,
+          morningstarId: 'LU0491217419',
+          shareClassId: null,
+          url: null,
+        }),
+      ).toBe(false);
+    });
   });
 });

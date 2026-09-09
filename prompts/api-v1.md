@@ -2172,4 +2172,13 @@ no entiendo esto, si cada vez que se anade un asset, se va a intentar resolver e
 ### Prompt 161
 implementa las 4 primeras fases
 
+### Prompt 162
+igual hay que tipar mejor los assets y mejorar el script?
+
+### Prompt 163
+el backfill APPLY termina en Unique constraint failed on share_class_id (F00001SELW) despues de HTTP_202 y BOT_STOP
+
+### Prompt 164
+este fondo de japon no sale: IE00BYX5N771
+
 

@@ -72,7 +72,10 @@ export function buildInstantXrayScreenerUrl(
 }
 
 export function screenerUniversesForQuery(query: string): readonly string[] {
-  if (IdentifierClassifier.isISIN(query)) {
+  if (
+    IdentifierClassifier.isISIN(query) ||
+    IdentifierClassifier.isMorningstarId(query)
+  ) {
     return INSTANT_XRAY_ISIN_UNIVERSES;
   }
   return INSTANT_XRAY_TICKER_UNIVERSES;
@@ -138,6 +141,15 @@ export function rowMatchesQuery(
 
   if (IdentifierClassifier.isISIN(normalized)) {
     return row.ISIN?.toUpperCase() === normalized;
+  }
+
+  if (IdentifierClassifier.isMorningstarId(normalized)) {
+    return [
+      row.PerformanceId,
+      row.SecId,
+      row.ShareClassId,
+      row.FundShareClassId,
+    ].some((id) => id?.trim().toUpperCase() === normalized);
   }
 
   return row.Ticker?.toUpperCase() === normalized;
@@ -237,6 +249,23 @@ export function rankInstantXrayResults(
     const bExchange = exchangeRank(exchangeFromSnippet(b.snippet));
     return aExchange - bExchange;
   });
+}
+
+/**
+ * Instant X-Ray F ID from screener hits (SecId / ShareClassId).
+ */
+export function pickShareClassIdFromScreenerResults(
+  results: SearchResult[],
+): string | null {
+  for (const result of results) {
+    if (isFundShareClassId(result.shareClassId)) {
+      return result.shareClassId as string;
+    }
+    if (isFundShareClassId(result.morningstarId)) {
+      return result.morningstarId as string;
+    }
+  }
+  return null;
 }
 
 function exchangeFromSnippet(snippet: string): string | undefined {
