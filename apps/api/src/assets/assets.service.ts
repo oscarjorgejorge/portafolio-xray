@@ -836,7 +836,15 @@ export class AssetsService implements IAssetsService {
           this.logger.log(
             `[ASSET] Saved shareClassId ${identity.shareClassId} for ${asset.morningstarId} from screener`,
           );
+        } else {
+          this.logger.warn(
+            `[ASSET] Could not persist shareClassId ${identity.shareClassId} for ${asset.morningstarId}; already owned by another row`,
+          );
         }
+      } else if (!identity.shareClassId) {
+        this.logger.warn(
+          `[ASSET] Instant X-Ray screener returned no F ID for ${asset.morningstarId}`,
+        );
       }
 
       if (identity.isin && !current.isin) {
