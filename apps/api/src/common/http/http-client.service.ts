@@ -153,10 +153,7 @@ export class HttpClientService implements IHttpClient {
           signal: AbortSignal.timeout(timeout),
         });
 
-        const wafAction = response.headers.get('x-amzn-waf-action');
-        const isMorningstarWaf =
-          wafAction === 'challenge' ||
-          (response.status === 202 && this.isMorningstarHostname(url));
+        const isMorningstarWaf = this.isMorningstarBotWall(url, response);
         if (isMorningstarWaf) {
           lastError = {
             type: HttpErrorType.HTTP_ERROR,
@@ -401,6 +398,24 @@ export class HttpClientService implements IHttpClient {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Quote-page WAF returns HTTP 202 HTML. Instant X-Ray's lt.morningstar.com
+   * screener is JSON and must not be discarded as a bot wall, even on 202.
+   */
+  private isMorningstarBotWall(url: string, response: Response): boolean {
+    if (response.headers.get('x-amzn-waf-action') === 'challenge') {
+      return true;
+    }
+    if (response.status !== 202 || !this.isMorningstarHostname(url)) {
+      return false;
+    }
+    if (/\/security\/screener/i.test(url)) {
+      return false;
+    }
+    const contentType = response.headers.get('content-type') ?? '';
+    return !contentType.toLowerCase().includes('application/json');
   }
 
   /**

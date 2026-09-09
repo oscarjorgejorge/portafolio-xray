@@ -57,6 +57,8 @@ export class InstantXrayScreenerStrategy implements SearchStrategy {
       {
         responseType: 'json',
         timeout: 10000,
+        retries: 1,
+        retryDelay: 400,
         headers: { Accept: 'application/json' },
       },
     );

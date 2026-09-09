@@ -100,8 +100,10 @@ export interface IAssetsRepository {
   markIsinEnrichmentComplete(assetId: string): Promise<Asset>;
 
   /**
-   * Persist a share-class F ID, skipping when another row already owns it.
-   * @returns Updated asset, or null when the F ID is taken
+   * Persist a share-class F ID on this row.
+   * If another row already owns it, reclaim when that row is the same fund
+   * (same ISIN) or the canonical F-ID row (morningstarId === F ID).
+   * @returns Updated asset, or null when the F ID is taken by an unrelated row
    */
   tryAssignShareClassId(
     assetId: string,

@@ -152,7 +152,7 @@ export class ShareClassEnrichmentService implements IShareClassEnrichmentService
             `[SHARE-CLASS] Saved shareClassId ${identity.shareClassId} for ${asset.morningstarId}`,
           );
         } else {
-          this.logger.debug(
+          this.logger.warn(
             `[SHARE-CLASS] shareClassId ${identity.shareClassId} already owned; skipped persist for ${asset.morningstarId}`,
           );
         }
