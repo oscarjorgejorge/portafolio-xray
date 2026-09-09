@@ -7,6 +7,7 @@ import { AssetsRepository } from './assets.repository';
 import { MorningstarResolverService, PageVerifierService } from './resolver';
 import { IsinEnrichmentService } from './isin-enrichment.service';
 import { ShareClassEnrichmentService } from './share-class-enrichment.service';
+import { ShareClassLookupService } from './share-class-lookup.service';
 import { AssetSource, AssetType } from '@prisma/client';
 import { ResolutionSource, ResolutionErrorCode } from './types';
 import { IdentifierType } from '../common/utils/identifier-classifier';
@@ -72,6 +73,7 @@ describe('AssetsService', () => {
   let morningstarResolver: jest.Mocked<MorningstarResolverService>;
   let isinEnrichment: jest.Mocked<IsinEnrichmentService>;
   let shareClassEnrichment: jest.Mocked<ShareClassEnrichmentService>;
+  let shareClassLookup: jest.Mocked<ShareClassLookupService>;
 
   beforeEach(async () => {
     // Create mocks
@@ -101,6 +103,7 @@ describe('AssetsService', () => {
           createMockAsset({ id, shareClassId }),
         ),
       updateIsinWithVerification: jest.fn(),
+      updateIsin: jest.fn(),
       markIsinEnrichmentComplete: jest.fn(),
     } as unknown as jest.Mocked<AssetsRepository>;
 
@@ -115,6 +118,12 @@ describe('AssetsService', () => {
     shareClassEnrichment = {
       enrichShareClassInBackground: jest.fn(),
     } as unknown as jest.Mocked<ShareClassEnrichmentService>;
+
+    shareClassLookup = {
+      lookupIdentityFromScreener: jest
+        .fn()
+        .mockResolvedValue({ shareClassId: null }),
+    } as unknown as jest.Mocked<ShareClassLookupService>;
 
     const pageVerifier = {
       verifyFundPage: jest.fn().mockResolvedValue({
@@ -145,6 +154,7 @@ describe('AssetsService', () => {
           provide: ShareClassEnrichmentService,
           useValue: shareClassEnrichment,
         },
+        { provide: ShareClassLookupService, useValue: shareClassLookup },
         { provide: PageVerifierService, useValue: pageVerifier },
         {
           provide: ConfigService,
@@ -367,6 +377,50 @@ describe('AssetsService', () => {
         expect(result.success).toBe(true);
         expect(result.source).toBe(ResolutionSource.CACHE);
         expect(result.asset?.morningstarId).toBe('0P0001ODL3');
+      });
+
+      it('should persist the Instant X-Ray F ID from the screener on a cache hit', async () => {
+        cacheManager.get.mockResolvedValue(null);
+        const cached = createMockAsset({
+          morningstarId: '0P0001CLDI',
+          isin: 'IE00BYX5N771',
+          type: AssetType.FUND,
+          ticker: null,
+          name: 'Fidelity MSCI Japan Index EUR P Acc',
+          url: 'https://global.morningstar.com/en-eu/investments/funds/0P0001CLDI/quote',
+          shareClassId: null,
+        });
+        repository.findByIsin.mockResolvedValue(cached);
+        shareClassLookup.lookupIdentityFromScreener.mockResolvedValue({
+          shareClassId: 'F00001019C',
+          isin: 'IE00BYX5N771',
+        });
+        repository.tryAssignShareClassId.mockResolvedValue({
+          ...cached,
+          shareClassId: 'F00001019C',
+        });
+
+        const result = await service.resolve({ input: 'IE00BYX5N771' });
+
+        expect(morningstarResolver.resolve).not.toHaveBeenCalled();
+        expect(
+          shareClassLookup.lookupIdentityFromScreener,
+        ).toHaveBeenCalledWith(
+          expect.objectContaining({
+            morningstarId: '0P0001CLDI',
+            isin: 'IE00BYX5N771',
+          }),
+        );
+        expect(repository.tryAssignShareClassId).toHaveBeenCalledWith(
+          cached.id,
+          'F00001019C',
+        );
+        expect(
+          shareClassEnrichment.enrichShareClassInBackground,
+        ).not.toHaveBeenCalled();
+        expect(result.success).toBe(true);
+        expect(result.source).toBe(ResolutionSource.CACHE);
+        expect(result.asset?.shareClassId).toBe('F00001019C');
       });
 
       it('should retag a cached fund whose quote URL is a stock page', async () => {
