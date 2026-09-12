@@ -10,7 +10,8 @@ export enum IdentifierType {
 }
 
 const ISIN_REGEX = /^[A-Z]{2}[A-Z0-9]{10}$/;
-const MS_ID_REGEX = /^(0P[A-Z0-9]{8}|F0[A-Z0-9]{8,10})$/i;
+const MS_ID_REGEX =
+  /^(0P[A-Z0-9]{8}|F0[A-Z0-9]{8,10}|FOGBR[A-Z0-9]{5,8})$/i;
 const TICKER_REGEX = /^[A-Z]{1,5}$/;
 const MORNINGSTAR_URL_ID_REGEX =
   /(?:\/(?:funds|fondos|etfs|stocks|acciones)\/)([F0][A-Z0-9]{8,12})/i;
@@ -28,7 +29,9 @@ export function extractMorningstarIdFromUrl(input: string): string | null {
   if (pathMatch?.[1]) {
     return pathMatch[1].toUpperCase();
   }
-  const fallback = input.match(/(0P000[A-Z0-9]{5,7}|F000[A-Z0-9]{5,8})/i);
+  const fallback = input.match(
+    /(0P000[A-Z0-9]{5,7}|FOGBR[A-Z0-9]{5,8}|F0GBR[A-Z0-9]{5,8}|F000[A-Z0-9]{5,8})/i,
+  );
   return fallback?.[1] ? fallback[1].toUpperCase() : null;
 }
 

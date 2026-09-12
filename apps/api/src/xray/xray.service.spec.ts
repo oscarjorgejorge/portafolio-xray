@@ -386,6 +386,33 @@ describe('XRayService', () => {
         );
       });
 
+      it('should remap a 0P Luxembourg fund to the Instant X-Ray FOGBR ID', async () => {
+        repository.findManyByMorningstarIds.mockResolvedValue([
+          createMockAsset({
+            morningstarId: '0P00006DAB',
+            isin: 'LU0261948904',
+            type: AssetType.FUND,
+            name: 'Fidelity Iberia A-Acc-EUR',
+          }),
+        ]);
+        shareClassLookup.lookupShareClassIdFromScreener.mockResolvedValue(
+          'FOGBR05KLX',
+        );
+
+        const result = await service.generate({
+          assets: [{ morningstarId: '0P00006DAB', weight: 100 }],
+        });
+
+        expect(result.morningstarUrl).toContain('FOGBR05KLX');
+        expect(result.morningstarUrl).not.toContain('0P00006DAB');
+        expect(result.holdingsUsingFallback).toBe(0);
+        expect(repository.tryAssignShareClassId).toHaveBeenCalledWith(
+          expect.any(String),
+          'FOGBR05KLX',
+          { verified: true },
+        );
+      });
+
       it('should replace an unverified Robeco F ID with the screener F ID for that ISIN', async () => {
         repository.findManyByMorningstarIds.mockResolvedValue([
           createMockAsset({

@@ -12,13 +12,25 @@ const MORNINGSTAR_ID_PATTERNS = [
   /\/acciones\/([F0][A-Z0-9]{8,12})\//i,
   /[?&]id=([F0][A-Z0-9]{8,12})/i,
   /(0P000[A-Z0-9]{5,7})/i,
+  /(FOGBR[A-Z0-9]{5,8})/i,
   /(F0GBR[A-Z0-9]{5,8})/i,
   /(F000[A-Z0-9]{5,8})/i,
   /(F00000[A-Z0-9]{4,6})/i,
 ];
 
-/** Fund share-class IDs used by Instant X-Ray (F000…, F0GBR…) */
-const FUND_SHARE_CLASS_ID_PATTERN = /\b(F0[A-Z0-9]{8,12})\b/i;
+/**
+ * Instant X-Ray share-class IDs: F000…, F0GBR…, and UK-style FOGBR…
+ * (letter O, e.g. Fidelity Iberia LU0261948904 → FOGBR05KLX).
+ */
+const FUND_SHARE_CLASS_ID_BODY = 'F(?:0[A-Z0-9]{8,12}|OGBR[A-Z0-9]{5,8})';
+const FUND_SHARE_CLASS_ID_PATTERN = new RegExp(
+  `\\b(${FUND_SHARE_CLASS_ID_BODY})\\b`,
+  'i',
+);
+const FUND_SHARE_CLASS_ID_ANCHORED = new RegExp(
+  `^${FUND_SHARE_CLASS_ID_BODY}$`,
+  'i',
+);
 
 /**
  * Extract Morningstar ID from a URL
@@ -52,7 +64,7 @@ export function extractMorningstarIdFromUrl(input: string): string | null {
  */
 export function isFundShareClassId(id: string | null | undefined): boolean {
   if (!id) return false;
-  return /^F0[A-Z0-9]{8,12}$/i.test(id.trim());
+  return FUND_SHARE_CLASS_ID_ANCHORED.test(id.trim());
 }
 
 /**
@@ -91,16 +103,16 @@ export function extractShareClassIdFromHtml(html: string): string | null {
   if (!html) return null;
 
   const fromAttributes = pickMostFrequentId(html, [
-    /security-id=["'](F0[A-Z0-9]{8,12})["']/gi,
-    /data-security-id=["'](F0[A-Z0-9]{8,12})["']/gi,
+    new RegExp(`security-id=["'](${FUND_SHARE_CLASS_ID_BODY})["']`, 'gi'),
+    new RegExp(`data-security-id=["'](${FUND_SHARE_CLASS_ID_BODY})["']`, 'gi'),
   ]);
   if (fromAttributes) {
     return fromAttributes;
   }
 
   return pickMostFrequentId(html, [
-    /"(?:securityId|secId|byId)"\s*:\s*"(F0(?:00|GBR)[A-Z0-9]{5,8})"/gi,
-    /["'](F0(?:00|GBR)[A-Z0-9]{5,8})["']/gi,
+    /"(?:securityId|secId|byId)"\s*:\s*"(F(?:0(?:00|GBR)[A-Z0-9]{5,8}|OGBR[A-Z0-9]{5,8}))"/gi,
+    /["'](F(?:0(?:00|GBR)[A-Z0-9]{5,8}|OGBR[A-Z0-9]{5,8}))["']/gi,
   ]);
 }
 

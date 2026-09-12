@@ -45,6 +45,15 @@ describe('id-extractor utils', () => {
         expect(extractMorningstarId('F0GBR04EZP')).toBe('F0GBR04EZP');
       });
 
+      it('should extract UK-style FOGBR share-class IDs', () => {
+        expect(extractMorningstarId('FOGBR05KLX')).toBe('FOGBR05KLX');
+        expect(
+          extractMorningstarId(
+            'https://global.morningstar.com/en-gb/investments/funds/FOGBR05KLX/quote',
+          ),
+        ).toBe('FOGBR05KLX');
+      });
+
       it('should extract ID from a global stock URL', () => {
         expect(
           extractMorningstarId(
@@ -311,11 +320,13 @@ describe('id-extractor utils', () => {
   });
 
   describe('isFundShareClassId / isPerformanceId', () => {
-    it('should detect F share-class IDs including F0GBR', () => {
+    it('should detect F share-class IDs including F0GBR and FOGBR', () => {
       expect(isFundShareClassId('F00000THA5')).toBe(true);
       expect(isFundShareClassId('F000014TGO')).toBe(true);
       expect(isFundShareClassId('F0GBR04M6M')).toBe(true);
+      expect(isFundShareClassId('FOGBR05KLX')).toBe(true);
       expect(isFundShareClassId('0P00016YQ5')).toBe(false);
+      expect(isFundShareClassId('FOESP$$ALL')).toBe(false);
     });
 
     it('should detect 0P performance IDs', () => {
@@ -328,6 +339,7 @@ describe('id-extractor utils', () => {
     it('should accept quote and share-class IDs', () => {
       expect(isPersistedMorningstarIdValid('0P0001ODL3')).toBe(true);
       expect(isPersistedMorningstarIdValid('F00000THA5')).toBe(true);
+      expect(isPersistedMorningstarIdValid('FOGBR05KLX')).toBe(true);
     });
 
     it('should reject an ISIN stored as a Morningstar ID', () => {
@@ -347,6 +359,12 @@ describe('id-extractor utils', () => {
       const url =
         'https://global.morningstar.com/es/inversiones/fondos/F00000WI0D/cotizacion';
       expect(extractPreferredFundId(url)).toBe('F00000WI0D');
+    });
+
+    it('should extract a UK-style FOGBR ID from a quote URL', () => {
+      const url =
+        'https://global.morningstar.com/en-gb/investments/funds/FOGBR05KLX/quote';
+      expect(extractPreferredFundId(url)).toBe('FOGBR05KLX');
     });
 
     it('should return null when the URL only has a 0P ID', () => {
@@ -393,6 +411,13 @@ describe('id-extractor utils', () => {
         <script>window.__NUXT__={byId:"F00001019E",name:"Fidelity MSCI World Index Fund EUR P Acc"}</script>
       `;
       expect(extractShareClassIdFromHtml(html)).toBe('F00001019E');
+    });
+
+    it('should read a UK-style FOGBR security-id from a quote page', () => {
+      const html = `
+        <sal-components-mds-container security-id="FOGBR05KLX"></sal-components-mds-container>
+      `;
+      expect(extractShareClassIdFromHtml(html)).toBe('FOGBR05KLX');
     });
   });
 });

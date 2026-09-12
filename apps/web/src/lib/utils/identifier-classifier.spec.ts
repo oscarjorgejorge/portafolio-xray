@@ -32,6 +32,9 @@ describe('identifier-classifier', () => {
       expect(classifyIdentifier('F00000THA5')).toBe(
         IdentifierType.MORNINGSTAR_ID,
       );
+      expect(classifyIdentifier('FOGBR05KLX')).toBe(
+        IdentifierType.MORNINGSTAR_ID,
+      );
     });
 
     it('classifies pasted Morningstar fund URLs as Morningstar IDs', () => {
