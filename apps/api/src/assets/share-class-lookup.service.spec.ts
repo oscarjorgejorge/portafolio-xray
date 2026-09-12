@@ -84,6 +84,33 @@ describe('ShareClassLookupService', () => {
     expect(httpClient.get).not.toHaveBeenCalled();
   });
 
+  it('should accept a UK-style FOGBR SecId from the Instant X-Ray screener', async () => {
+    screener.search.mockResolvedValue([
+      {
+        morningstarId: '0P00006DAB',
+        shareClassId: 'FOGBR05KLX',
+        isin: 'LU0261948904',
+        title: 'Fidelity Iberia A-Acc-EUR',
+        url: 'https://global.morningstar.com/en-eu/investments/funds/0P00006DAB/quote',
+        domain: 'lt.morningstar.com',
+        assetType: MS_ASSET_TYPES.FUND,
+      },
+    ]);
+
+    const identity = await service.lookupIdentityFromScreener({
+      morningstarId: '0P00006DAB',
+      isin: 'LU0261948904',
+      name: 'Fidelity Iberia A-Acc-EUR',
+    });
+
+    expect(identity).toEqual({
+      shareClassId: 'FOGBR05KLX',
+      isin: 'LU0261948904',
+    });
+    expect(screener.search).toHaveBeenCalledWith('LU0261948904');
+    expect(httpClient.get).not.toHaveBeenCalled();
+  });
+
   it('should ignore a screener F ID that belongs to a different ISIN', async () => {
     screener.search.mockResolvedValue([
       {

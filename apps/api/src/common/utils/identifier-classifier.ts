@@ -19,8 +19,10 @@ export class IdentifierClassifier {
 
   // Morningstar ID patterns:
   // - 0P followed by 8 alphanumeric (e.g., 0P00018NVI)
-  // - F0 followed by alphanumeric (funds, e.g., F00000THA5)
-  private static readonly MS_ID_REGEX = /^(0P[A-Z0-9]{8}|F0[A-Z0-9]{8,10})$/i;
+  // - F0 followed by alphanumeric (funds, e.g., F00000THA5, F0GBR04EZP)
+  // - FOGBR… UK-style share-class IDs (letter O, e.g., FOGBR05KLX)
+  private static readonly MS_ID_REGEX =
+    /^(0P[A-Z0-9]{8}|F0[A-Z0-9]{8,10}|FOGBR[A-Z0-9]{5,8})$/i;
 
   // Ticker: 1-5 uppercase letters
   private static readonly TICKER_REGEX = /^[A-Z]{1,5}$/;

@@ -233,6 +233,42 @@ describe('instant-xray-screener', () => {
     });
   });
 
+  it('keeps FOGBR SecId as shareClassId for Luxembourg funds', () => {
+    const results = parseInstantXrayScreenerResponse(
+      {
+        total: 1,
+        rows: [
+          {
+            SecId: 'FOGBR05KLX',
+            Name: 'Fidelity Iberia A-Acc-EUR',
+            ISIN: 'LU0261948904',
+            PerformanceId: '0P00006DAB',
+            FundShareClassId: 'FOGBR05KLX',
+          },
+        ],
+      },
+      'LU0261948904',
+      'FOESP$$ALL',
+    );
+
+    expect(results).toHaveLength(1);
+    expect(results[0]).toMatchObject({
+      morningstarId: '0P00006DAB',
+      shareClassId: 'FOGBR05KLX',
+      isin: 'LU0261948904',
+    });
+    expect(
+      pickVerifiedIdentityFromScreenerResults(results, {
+        isin: 'LU0261948904',
+        performanceId: '0P00006DAB',
+        name: 'Fidelity Iberia A-Acc-EUR',
+      }),
+    ).toEqual({
+      shareClassId: 'FOGBR05KLX',
+      isin: 'LU0261948904',
+    });
+  });
+
   it('matches a 0P performance ID and exposes the F SecId as shareClassId', () => {
     const results = parseInstantXrayScreenerResponse(
       {

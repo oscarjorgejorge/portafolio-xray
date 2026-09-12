@@ -84,6 +84,10 @@ describe('IdentifierClassifier', () => {
       expect(IdentifierClassifier.isMorningstarId('F000016RL3')).toBe(true);
     });
 
+    it('should return true for UK-style FOGBR share-class IDs', () => {
+      expect(IdentifierClassifier.isMorningstarId('FOGBR05KLX')).toBe(true);
+    });
+
     it('should return false for ISIN format', () => {
       expect(IdentifierClassifier.isMorningstarId('IE00B4L5Y983')).toBe(false);
     });
@@ -167,6 +171,12 @@ describe('IdentifierClassifier', () => {
 
       it('should classify F0 format ID correctly', () => {
         expect(IdentifierClassifier.classify('F00000THA5')).toBe(
+          IdentifierType.MORNINGSTAR_ID,
+        );
+      });
+
+      it('should classify UK-style FOGBR share-class IDs correctly', () => {
+        expect(IdentifierClassifier.classify('FOGBR05KLX')).toBe(
           IdentifierType.MORNINGSTAR_ID,
         );
       });
