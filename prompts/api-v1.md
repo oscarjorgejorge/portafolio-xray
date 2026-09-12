@@ -2205,4 +2205,10 @@ pero ya esta todo desplegado y sigue sin persistir el share_class_id
 ### Prompt 172
 implementa el plan
 
+### Prompt 173
+no se puede encontrar el share_class_id de este activo y el pdf xray portafolio se genera mal LU0261948904
+
+### Prompt 174
+implementa el cambio
+
 
