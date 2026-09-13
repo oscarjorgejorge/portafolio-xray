@@ -3,6 +3,7 @@ import {
   assetTypeFromUniverse,
   buildInstantXrayScreenerUrl,
   exchangeRank,
+  joinScreenerUniverseIds,
   morningstarIdFromScreenerRow,
   parseExchangeMic,
   parseInstantXrayScreenerResponse,
@@ -24,17 +25,28 @@ describe('instant-xray-screener', () => {
     expect(url).toContain(encodeURIComponent('ETALL$$ALL'));
     expect(url).toContain('LU0328476410');
     expect(url).toContain('SecId');
+    expect(url).toContain('Universe');
+  });
+
+  it('joins ISIN universes for a single Instant X-Ray request', () => {
+    expect(
+      joinScreenerUniverseIds(screenerUniversesForQuery('LU0666200265')),
+    ).toBe('FOESP$$ALL|FOEUR$$ALL|FOGBR$$ALL|ETALL$$ALL|E0WWE$$ALL');
   });
 
   it('uses broad universes for ISINs, Morningstar IDs and exchange universes for tickers', () => {
     expect(screenerUniversesForQuery('LU0328476410')).toEqual([
-      'ETALL$$ALL',
       'FOESP$$ALL',
+      'FOEUR$$ALL',
+      'FOGBR$$ALL',
+      'ETALL$$ALL',
       'E0WWE$$ALL',
     ]);
     expect(screenerUniversesForQuery('0P0001CLDI')).toEqual([
-      'ETALL$$ALL',
       'FOESP$$ALL',
+      'FOEUR$$ALL',
+      'FOGBR$$ALL',
+      'ETALL$$ALL',
       'E0WWE$$ALL',
     ]);
     expect(screenerUniversesForQuery('SOFI')).toContain('E0EXG$XNAS');
@@ -45,6 +57,8 @@ describe('instant-xray-screener', () => {
     expect(assetTypeFromUniverse('ETALL$$ALL')).toBe(MS_ASSET_TYPES.ETF);
     expect(assetTypeFromUniverse('E0EXG$XNAS')).toBe(MS_ASSET_TYPES.STOCK);
     expect(assetTypeFromUniverse('FOESP$$ALL')).toBe(MS_ASSET_TYPES.FUND);
+    expect(assetTypeFromUniverse('FOEUR$$ALL')).toBe(MS_ASSET_TYPES.FUND);
+    expect(assetTypeFromUniverse('FOGBR$$ALL')).toBe(MS_ASSET_TYPES.FUND);
   });
 
   it('parses exchange MICs from Instant X-Ray ExchangeId values', () => {
@@ -267,6 +281,154 @@ describe('instant-xray-screener', () => {
       shareClassId: 'FOGBR05KLX',
       isin: 'LU0261948904',
     });
+  });
+
+  it('reads European FOEUR hits and types them from the row Universe', () => {
+    const joined = joinScreenerUniverseIds(
+      screenerUniversesForQuery('LU0666200265'),
+    );
+    const results = parseInstantXrayScreenerResponse(
+      {
+        total: 1,
+        rows: [
+          {
+            SecId: 'F00000NG7B',
+            Name: 'HSBC GIF Frontier Markets AD',
+            ISIN: 'LU0666200265',
+            PerformanceId: '0P0000UU8G',
+            FundShareClassId: 'F00000NG7B',
+            Universe: 'FOEUR$$ALL',
+          },
+        ],
+      },
+      'LU0666200265',
+      joined,
+    );
+
+    expect(results).toHaveLength(1);
+    expect(results[0]).toMatchObject({
+      morningstarId: '0P0000UU8G',
+      shareClassId: 'F00000NG7B',
+      isin: 'LU0666200265',
+      assetType: MS_ASSET_TYPES.FUND,
+    });
+    expect(results[0].snippet).toContain('FOEUR$$ALL');
+    expect(
+      pickVerifiedIdentityFromScreenerResults(results, {
+        isin: 'LU0666200265',
+        performanceId: '0P0000UU8G',
+        name: 'HSBC GIF Frontier Markets AD',
+      }),
+    ).toEqual({
+      shareClassId: 'F00000NG7B',
+      isin: 'LU0666200265',
+    });
+  });
+
+  it('prefers a FOESP share-class hit over a FOEUR duplicate of the same 0P ID', () => {
+    const ranked = rankInstantXrayResults(
+      [
+        {
+          url: 'https://global.morningstar.com/en-eu/investments/funds/0P00006DAB/quote',
+          title: 'Fidelity Iberia A-Acc-EUR',
+          snippet: 'Instant X-Ray | FOEUR$$ALL |',
+          morningstarId: '0P00006DAB',
+          domain: 'lt.morningstar.com',
+          shareClassId: 'F00000AAAA',
+          isin: 'LU0261948904',
+          assetType: MS_ASSET_TYPES.FUND,
+        },
+        {
+          url: 'https://global.morningstar.com/en-eu/investments/funds/0P00006DAB/quote',
+          title: 'Fidelity Iberia A-Acc-EUR',
+          snippet: 'Instant X-Ray | FOESP$$ALL |',
+          morningstarId: '0P00006DAB',
+          domain: 'lt.morningstar.com',
+          shareClassId: 'FOGBR05KLX',
+          isin: 'LU0261948904',
+          assetType: MS_ASSET_TYPES.FUND,
+        },
+      ],
+      'LU0261948904',
+    );
+
+    expect(ranked).toHaveLength(1);
+    expect(ranked[0].shareClassId).toBe('FOGBR05KLX');
+    expect(ranked[0].snippet).toContain('FOESP$$ALL');
+  });
+
+  it('reads FOEUR hits for Luxembourg funds missing from FOESP', () => {
+    const joinedUniverses = joinScreenerUniverseIds(
+      screenerUniversesForQuery('LU0666200265'),
+    );
+    const results = parseInstantXrayScreenerResponse(
+      {
+        total: 1,
+        rows: [
+          {
+            SecId: 'F00000NG7B',
+            Name: 'HSBC GIF Frontier Markets AD',
+            ISIN: 'LU0666200265',
+            PerformanceId: '0P0000UU8G',
+            FundShareClassId: 'F00000NG7B',
+            Universe: 'FOEUR$$ALL',
+          },
+        ],
+      },
+      'LU0666200265',
+      joinedUniverses,
+    );
+
+    expect(results).toHaveLength(1);
+    expect(results[0]).toMatchObject({
+      morningstarId: '0P0000UU8G',
+      shareClassId: 'F00000NG7B',
+      isin: 'LU0666200265',
+      assetType: MS_ASSET_TYPES.FUND,
+      snippet: 'Instant X-Ray | FOEUR$$ALL | ',
+    });
+    expect(
+      pickVerifiedIdentityFromScreenerResults(results, {
+        isin: 'LU0666200265',
+        performanceId: '0P0000UU8G',
+        name: 'HSBC GIF Frontier Markets AD',
+      }),
+    ).toEqual({
+      shareClassId: 'F00000NG7B',
+      isin: 'LU0666200265',
+    });
+  });
+
+  it('prefers a FOESP share-class hit over the same 0P ID from FOEUR', () => {
+    const ranked = rankInstantXrayResults(
+      [
+        {
+          url: 'https://global.morningstar.com/en-eu/investments/funds/0P00006DAB/quote',
+          title: 'Fidelity Iberia A-Acc-EUR',
+          snippet: 'Instant X-Ray | FOEUR$$ALL | ',
+          morningstarId: '0P00006DAB',
+          domain: 'lt.morningstar.com',
+          shareClassId: 'F00000AAAA',
+          isin: 'LU0261948904',
+          assetType: MS_ASSET_TYPES.FUND,
+        },
+        {
+          url: 'https://global.morningstar.com/en-eu/investments/funds/0P00006DAB/quote',
+          title: 'Fidelity Iberia A-Acc-EUR',
+          snippet: 'Instant X-Ray | FOESP$$ALL | ',
+          morningstarId: '0P00006DAB',
+          domain: 'lt.morningstar.com',
+          shareClassId: 'FOGBR05KLX',
+          isin: 'LU0261948904',
+          assetType: MS_ASSET_TYPES.FUND,
+        },
+      ],
+      'LU0261948904',
+    );
+
+    expect(ranked).toHaveLength(1);
+    expect(ranked[0].shareClassId).toBe('FOGBR05KLX');
+    expect(ranked[0].snippet).toContain('FOESP$$ALL');
   });
 
   it('matches a 0P performance ID and exposes the F SecId as shareClassId', () => {
