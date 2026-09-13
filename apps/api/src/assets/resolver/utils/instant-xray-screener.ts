@@ -13,8 +13,10 @@ export const INSTANT_XRAY_SCREENER_BASE_URL =
   'https://lt.morningstar.com/api/rest.svc/klr5zyak8x/security/screener';
 
 export const INSTANT_XRAY_ISIN_UNIVERSES = [
-  'ETALL$$ALL',
   'FOESP$$ALL',
+  'FOEUR$$ALL',
+  'FOGBR$$ALL',
+  'ETALL$$ALL',
   'E0WWE$$ALL',
 ] as const;
 
@@ -40,6 +42,14 @@ const PREFERRED_EXCHANGES = [
   'XSWX',
 ];
 
+const PREFERRED_UNIVERSES = [
+  'FOESP$$ALL',
+  'FOEUR$$ALL',
+  'FOGBR$$ALL',
+  'ETALL$$ALL',
+  'E0WWE$$ALL',
+] as const;
+
 export interface InstantXrayScreenerRow {
   SecId?: string;
   Name?: string;
@@ -49,6 +59,7 @@ export interface InstantXrayScreenerRow {
   ExchangeId?: string;
   ShareClassId?: string;
   FundShareClassId?: string;
+  Universe?: string;
 }
 
 export interface InstantXrayScreenerResponse {
@@ -71,9 +82,13 @@ export function buildInstantXrayScreenerUrl(
     universeIds: universeId,
     term,
     securityDataPoints:
-      'SecId|Name|Ticker|ISIN|PerformanceId|ExchangeId|ShareClassId',
+      'SecId|Name|Ticker|ISIN|PerformanceId|ExchangeId|ShareClassId|FundShareClassId|Universe',
   });
   return `${INSTANT_XRAY_SCREENER_BASE_URL}?${params.toString()}`;
+}
+
+export function joinScreenerUniverseIds(universes: readonly string[]): string {
+  return universes.join('|');
 }
 
 export function screenerUniversesForQuery(query: string): readonly string[] {
@@ -183,7 +198,6 @@ export function parseInstantXrayScreenerResponse(
     return [];
   }
 
-  const assetType = assetTypeFromUniverse(universeId);
   const results: SearchResult[] = [];
 
   for (const row of rows) {
@@ -195,6 +209,8 @@ export function parseInstantXrayScreenerResponse(
       continue;
     }
 
+    const rowUniverse = resolveRowUniverse(row.Universe, universeId);
+    const assetType = assetTypeFromUniverse(rowUniverse);
     const ticker = row.Ticker?.trim().toUpperCase() || undefined;
     const isin = row.ISIN?.trim().toUpperCase() || undefined;
     const shareClassId = shareClassIdFromScreenerRow(row);
@@ -202,7 +218,7 @@ export function parseInstantXrayScreenerResponse(
     results.push({
       url: buildMorningstarUrl(morningstarId, assetType, 'eu'),
       title: row.Name?.trim() || morningstarId,
-      snippet: `Instant X-Ray | ${universeId} | ${parseExchangeMic(row.ExchangeId) ?? ''}`,
+      snippet: `Instant X-Ray | ${rowUniverse} | ${parseExchangeMic(row.ExchangeId) ?? ''}`,
       morningstarId,
       domain: 'lt.morningstar.com',
       ticker,
@@ -218,24 +234,48 @@ export function parseInstantXrayScreenerResponse(
   return results;
 }
 
+export function universeRank(universeId?: string): number {
+  if (!universeId) {
+    return PREFERRED_UNIVERSES.length + 1;
+  }
+  const normalized = universeId.trim().toUpperCase();
+  const index = PREFERRED_UNIVERSES.indexOf(
+    normalized as (typeof PREFERRED_UNIVERSES)[number],
+  );
+  if (index !== -1) {
+    return index;
+  }
+  if (normalized.startsWith('FO')) {
+    return PREFERRED_UNIVERSES.indexOf('FOGBR$$ALL');
+  }
+  if (normalized.startsWith('ET')) {
+    return PREFERRED_UNIVERSES.indexOf('ETALL$$ALL');
+  }
+  if (normalized.startsWith('E0')) {
+    return PREFERRED_UNIVERSES.indexOf('E0WWE$$ALL');
+  }
+  return PREFERRED_UNIVERSES.length;
+}
+
 export function rankInstantXrayResults(
   results: SearchResult[],
   query: string,
 ): SearchResult[] {
   const normalized = query.trim().toUpperCase();
-  const seen = new Set<string>();
-  const unique: SearchResult[] = [];
+  const bestById = new Map<string, SearchResult>();
 
   for (const result of results) {
     const key = result.morningstarId?.toUpperCase();
-    if (!key || seen.has(key)) {
+    if (!key) {
       continue;
     }
-    seen.add(key);
-    unique.push(result);
+    const existing = bestById.get(key);
+    if (!existing || screenerHitRank(result) < screenerHitRank(existing)) {
+      bestById.set(key, result);
+    }
   }
 
-  return unique.sort((a, b) => {
+  return [...bestById.values()].sort((a, b) => {
     const aExactTicker =
       a.ticker?.toUpperCase() === normalized &&
       IdentifierClassifier.isTicker(normalized)
@@ -248,6 +288,11 @@ export function rankInstantXrayResults(
         : 1;
     if (aExactTicker !== bExactTicker) {
       return aExactTicker - bExactTicker;
+    }
+
+    const hitRank = screenerHitRank(a) - screenerHitRank(b);
+    if (hitRank !== 0) {
+      return hitRank;
     }
 
     const aExchange = exchangeRank(exchangeFromSnippet(a.snippet));
@@ -358,6 +403,36 @@ export function pickIdentityFromScreenerResults(
     shareClassId,
     isin: withIsin?.isin,
   };
+}
+
+function resolveRowUniverse(
+  rowUniverse: string | undefined,
+  fallbackUniverseId: string,
+): string {
+  const fromRow = rowUniverse?.trim();
+  if (fromRow) {
+    return fromRow;
+  }
+  if (!fallbackUniverseId.includes('|')) {
+    return fallbackUniverseId;
+  }
+  return fallbackUniverseId.split('|')[0] ?? fallbackUniverseId;
+}
+
+function universeFromSnippet(snippet: string): string | undefined {
+  const parts = snippet.split('|').map((part) => part.trim());
+  return parts[1] || undefined;
+}
+
+function screenerHitRank(result: SearchResult): number {
+  const hasShareClass =
+    isFundShareClassId(result.shareClassId) ||
+    isFundShareClassId(result.morningstarId)
+      ? 0
+      : 1;
+  return (
+    hasShareClass * 100 + universeRank(universeFromSnippet(result.snippet))
+  );
 }
 
 function exchangeFromSnippet(snippet: string): string | undefined {
