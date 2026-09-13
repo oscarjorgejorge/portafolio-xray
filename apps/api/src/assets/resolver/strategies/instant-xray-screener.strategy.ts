@@ -5,6 +5,7 @@ import { HttpClientService } from '../../../common/http';
 import { createContextLogger } from '../../../common/logger';
 import {
   buildInstantXrayScreenerUrl,
+  joinScreenerUniverseIds,
   parseInstantXrayScreenerResponse,
   rankInstantXrayResults,
   screenerUniversesForQuery,
@@ -25,23 +26,15 @@ export class InstantXrayScreenerStrategy implements SearchStrategy {
   constructor(private readonly httpClient: HttpClientService) {}
 
   async search(query: string): Promise<SearchResult[]> {
-    const universes = screenerUniversesForQuery(query);
+    const universeIds = joinScreenerUniverseIds(
+      screenerUniversesForQuery(query),
+    );
     this.logger.debug(
-      `[${this.name}] Searching Instant X-Ray screener for: ${query} (${universes.length} universes)`,
+      `[${this.name}] Searching Instant X-Ray screener for: ${query} (${universeIds})`,
     );
 
-    const settled = await Promise.allSettled(
-      universes.map((universeId) => this.searchUniverse(query, universeId)),
-    );
-
-    const merged: SearchResult[] = [];
-    for (const result of settled) {
-      if (result.status === 'fulfilled') {
-        merged.push(...result.value);
-      }
-    }
-
-    const ranked = rankInstantXrayResults(merged, query);
+    const results = await this.searchUniverse(query, universeIds);
+    const ranked = rankInstantXrayResults(results, query);
     this.logger.debug(
       `[${this.name}] Unique Instant X-Ray hits for ${query}: ${ranked.length}`,
     );

@@ -2211,4 +2211,13 @@ no se puede encontrar el share_class_id de este activo y el pdf xray portafolio 
 ### Prompt 174
 implementa el cambio
 
+### Prompt 175
+porque ahora no resuelve este activo? LU0666200265
+
+### Prompt 176
+como podemos anhadir todos los universos?
+
+### Prompt 177
+implement the change
+
 

@@ -18,6 +18,7 @@ import {
 } from './enrich-share-class-ids.logic';
 import {
   buildInstantXrayScreenerUrl,
+  joinScreenerUniverseIds,
   parseInstantXrayScreenerResponse,
   pickShareClassIdFromScreenerResults,
   screenerUniversesForQuery,
@@ -319,18 +320,18 @@ async function lookupShareClassFromScreener(
   for (const term of terms) {
     if (seen.has(term)) continue;
     seen.add(term);
-    const universes = screenerUniversesForQuery(term);
-    const merged: ReturnType<typeof parseInstantXrayScreenerResponse> = [];
-    for (const universeId of universes) {
-      const payload = await fetchJson(
-        buildInstantXrayScreenerUrl(term, universeId),
-      );
-      if (!payload) continue;
-      merged.push(
-        ...parseInstantXrayScreenerResponse(payload, term, universeId),
-      );
+    const universeIds = joinScreenerUniverseIds(
+      screenerUniversesForQuery(term),
+    );
+    const payload = await fetchJson(
+      buildInstantXrayScreenerUrl(term, universeIds),
+    );
+    if (!payload) {
+      continue;
     }
-    const shareClassId = pickShareClassIdFromScreenerResults(merged);
+    const shareClassId = pickShareClassIdFromScreenerResults(
+      parseInstantXrayScreenerResponse(payload, term, universeIds),
+    );
     if (shareClassId) {
       return shareClassId;
     }
