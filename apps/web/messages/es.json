@@ -26,7 +26,8 @@
     "error": "Error al generar X-Ray",
     "unexpectedError": "Ocurrió un error inesperado",
     "timeout": "La petición tardó demasiado. Vuelve a intentarlo.",
-    "fallbackHint": "{count, plural, one {# fondo se está identificando todavía. El informe puede mejorar en unos segundos: genera de nuevo.} other {# fondos se están identificando todavía. El informe puede mejorar en unos segundos: genera de nuevo.}}",
+    "unsupportedHint": "{count, plural, one {# posición no es compatible con Instant X-Ray (plan de pensiones, EPSV o FIL). No está recomendada; el informe la omitirá.} other {# posiciones no son compatibles con Instant X-Ray (planes de pensiones, EPSV o FIL). No están recomendadas; el informe las omitirá.}}",
+    "unmappedHint": "{count, plural, one {# fondo no se ha podido mapear a Instant X-Ray.} other {# fondos no se han podido mapear a Instant X-Ray.}}",
     "noPortfolioData": "No se encontraron datos de cartera en la URL.",
     "backToBuilder": "Crea tu cartera",
     "createNew": "Crear Nueva Cartera",
@@ -47,7 +48,8 @@
     "noAssetsHint": "Introduce un ISIN o ID de Morningstar arriba para una coincidencia instantánea. También puedes buscar por nombre o ticker, pero puede requerir confirmación.",
     "successToast": "¡X-Ray generado exitosamente!",
     "generateTimeout": "La petición tardó demasiado. Vuelve a intentarlo.",
-    "fallbackHint": "{count, plural, one {# fondo se está identificando todavía. El informe puede mejorar en unos segundos: genera de nuevo.} other {# fondos se están identificando todavía. El informe puede mejorar en unos segundos: genera de nuevo.}}",
+    "unsupportedHint": "{count, plural, one {# posición no es compatible con Instant X-Ray (plan de pensiones, EPSV o FIL). No está recomendada; el informe la omitirá.} other {# posiciones no son compatibles con Instant X-Ray (planes de pensiones, EPSV o FIL). No están recomendadas; el informe las omitirá.}}",
+    "unmappedHint": "{count, plural, one {# fondo no se ha podido mapear a Instant X-Ray.} other {# fondos no se han podido mapear a Instant X-Ray.}}",
     "xrayIssueHint": "Si el X-Ray no se genera bien o faltan activos, escríbenos a través del <contactLink>formulario de contacto</contactLink> indicando los que no aparecen y sus ISINs para poder corregirlos manualmente."
   },
   "assetInput": {
@@ -71,7 +73,8 @@
     "morningstarId": "ID Morningstar:",
     "fetchingIsin": "Obteniendo ISIN...",
     "resolving": "Resolviendo activo...",
-    "enterManually": "Introducir ID de Morningstar manualmente"
+    "enterManually": "Introducir ID de Morningstar manualmente",
+    "unsupportedHint": "Este producto (plan de pensiones, EPSV o FIL) no está recomendado para el X-Ray. Morningstar Instant X-Ray no lo incluirá en el informe."
   },
   "summary": {
     "total": "Total:",
