@@ -9,11 +9,13 @@ import { AllocationModeToggle } from './AllocationModeToggle';
 import { PortfolioSummary } from './PortfolioSummary';
 import { ShareableUrlSection } from './ShareableUrlSection';
 import { XRayIssueHint } from './XRayIssueHint';
+import { XRayGenerateHints } from './XRayGenerateHints';
 import { Card } from '@/components/ui/Card';
 import { Toast } from '@/components/ui/Toast';
 import { Alert } from '@/components/ui/Alert';
 import type { PortfolioAsset, AllocationMode } from '@/types';
 import { usePortfolioBuilder } from '@/lib/hooks/usePortfolioBuilder';
+import { countInstantXrayUnsupportedHoldings } from '@/lib/utils';
 import { useAuth } from '@/lib/auth';
 import { useAuthModal } from '@/lib/auth/AuthModalContext';
 import { getPendingSavePortfolio, clearPendingSavePortfolio, setPendingSavePortfolio } from '@/components/auth/AuthModal';
@@ -288,10 +290,12 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
               </Alert>
             )}
 
-            {holdingsUsingFallback > 0 && shareableUrl && (
-              <Alert variant="info" className="mt-4">
-                {t('fallbackHint', { count: holdingsUsingFallback })}
-              </Alert>
+            {shareableUrl && (
+              <XRayGenerateHints
+                className="mt-4"
+                unsupportedCount={countInstantXrayUnsupportedHoldings(assets)}
+                holdingsUsingFallback={holdingsUsingFallback}
+              />
             )}
 
             {/* Shareable URL Section - Show after successful generation */}

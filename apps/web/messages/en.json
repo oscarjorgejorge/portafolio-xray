@@ -26,7 +26,8 @@
     "error": "Error generating X-Ray",
     "unexpectedError": "An unexpected error occurred",
     "timeout": "The request took too long. Please try again.",
-    "fallbackHint": "{count, plural, one {# fund is still being identified. The report may improve in a few seconds — generate again.} other {# funds are still being identified. The report may improve in a few seconds — generate again.}}",
+    "unsupportedHint": "{count, plural, one {# holding is not compatible with Instant X-Ray (pension plan, EPSV or FIL). It is not recommended; the report will omit it.} other {# holdings are not compatible with Instant X-Ray (pension plans, EPSV or FIL). They are not recommended; the report will omit them.}}",
+    "unmappedHint": "{count, plural, one {# fund could not be mapped to Instant X-Ray.} other {# funds could not be mapped to Instant X-Ray.}}",
     "noPortfolioData": "No portfolio data found in URL.",
     "backToBuilder": "Back to Portfolio Builder",
     "createNew": "Create New Portfolio",
@@ -47,7 +48,8 @@
     "noAssetsHint": "Enter an ISIN or Morningstar ID above for instant matching. Name and ticker searches are also supported but may require confirmation.",
     "successToast": "X-Ray generated successfully!",
     "generateTimeout": "The request took too long. Please try again.",
-    "fallbackHint": "{count, plural, one {# fund is still being identified. The report may improve in a few seconds — generate again.} other {# funds are still being identified. The report may improve in a few seconds — generate again.}}",
+    "unsupportedHint": "{count, plural, one {# holding is not compatible with Instant X-Ray (pension plan, EPSV or FIL). It is not recommended; the report will omit it.} other {# holdings are not compatible with Instant X-Ray (pension plans, EPSV or FIL). They are not recommended; the report will omit them.}}",
+    "unmappedHint": "{count, plural, one {# fund could not be mapped to Instant X-Ray.} other {# funds could not be mapped to Instant X-Ray.}}",
     "xrayIssueHint": "If the X-Ray is incomplete or missing assets, write through the <contactLink>contact form</contactLink> with the missing assets and their ISINs so we can correct them manually."
   },
   "assetInput": {
@@ -71,7 +73,8 @@
     "morningstarId": "Morningstar ID:",
     "fetchingIsin": "Fetching ISIN...",
     "resolving": "Resolving asset...",
-    "enterManually": "Enter Morningstar ID manually"
+    "enterManually": "Enter Morningstar ID manually",
+    "unsupportedHint": "This product (pension plan, EPSV or FIL) is not recommended for X-Ray. Morningstar Instant X-Ray will not include it in the report."
   },
   "summary": {
     "total": "Total:",

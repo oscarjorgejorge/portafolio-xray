@@ -7,7 +7,7 @@ import { Spinner } from '@/components/ui/Spinner';
 import { InputNumber } from '@/components/ui/InputNumber';
 import { AssetRowSkeleton } from '@/components/ui/Skeleton';
 import { TrashIcon, ExternalLinkIcon } from '@/components/ui/Icons';
-import { cn } from '@/lib/utils';
+import { cn, isInstantXrayUnsupportedProduct } from '@/lib/utils';
 import { EditableIsin } from './EditableIsin';
 import { EditableTicker } from './EditableTicker';
 import { useIsinPolling } from '@/lib/hooks/useIsinPolling';
@@ -192,6 +192,9 @@ export const AssetRow = memo<AssetRowProps>(function AssetRow({
   });
 
   const hasWeightError = Boolean(error && error !== asset.error);
+  const isUnsupportedProduct = isInstantXrayUnsupportedProduct(
+    asset.asset?.name ?? asset.identifier,
+  );
 
   // Show skeleton when loading
   if (isLoading) {
@@ -261,6 +264,14 @@ export const AssetRow = memo<AssetRowProps>(function AssetRow({
                   </span>
                 )}
               </div>
+              {isUnsupportedProduct && (
+                <p
+                  className="mt-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5"
+                  role="status"
+                >
+                  {t('unsupportedHint')}
+                </p>
+              )}
               {/* Mobile: Weight input */}
               <div className="md:hidden flex items-center gap-2 mt-2">
                 <label className="text-xs font-medium text-slate-700 whitespace-nowrap">
@@ -396,6 +407,14 @@ export const AssetRow = memo<AssetRowProps>(function AssetRow({
             </div>
             {hasWeightError && <ErrorMessage error={error!} className="mt-1" />}
           </div>
+          {isUnsupportedProduct && (
+            <p
+              className="mb-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5"
+              role="status"
+            >
+              {t('unsupportedHint')}
+            </p>
+          )}
           {asset.status === 'resolving' && (
             <div className="flex items-center gap-2 text-slate-500">
               <Spinner size="sm" className="text-blue-500" />

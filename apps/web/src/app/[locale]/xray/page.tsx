@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { useRouter } from '@/i18n/navigation';
 import { Card } from '@/components/ui/Card';
 import { XRayIssueHint } from '@/components/portfolio/XRayIssueHint';
+import { XRayGenerateHints } from '@/components/portfolio/XRayGenerateHints';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { PageLoading } from '@/components/ui/PageLoading';
@@ -150,14 +151,14 @@ function XRayPageContent() {
           </p>
         </div>
 
-        {typeof generateMutation.data?.holdingsUsingFallback === 'number' &&
-          generateMutation.data.holdingsUsingFallback > 0 && (
-            <Alert variant="info" className="mb-6">
-              {t('fallbackHint', {
-                count: generateMutation.data.holdingsUsingFallback,
-              })}
-            </Alert>
-          )}
+        <XRayGenerateHints
+          className="mb-6"
+          namespace="xray"
+          unsupportedCount={0}
+          holdingsUsingFallback={
+            generateMutation.data?.holdingsUsingFallback ?? 0
+          }
+        />
 
         <div className="space-y-6">
           <Card title={t('pdfCard.title')}>
