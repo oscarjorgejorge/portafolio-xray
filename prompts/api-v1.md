@@ -2220,4 +2220,24 @@ como podemos anhadir todos los universos?
 ### Prompt 177
 implement the change
 
+### Prompt 178
+[
+  { "morningstarId": "0P00006DAB", "weight": 2 },
+  ...
+]
+que fondos no se han podido identificar y porque?
+el feedback de intentelo mas tarde no se si tiene sentido porque creo que no se esta tratando de identificarlos
+
+### Prompt 179
+y los que no se pudieron resolver.. necesitamos hacer algun cambio?
+
+### Prompt 180
+cambia el feedback y ademas un aviso que ese tipo de asset no esta recomendado, dime el plan
+
+### Prompt 181
+que es esto? EPSV o FIL
+
+### Prompt 182
+implementa el plan
+
 
