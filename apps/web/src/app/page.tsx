@@ -1,7 +1,6 @@
-import { redirect } from 'next/navigation';
+import { permanentRedirect } from 'next/navigation';
+import { routing } from '@/i18n/routing';
 
 export default function RootPage() {
-  // Redirect to default locale (Spanish)
-  redirect('/es');
+  permanentRedirect(`/${routing.defaultLocale}`);
 }
-

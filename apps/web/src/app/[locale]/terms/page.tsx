@@ -1,15 +1,24 @@
 import type { Metadata } from 'next';
+import { localeMetadata } from '@/lib/seo';
 
 interface TermsPageProps {
-  params: { locale: string };
+  params: Promise<{ locale: string }>;
 }
 
-export const metadata: Metadata = {
-  title: 'Terms & Conditions',
-};
+export async function generateMetadata({
+  params,
+}: TermsPageProps): Promise<Metadata> {
+  const { locale } = await params;
+  const isSpanish = locale === 'es';
 
-export default function TermsPage({ params }: TermsPageProps) {
-  const locale = params?.locale ?? 'es';
+  return {
+    ...localeMetadata(locale, '/terms'),
+    title: isSpanish ? 'Términos y condiciones' : 'Terms & Conditions',
+  };
+}
+
+export default async function TermsPage({ params }: TermsPageProps) {
+  const { locale } = await params;
   const isSpanish = locale === 'es';
 
   if (isSpanish) {

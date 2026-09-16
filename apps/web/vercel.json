@@ -3,5 +3,13 @@
   "framework": "nextjs",
   "outputDirectory": ".next",
   "installCommand": "npm install",
-  "buildCommand": "npm run build"
+  "buildCommand": "npm run build",
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "xrayportfolio.com" }],
+      "destination": "https://www.xrayportfolio.com/:path*",
+      "permanent": true
+    }
+  ]
 }

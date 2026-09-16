@@ -1,15 +1,24 @@
 import type { Metadata } from 'next';
+import { localeMetadata } from '@/lib/seo';
 
 interface PrivacyPageProps {
-  params: { locale: string };
+  params: Promise<{ locale: string }>;
 }
 
-export const metadata: Metadata = {
-  title: 'Privacy Policy',
-};
+export async function generateMetadata({
+  params,
+}: PrivacyPageProps): Promise<Metadata> {
+  const { locale } = await params;
+  const isSpanish = locale === 'es';
 
-export default function PrivacyPage({ params }: PrivacyPageProps) {
-  const locale = params?.locale ?? 'es';
+  return {
+    ...localeMetadata(locale, '/privacy'),
+    title: isSpanish ? 'Política de privacidad' : 'Privacy Policy',
+  };
+}
+
+export default async function PrivacyPage({ params }: PrivacyPageProps) {
+  const { locale } = await params;
   const isSpanish = locale === 'es';
 
   if (isSpanish) {
