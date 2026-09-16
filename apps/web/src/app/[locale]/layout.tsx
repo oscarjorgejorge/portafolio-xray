@@ -1,14 +1,14 @@
 import type { Metadata } from 'next';
 import { ReactNode } from 'react';
 import { NextIntlClientProvider } from 'next-intl';
-import { getMessages, getTranslations } from 'next-intl/server';
+import { getMessages, getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { routing } from '@/i18n/routing';
 import { NavBar } from '@/components/navigation/NavBar';
 import { MainWithSidebar } from '@/components/layout/MainWithSidebar';
 import { BottomNav } from '@/components/navigation/BottomNav';
-import { HtmlLangUpdater } from '@/components/layout/HtmlLangUpdater';
 import { AuthModalProvider } from '@/lib/auth/AuthModalContext';
+import { getSiteUrl } from '@/lib/seo';
 
 interface LocaleLayoutProps {
   children: ReactNode;
@@ -24,21 +24,12 @@ export async function generateMetadata({ params }: LocaleLayoutProps): Promise<M
   const t = await getTranslations({ locale, namespace: 'metadata' });
 
   return {
+    metadataBase: new URL(getSiteUrl()),
     title: {
       default: t('title'),
       template: `%s | ${t('title')}`,
     },
     description: t('description'),
-    keywords: [
-      'portfolio analysis',
-      'Morningstar X-Ray',
-      'investment analysis',
-      'ETF analysis',
-      'fund analysis',
-      'asset allocation',
-      'portfolio tracker',
-      'ISIN lookup',
-    ],
     authors: [{ name: 'Portfolio X-Ray Team' }],
     openGraph: {
       type: 'website',
@@ -56,17 +47,12 @@ export async function generateMetadata({ params }: LocaleLayoutProps): Promise<M
       index: true,
       follow: true,
     },
-    alternates: {
-      languages: {
-        en: '/en',
-        es: '/es',
-      },
-    },
   };
 }
 
 export default async function LocaleLayout({ children, params }: LocaleLayoutProps) {
   const { locale } = await params;
+  setRequestLocale(locale);
 
   // Validate locale
   if (!routing.locales.includes(locale as typeof routing.locales[number])) {
@@ -78,7 +64,6 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
 
   return (
     <NextIntlClientProvider messages={messages}>
-      <HtmlLangUpdater />
       <AuthModalProvider>
         <NavBar />
         <MainWithSidebar>{children}</MainWithSidebar>

@@ -1,12 +1,19 @@
 import createMiddleware from 'next-intl/middleware';
+import { NextRequest, NextResponse } from 'next/server';
 import { routing } from './i18n/routing';
 
-export default createMiddleware(routing);
+const handleI18n = createMiddleware(routing);
+
+export default function middleware(request: NextRequest) {
+  if (request.nextUrl.pathname === '/') {
+    const url = request.nextUrl.clone();
+    url.pathname = `/${routing.defaultLocale}`;
+    return NextResponse.redirect(url, 308);
+  }
+
+  return handleI18n(request);
+}
 
 export const config = {
-  // Match all pathnames except for:
-  // - API routes (/api/...)
-  // - Static files (/_next/..., /images/..., etc.)
-  // - Files with extensions (.ico, .svg, .png, etc.)
-  matcher: ['/', '/(es|en)/:path*']
+  matcher: ['/', '/(es|en)/:path*'],
 };

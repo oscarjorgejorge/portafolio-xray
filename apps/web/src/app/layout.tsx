@@ -1,5 +1,6 @@
 import type { Viewport } from 'next';
 import { Inter } from 'next/font/google';
+import { getLocale } from 'next-intl/server';
 import './globals.css';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { AuthProvider } from '@/lib/auth';
@@ -13,14 +14,15 @@ export const viewport: Viewport = {
   themeColor: '#3b82f6',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Default to Spanish locale, but this will be overridden by locale layout
+  const locale = await getLocale();
+
   return (
-    <html lang="es" suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <body className={inter.className} suppressHydrationWarning>
         <QueryProvider>
           <AuthProvider>
@@ -31,6 +33,4 @@ export default function RootLayout({
     </html>
   );
 }
-
-export { inter };
 
