@@ -1,7 +1,8 @@
 import type { MetadataRoute } from 'next';
+import { headers } from 'next/headers';
 import { getPublicPortfolios } from '@/lib/api/portfolios';
 import { routing } from '@/i18n/routing';
-import { absoluteUrl, localeLanguageAlternates } from '@/lib/seo';
+import { absoluteUrl, isCanonicalHost, localeLanguageAlternates } from '@/lib/seo';
 
 export const revalidate = 3600;
 
@@ -22,6 +23,11 @@ function sitemapEntry(
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const host = (await headers()).get('host');
+  if (!isCanonicalHost(host)) {
+    return [];
+  }
+
   const lastModified = new Date();
 
   const staticEntries = routing.locales.flatMap((locale) =>

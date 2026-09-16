@@ -2,7 +2,8 @@ import type { Metadata } from 'next';
 import { routing } from '@/i18n/routing';
 import { env } from '@/lib/env';
 
-const DEFAULT_SITE_URL = 'https://www.xrayportfolio.com';
+export const CANONICAL_HOST = 'www.xrayportfolio.com';
+const DEFAULT_SITE_URL = `https://${CANONICAL_HOST}`;
 
 /**
  * Canonical origin with no trailing slash.
@@ -10,6 +11,27 @@ const DEFAULT_SITE_URL = 'https://www.xrayportfolio.com';
 export function getSiteUrl(): string {
   const raw = env.NEXT_PUBLIC_SITE_URL || DEFAULT_SITE_URL;
   return raw.replace(/\/+$/, '');
+}
+
+export function getCanonicalHost(): string {
+  try {
+    return new URL(getSiteUrl()).host;
+  } catch {
+    return CANONICAL_HOST;
+  }
+}
+
+/**
+ * True when the request Host is the indexable origin.
+ * Missing host (build/prerender) is treated as canonical so sitemap/robots
+ * still generate for production.
+ */
+export function isCanonicalHost(host: string | null | undefined): boolean {
+  if (!host) {
+    return true;
+  }
+
+  return host.split(':')[0].toLowerCase() === getCanonicalHost().toLowerCase();
 }
 
 /**

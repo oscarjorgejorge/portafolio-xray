@@ -2266,4 +2266,13 @@ No se menciona la config de Next.js para trailing slash. Sin esto, /es y /es/ pu
 ### Prompt 187
 implementa el plan
 
+### Prompt 188
+el entorno de desarrolo deberia devolver algo como X-Robots-Tag: noindex, nofollow? para que google no tenga en cuenta el entorno de desarrollo
+
+### Prompt 189
+no hay otro vercel, solo este proyecto y son diferentes ramas, entonces cual es la mejor recomendacion?
+
+### Prompt 190
+implementa los cambios necesarios
+
 

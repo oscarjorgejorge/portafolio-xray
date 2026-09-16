@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   absoluteUrl,
+  isCanonicalHost,
   localeLanguageAlternates,
   localeMetadata,
   localizedPath,
@@ -28,6 +29,15 @@ describe('seo helpers', () => {
     expect(languages['x-default']).toBe(
       'https://www.xrayportfolio.com/es/contact',
     );
+  });
+
+  it('treats only the canonical host as indexable', () => {
+    expect(isCanonicalHost(undefined)).toBe(true);
+    expect(isCanonicalHost('www.xrayportfolio.com')).toBe(true);
+    expect(isCanonicalHost('WWW.xrayportfolio.com')).toBe(true);
+    expect(isCanonicalHost('xrayportfolio.com')).toBe(false);
+    expect(isCanonicalHost('portafolio-xray.vercel.app')).toBe(false);
+    expect(isCanonicalHost('localhost:3000')).toBe(false);
   });
 
   it('sets canonical to the current locale URL', () => {
