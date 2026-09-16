@@ -15,6 +15,12 @@ const envSchema = z.object({
     .url()
     .default('http://localhost:4000'),
 
+  NEXT_PUBLIC_SITE_URL: z
+    .string()
+    .url()
+    .default('https://www.xrayportfolio.com')
+    .transform((value) => value.replace(/\/+$/, '')),
+
   // Node environment
   NODE_ENV: z
     .enum(['development', 'production', 'test'])
@@ -40,6 +46,7 @@ function getEnv(): Env {
   // Client-side: NEXT_PUBLIC_* vars are inlined by Next.js at build time
   const parsed = envSchema.safeParse({
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
+    NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
     NODE_ENV: process.env.NODE_ENV,
   });
 

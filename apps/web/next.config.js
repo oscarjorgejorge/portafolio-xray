@@ -5,6 +5,7 @@ const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  trailingSlash: false,
 
   // Optimize compilation performance
   compiler: {
@@ -117,6 +118,20 @@ const nextConfig = {
   // Turbopack configuration (Next.js 16+ uses Turbopack by default)
   // Empty config to silence warning - webpack config is for fallback only
   turbopack: {},
+
+  // Only www.xrayportfolio.com is indexable. Preview, *.vercel.app, and
+  // localhost get X-Robots-Tag so they do not compete with production.
+  async headers() {
+    const noIndexHeader = {
+      missing: [{ type: 'host', value: 'www.xrayportfolio.com' }],
+      headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }],
+    };
+
+    return [
+      { source: '/', ...noIndexHeader },
+      { source: '/:path*', ...noIndexHeader },
+    ];
+  },
 
   // i18n is now handled by next-intl via the [locale] folder structure
 };

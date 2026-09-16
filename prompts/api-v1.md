@@ -2240,4 +2240,39 @@ que es esto? EPSV o FIL
 ### Prompt 182
 implementa el plan
 
+### Prompt 183
+como podemos mejorar el SEO? HAY ALGO QUe se pueda hacer?
+
+### Prompt 184
+haz un plan con las mejoras propuestas (1 - 4)
+
+### Prompt 185
+https://www.xrayportfolio.com/es  este es el dominio actual
+
+### Prompt 186
+que hay sobre estos puntos? tienen sentido?
+5. Resolver la URL raíz "/" como caso aparte
+Tus datos de GSC muestran algo que el plan no aborda explícitamente: / acumula 1083 clics como página independiente, separados de /es (45) y /en (187). Eso indica que hoy / no redirige a /es, sino que Google la indexa por su cuenta y compite contigo mismo. El punto 3 (hreflang/canonical) da un canonical a /, pero probablemente lo correcto sea un redirect 308 explícito de / → /es (con localePrefix: 'always'), no solo una etiqueta canonical.
+
+6. Reciprocidad del hreflang
+El plan menciona el helper localeMetadata para /, pero no aclara si cada página (explore, contact, terms, explore/[id]…) emite hreflang hacia todas las variantes, incluyéndose a sí misma (self-referencing). Google ignora bloques hreflang no recíprocos, así que hay que verificarlo página por página, no solo en el layout raíz.
+
+8. Redirects de dominio/protocolo a nivel de servidor
+El origen canónico es https://www.xrayportfolio.com, pero el plan no dice cómo se fuerza eso: falta un redirect 308 permanente (no solo canonical) para http→https y non-www→www a nivel de servidor/edge — el canonical tag es una sugerencia para Google, no garantiza que no se indexen ambas variantes.
+
+9. trailingSlash consistente
+No se menciona la config de Next.js para trailing slash. Sin esto, /es y /es/ pueden tratarse como URLs distintas y diluir señales.
+
+### Prompt 187
+implementa el plan
+
+### Prompt 188
+el entorno de desarrolo deberia devolver algo como X-Robots-Tag: noindex, nofollow? para que google no tenga en cuenta el entorno de desarrollo
+
+### Prompt 189
+no hay otro vercel, solo este proyecto y son diferentes ramas, entonces cual es la mejor recomendacion?
+
+### Prompt 190
+implementa los cambios necesarios
+
 

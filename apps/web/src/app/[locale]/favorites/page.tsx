@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useRouter } from '@/i18n/navigation';
+import { useRouter, Link } from '@/i18n/navigation';
 import { getMyFavorites, removeFavorite, type FavoriteRecord } from '@/lib/api/favorites';
 import { queryKeys } from '@/lib/api/queryKeys';
 import { useAuth } from '@/lib/auth';
@@ -25,13 +25,11 @@ function FavoriteCard({
   item,
   onOpenBuilder,
   openAuthModalAndWait,
-  onViewDetails,
   onRemoveClick,
 }: {
   item: FavoriteRecord;
   onOpenBuilder: (p: PublicPortfolioListItem) => void;
   openAuthModalAndWait: () => Promise<void>;
-  onViewDetails: () => void;
   onRemoveClick?: (item: FavoriteRecord) => void;
 }) {
   const t = useTranslations('portfolios');
@@ -57,13 +55,12 @@ function FavoriteCard({
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <button
-              type="button"
+            <Link
+              href={`/explore/${portfolio.id}`}
               className="font-semibold text-slate-900 truncate text-left hover:underline"
-              onClick={onViewDetails}
             >
               {portfolio.name}
-            </button>
+            </Link>
           </div>
           <p className="text-sm text-slate-600 mt-1">
             {t('publicPortfolioByUser', { userName: portfolio.userName })}
@@ -81,15 +78,13 @@ function FavoriteCard({
             <HeartFilledIcon className="w-5 h-5" />
             <span className="text-sm tabular-nums">{favoritesCount}</span>
           </button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="p-2"
-            onClick={onViewDetails}
+          <Link
+            href={`/explore/${portfolio.id}`}
+            className="p-2 rounded-lg text-muted-foreground hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500"
             aria-label={t('viewDetails')}
           >
             <ArrowRightIcon className="w-4 h-4" />
-          </Button>
+          </Link>
         </div>
       </div>
     </Card>
@@ -191,7 +186,6 @@ export default function FavoritesPage() {
               item={item}
               onOpenBuilder={handleOpenInBuilder}
               openAuthModalAndWait={openAuthModalAndWait}
-              onViewDetails={() => router.push(`/explore/${item.portfolio.id}`)}
               onRemoveClick={setFavoriteToRemove}
             />
           </li>
