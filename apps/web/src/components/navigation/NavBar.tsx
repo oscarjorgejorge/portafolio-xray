@@ -62,6 +62,26 @@ export function NavBar() {
                 {tNav('explorePortfolios')}
               </Link>
               <Link
+                href="/que-es-un-xray-de-cartera"
+                className={`hidden lg:inline px-1 border-b-2 ${
+                  isActive('/que-es-un-xray-de-cartera')
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                {tNav('whatIsXray')}
+              </Link>
+              <Link
+                href="/como-funciona"
+                className={`hidden lg:inline px-1 border-b-2 ${
+                  isActive('/como-funciona')
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                {tNav('howItWorks')}
+              </Link>
+              <Link
                 href="/contact"
                 className={`px-1 border-b-2 ${
                   isActive('/contact')
@@ -162,6 +182,24 @@ export function NavBar() {
                 }`}
               >
                 {tNav('explorePortfolios')}
+              </Link>
+              <Link
+                href="/que-es-un-xray-de-cartera"
+                onClick={closeMobileMenu}
+                className={`py-1 ${
+                  isActive('/que-es-un-xray-de-cartera') ? 'text-blue-600' : 'text-gray-700'
+                }`}
+              >
+                {tNav('whatIsXray')}
+              </Link>
+              <Link
+                href="/como-funciona"
+                onClick={closeMobileMenu}
+                className={`py-1 ${
+                  isActive('/como-funciona') ? 'text-blue-600' : 'text-gray-700'
+                }`}
+              >
+                {tNav('howItWorks')}
               </Link>
               <Link
                 href="/contact"

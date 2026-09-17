@@ -1,6 +1,7 @@
 'use client';
 
 import { ReactNode } from 'react';
+import { useTranslations } from 'next-intl';
 import { Sidebar } from '@/components/navigation/Sidebar';
 import { useAuth } from '@/lib/auth';
 import { Link } from '@/i18n/navigation';
@@ -16,6 +17,7 @@ interface MainWithSidebarProps {
  */
 export function MainWithSidebar({ children }: MainWithSidebarProps) {
   const { isAuthenticated, user } = useAuth();
+  const tNav = useTranslations('navigation');
   const showSidebar = isAuthenticated && user?.emailVerified;
   const currentYear = new Date().getFullYear();
 
@@ -34,13 +36,19 @@ export function MainWithSidebar({ children }: MainWithSidebarProps) {
               © {currentYear} Portfolio X-Ray. Not investment or medical advice.
             </span>
             <div className="flex flex-wrap gap-4">
+              <Link href="/que-es-un-xray-de-cartera" className="hover:text-gray-700">
+                {tNav('whatIsXray')}
+              </Link>
+              <Link href="/como-funciona" className="hover:text-gray-700">
+                {tNav('howItWorks')}
+              </Link>
               <Link
                 href="/terms"
                 className="hover:text-gray-700"
                 target="_blank"
                 rel="noreferrer"
               >
-                Terms &amp; Conditions
+                {tNav('terms')}
               </Link>
               <Link
                 href="/privacy"
@@ -48,7 +56,7 @@ export function MainWithSidebar({ children }: MainWithSidebarProps) {
                 target="_blank"
                 rel="noreferrer"
               >
-                Privacy Policy
+                {tNav('privacy')}
               </Link>
             </div>
           </div>
