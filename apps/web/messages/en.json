@@ -129,6 +129,7 @@
   },
   "metadata": {
     "title": "Portfolio X-Ray Generator",
+    "homeTitle": "Free Portfolio X-Ray Generator | Portfolio X-Ray",
     "description": "Generate Morningstar X-Ray reports for your investment portfolio. Enter ISINs, tickers, or Morningstar IDs and get instant portfolio analysis."
   },
   "language": {
@@ -309,6 +310,7 @@
     "filterByUserPlaceholder": "e.g. Oscar",
     "noPublicPortfolios": "No public portfolios found for these filters.",
     "publicPortfolioByUser": "Portfolio by {userName}",
+    "publicPortfolioSeoDescription": "{name} — public portfolio by {userName} | Portfolio X-Ray.",
     "thisIsYourPortfolio": "This is your portfolio",
     "copyPortfolioLink": "Copy portfolio link",
     "sortByLabel": "Sort by",

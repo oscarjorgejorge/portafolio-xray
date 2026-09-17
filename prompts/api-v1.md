@@ -2300,4 +2300,25 @@ IMPORTANTE: el PDF lo genera renta4banco con Instant X-Ray de Morningstar; Portf
 ### Prompt 192
 implementa los cambios
 
+### Prompt 193
+Acciones SEO pendientes — xrayportfolio.com
+
+Copia esto en tu editor de código. Está ordenado por prioridad, con el motivo y el archivo/zona probable a tocar en cada punto.
+
+🔴 Prioridad alta
+1. /explore/[id] no tiene <title> en 175 páginas
+2. 175 páginas /explore/[id] sin ningún enlace interno ("no inbound links")
+3. Diferenciar <title> y <h1> en la home (/es)
+4. 3 URLs con noindex que siguen en el sitemap
+5. Verificar hreflang en el <head> renderizado (no solo en el sitemap)
+
+🟡 Prioridad media
+6. Compresión HTTP desactivada — 182 páginas con "JavaScript not compressed"
+Canibalización / vs /es (redirect 308) — plan técnico original, punto 5.
+
+evaluame este analisis con el estado actual del codigo y dame un plan de accion
+
+### Prompt 194
+implementa todo el plan recomendado
+
 

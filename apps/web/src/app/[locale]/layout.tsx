@@ -8,7 +8,7 @@ import { NavBar } from '@/components/navigation/NavBar';
 import { MainWithSidebar } from '@/components/layout/MainWithSidebar';
 import { BottomNav } from '@/components/navigation/BottomNav';
 import { AuthModalProvider } from '@/lib/auth/AuthModalContext';
-import { getSiteUrl } from '@/lib/seo';
+import { BRAND_NAME, getSiteUrl } from '@/lib/seo';
 
 interface LocaleLayoutProps {
   children: ReactNode;
@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: LocaleLayoutProps): Promise<M
     metadataBase: new URL(getSiteUrl()),
     title: {
       default: t('title'),
-      template: `%s | ${t('title')}`,
+      template: `%s | ${BRAND_NAME}`,
     },
     description: t('description'),
     authors: [{ name: 'Portfolio X-Ray Team' }],
