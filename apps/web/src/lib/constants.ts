@@ -47,6 +47,8 @@ export const VALIDATION = {
 export const API = {
   /** Default timeout for API requests in milliseconds */
   TIMEOUT_MS: 40000,
+  /** Sitemap must fail fast so Vercel does not kill the route with a 500 */
+  SITEMAP_TIMEOUT_MS: 8000,
   /** Timeout for X-Ray generation (ms). Generate is DB-only; this covers cold starts. */
   GENERATE_TIMEOUT_MS: 90000,
   /** Stale time for React Query cache in milliseconds (1 minute) */

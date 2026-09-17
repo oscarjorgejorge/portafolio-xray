@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { ApiError } from '@/lib/api/client';
 import { getPublicPortfolio } from '@/lib/api/portfolios';
-import { localeMetadata, absoluteUrl } from '@/lib/seo';
+import { brandedAbsoluteTitle, brandedTitle, localeMetadata, absoluteUrl } from '@/lib/seo';
 import { PublicPortfolioDetailClient } from './PublicPortfolioDetailClient';
 
 const getCachedPublicPortfolio = cache(getPublicPortfolio);
@@ -22,27 +22,34 @@ export async function generateMetadata({
 
   try {
     const portfolio = await getCachedPublicPortfolio(id);
+    const name = portfolio.name?.trim() || t('exploreTitle');
     const description =
       portfolio.description?.trim() ||
-      t('publicPortfolioByUser', { userName: portfolio.userName });
+      t('publicPortfolioSeoDescription', {
+        name,
+        userName: portfolio.userName,
+      });
 
     return {
       ...seo,
-      title: portfolio.name,
+      title: brandedAbsoluteTitle(name),
       description,
       openGraph: {
-        title: portfolio.name,
+        title: brandedTitle(name),
         description,
         locale: locale === 'es' ? 'es_ES' : 'en_US',
         url: absoluteUrl(locale, `/explore/${id}`),
       },
     };
-  } catch {
-    return {
-      ...seo,
-      title: t('exploreTitle'),
-      robots: { index: false, follow: false },
-    };
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      return {
+        ...seo,
+        title: brandedAbsoluteTitle(t('exploreTitle')),
+        robots: { index: false, follow: false },
+      };
+    }
+    throw error;
   }
 }
 

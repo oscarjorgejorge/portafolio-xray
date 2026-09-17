@@ -17,11 +17,11 @@ export async function generateMetadata({
   return {
     ...seo,
     title: {
-      absolute: t('title'),
+      absolute: t('homeTitle'),
     },
     description: t('description'),
     openGraph: {
-      title: t('title'),
+      title: t('homeTitle'),
       description: t('description'),
       locale: locale === 'es' ? 'es_ES' : 'en_US',
       url: absoluteUrl(locale, '/'),
