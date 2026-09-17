@@ -2275,4 +2275,29 @@ no hay otro vercel, solo este proyecto y son diferentes ramas, entonces cual es 
 ### Prompt 190
 implementa los cambios necesarios
 
+### Prompt 191
+@demo/ puedes ver esta carpeta? he anahdido dos landing pages, esta carpeta es solo como referencia para el estilo visual components/seo-landing.tsx
+
+Tarea: crear (o reescribir) dos landing pages de contenido SEO para xrayportfolio.com, integradas en la estructura real del proyecto (apps/web/src/app/[locale]/...), NO como páginas sueltas fuera del sistema de locales.
+
+CONTEXTO DE ESTILO A REUTILIZAR
+Toma como referencia visual el archivo components/seo-landing.tsx. Reutiliza la misma paleta, tipografía, espaciados y componentes del sitio. No inventes un nuevo lenguaje visual. Añade el contenido completo que falta.
+
+REQUISITOS TÉCNICOS
+1. Ubica las páginas en app/[locale]/que-es-un-xray-de-cartera/page.tsx y app/[locale]/como-funciona/page.tsx
+2. Cada page.tsx debe ser Server Component y exportar generateMetadata con title y description específicos
+3. Usa el helper de SEO ya existente (lib/seo.ts) para metadataBase, alternates.canonical y alternates.languages
+4. Añade ambas rutas a sitemap.ts
+5. Usa Link de next-intl para todos los enlaces internos
+6. Un único h1 por página. Jerarquía de headings sin saltos
+7. FAQ con details/summary nativo
+8. Enlaza cruzadamente ambas páginas y hacia la home/constructor
+9. No hardcodees textos en español: usa next-intl
+10. Enlazado interno exhaustivo en el texto (constructor, contacto, explorar, mis carteras, favoritos, términos, privacidad)
+
+IMPORTANTE: el PDF lo genera renta4banco con Instant X-Ray de Morningstar; Portfolio X-Ray construye la cartera y el enlace. No copiar el descargo legal de Morningstar.
+
+### Prompt 192
+implementa los cambios
+
 

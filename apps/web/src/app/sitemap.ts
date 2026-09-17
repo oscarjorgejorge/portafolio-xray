@@ -6,7 +6,15 @@ import { absoluteUrl, isCanonicalHost, localeLanguageAlternates } from '@/lib/se
 
 export const revalidate = 3600;
 
-const STATIC_PATHS = ['/', '/explore', '/contact', '/terms', '/privacy'];
+const STATIC_PATHS = [
+  '/',
+  '/explore',
+  '/contact',
+  '/terms',
+  '/privacy',
+  '/que-es-un-xray-de-cartera',
+  '/como-funciona',
+];
 
 function sitemapEntry(
   locale: (typeof routing.locales)[number],
