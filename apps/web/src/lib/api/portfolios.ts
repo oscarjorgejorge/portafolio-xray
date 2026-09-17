@@ -81,7 +81,8 @@ export async function getPortfolios(): Promise<PortfolioListItem[]> {
  * - userName: substring match on owner display name
  */
 export async function getPublicPortfolios(
-  params?: GetPublicPortfoliosParams
+  params?: GetPublicPortfoliosParams,
+  timeoutMs?: number,
 ): Promise<PublicPortfolioListItem[]> {
   const searchParams = new URLSearchParams();
 
@@ -100,8 +101,11 @@ export async function getPublicPortfolios(
   const queryString = searchParams.toString();
   const path = queryString ? `/portfolios/public?${queryString}` : '/portfolios/public';
 
-  const response = await apiClient.get<PublicPortfolioListItem[]>(path);
-  return response.data;
+  const response = await apiClient.get<PublicPortfolioListItem[]>(
+    path,
+    timeoutMs != null ? { timeout: timeoutMs } : undefined,
+  );
+  return Array.isArray(response.data) ? response.data : [];
 }
 
 /**

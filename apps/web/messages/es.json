@@ -130,6 +130,7 @@
   },
   "metadata": {
     "title": "Generador de X-Ray de Cartera",
+    "homeTitle": "Generador de X-Ray de Cartera Gratis | Portfolio X-Ray",
     "description": "Genera informes X-Ray de Morningstar para tu cartera de inversión. Introduce ISINs, tickers o IDs de Morningstar y obtén análisis instantáneo de tu cartera."
   },
   "language": {
@@ -310,6 +311,7 @@
     "filterByUserPlaceholder": "ej. Oscar",
     "noPublicPortfolios": "No se encontraron carteras públicas que coincidan con estos filtros.",
     "publicPortfolioByUser": "Cartera de {userName}",
+    "publicPortfolioSeoDescription": "{name} — cartera pública de {userName} | X-Ray de cartera en Portfolio X-Ray.",
     "thisIsYourPortfolio": "Esta es tu cartera",
     "copyPortfolioLink": "Copiar link de la cartera",
     "sortByLabel": "Ordenar por",

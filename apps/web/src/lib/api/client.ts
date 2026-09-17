@@ -200,8 +200,11 @@ class FetchApiClient {
     } catch (error) {
       clearTimeout(timeoutId);
 
-      // Handle abort/timeout
-      if (error instanceof DOMException && error.name === 'AbortError') {
+      // Handle abort/timeout (DOMException in browsers; Error in Node/undici)
+      if (
+        (error instanceof DOMException || error instanceof Error) &&
+        error.name === 'AbortError'
+      ) {
         throw new ApiError(
           'Request timed out. Please try again.'
         );

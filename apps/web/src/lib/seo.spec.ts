@@ -1,10 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import {
   absoluteUrl,
+  brandedAbsoluteTitle,
+  brandedTitle,
   isCanonicalHost,
   localeLanguageAlternates,
   localeMetadata,
   localizedPath,
+  toValidDate,
 } from './seo';
 
 describe('seo helpers', () => {
@@ -48,6 +51,28 @@ describe('seo helpers', () => {
     );
     expect(metadata.alternates?.languages).toEqual(
       localeLanguageAlternates('/explore'),
+    );
+  });
+
+  it('appends the brand suffix without doubling it', () => {
+    expect(brandedTitle('Samu')).toBe('Samu | Portfolio X-Ray');
+    expect(brandedTitle('Samu | Portfolio X-Ray')).toBe(
+      'Samu | Portfolio X-Ray',
+    );
+    expect(brandedTitle('   ')).toBe('Portfolio X-Ray');
+    expect(brandedAbsoluteTitle('Samu')).toEqual({
+      absolute: 'Samu | Portfolio X-Ray',
+    });
+  });
+
+  it('rejects invalid dates for sitemap lastmod', () => {
+    const fallback = new Date('2026-01-01T00:00:00.000Z');
+
+    expect(toValidDate('not-a-date', fallback)).toBe(fallback);
+    expect(toValidDate('', fallback)).toBe(fallback);
+    expect(toValidDate(null, fallback)).toBe(fallback);
+    expect(toValidDate('2026-09-17T10:00:00.000Z', fallback).toISOString()).toBe(
+      '2026-09-17T10:00:00.000Z',
     );
   });
 });

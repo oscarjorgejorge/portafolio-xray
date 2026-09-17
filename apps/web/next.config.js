@@ -7,6 +7,10 @@ const nextConfig = {
   reactStrictMode: true,
   trailingSlash: false,
 
+  // Block on generateMetadata for every UA so <title> and hreflang are in
+  // the initial HTML (view-source / SEO crawlers), not only after streaming.
+  htmlLimitedBots: /.*/,
+
   // Optimize compilation performance
   compiler: {
     // Remove console.log in production

@@ -5,7 +5,11 @@ import { useTranslations } from 'next-intl';
 import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter, Link } from '@/i18n/navigation';
-import { getPublicPortfolios, type PublicPortfolioListItem } from '@/lib/api/portfolios';
+import {
+  getPublicPortfolios,
+  type GetPublicPortfoliosParams,
+  type PublicPortfolioListItem,
+} from '@/lib/api/portfolios';
 import { queryKeys } from '@/lib/api/queryKeys';
 import { useAuth } from '@/lib/auth';
 import { useAuthModal } from '@/lib/auth/AuthModalContext';
@@ -113,7 +117,26 @@ function ExploreCard({
   );
 }
 
-export function ExplorePortfoliosPage() {
+function filtersMatch(
+  a: GetPublicPortfoliosParams,
+  b: GetPublicPortfoliosParams,
+): boolean {
+  return (
+    (a.name || undefined) === (b.name || undefined) &&
+    (a.userName || undefined) === (b.userName || undefined) &&
+    (a.sortBy || 'recent') === (b.sortBy || 'recent')
+  );
+}
+
+export function ExplorePortfoliosPage({
+  initialPortfolios = [],
+  initialFilters = { sortBy: 'recent' },
+  initialLoadSucceeded = false,
+}: {
+  initialPortfolios?: PublicPortfolioListItem[];
+  initialFilters?: GetPublicPortfoliosParams;
+  initialLoadSucceeded?: boolean;
+}) {
   const t = useTranslations('portfolios');
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -138,9 +161,13 @@ export function ExplorePortfoliosPage() {
     [debouncedName, debouncedUserName, sortBy]
   );
 
+  const useServerData =
+    initialLoadSucceeded && filtersMatch(filters, initialFilters);
+
   const { data: portfolios = [], isLoading, error } = useQuery({
     queryKey: queryKeys.portfolios.publicList(filters),
     queryFn: () => getPublicPortfolios(filters),
+    initialData: useServerData ? initialPortfolios : undefined,
   });
 
   useEffect(() => {

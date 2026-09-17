@@ -3,7 +3,42 @@ import { routing } from '@/i18n/routing';
 import { env } from '@/lib/env';
 
 export const CANONICAL_HOST = 'www.xrayportfolio.com';
+export const BRAND_NAME = 'Portfolio X-Ray';
 const DEFAULT_SITE_URL = `https://${CANONICAL_HOST}`;
+
+/**
+ * Page title with a consistent brand suffix. Does not double the suffix
+ * when the input already ends with it.
+ */
+export function brandedTitle(pageTitle: string): string {
+  const trimmed = pageTitle.trim();
+  if (!trimmed) {
+    return BRAND_NAME;
+  }
+  if (trimmed === BRAND_NAME || trimmed.endsWith(` | ${BRAND_NAME}`)) {
+    return trimmed;
+  }
+  return `${trimmed} | ${BRAND_NAME}`;
+}
+
+export function brandedAbsoluteTitle(pageTitle: string): { absolute: string } {
+  return { absolute: brandedTitle(pageTitle) };
+}
+
+/**
+ * Coerce lastmod values so sitemap XML serialization never receives Invalid Date.
+ */
+export function toValidDate(
+  value: string | Date | null | undefined,
+  fallback: Date,
+): Date {
+  if (value == null || value === '') {
+    return fallback;
+  }
+
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? fallback : date;
+}
 
 /**
  * Canonical origin with no trailing slash.
