@@ -3,10 +3,12 @@ import {
   absoluteUrl,
   brandedAbsoluteTitle,
   brandedTitle,
+  hasLocalePrefix,
   isCanonicalHost,
   localeLanguageAlternates,
   localeMetadata,
   localizedPath,
+  prefixWithDefaultLocale,
   toValidDate,
 } from './seo';
 
@@ -32,6 +34,15 @@ describe('seo helpers', () => {
     expect(languages['x-default']).toBe(
       'https://www.xrayportfolio.com/es/contact',
     );
+  });
+
+  it('detects locale prefixes and maps unprefixed paths to /es', () => {
+    expect(hasLocalePrefix('/')).toBe(false);
+    expect(hasLocalePrefix('/explore/abc')).toBe(false);
+    expect(hasLocalePrefix('/es')).toBe(true);
+    expect(hasLocalePrefix('/en/explore/abc')).toBe(true);
+    expect(prefixWithDefaultLocale('/')).toBe('/es');
+    expect(prefixWithDefaultLocale('/explore/abc')).toBe('/es/explore/abc');
   });
 
   it('treats only the canonical host as indexable', () => {
