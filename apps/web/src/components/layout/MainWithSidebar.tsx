@@ -42,6 +42,9 @@ export function MainWithSidebar({ children }: MainWithSidebarProps) {
               <Link href="/como-funciona" className="hover:text-gray-700">
                 {tNav('howItWorks')}
               </Link>
+              <Link href="/explore" className="hover:text-gray-700">
+                {tNav('explorePortfolios')}
+              </Link>
               <Link
                 href="/terms"
                 className="hover:text-gray-700"
