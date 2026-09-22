@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import { routing } from '@/i18n/routing';
 import { env } from '@/lib/env';
 
+export { hasLocalePrefix, prefixWithDefaultLocale } from '@/i18n/locale-path';
+
 export const CANONICAL_HOST = 'www.xrayportfolio.com';
 export const BRAND_NAME = 'Portfolio X-Ray';
 const DEFAULT_SITE_URL = `https://${CANONICAL_HOST}`;

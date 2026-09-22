@@ -14,6 +14,9 @@ export async function generateMetadata({
   return {
     ...localeMetadata(locale, '/terms'),
     title: isSpanish ? 'Términos y condiciones' : 'Terms & Conditions',
+    description: isSpanish
+      ? 'Condiciones legales de uso de este sitio web, de la cuenta y de los contenidos que publiques. No es asesoramiento profesional.'
+      : 'Legal terms governing use of this website, your account, and any content you publish. This is not professional advice.',
   };
 }
 

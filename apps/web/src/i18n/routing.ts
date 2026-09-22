@@ -8,7 +8,10 @@ export const routing = defineRouting({
   defaultLocale: 'es',
   
   // Always show locale prefix in URL (e.g., /es/..., /en/...)
-  localePrefix: 'always'
+  localePrefix: 'always',
+
+  // Unprefixed URLs always 308 to /es in middleware, not the browser language.
+  localeDetection: false,
 });
 
 export type Locale = (typeof routing.locales)[number];
