@@ -5,16 +5,22 @@ import { HttpClientService } from '../../../common/http';
 import { createContextLogger } from '../../../common/logger';
 import {
   buildInstantXrayScreenerUrl,
-  joinScreenerUniverseIds,
   parseInstantXrayScreenerResponse,
   rankInstantXrayResults,
   screenerUniversesForQuery,
 } from '../utils/instant-xray-screener';
 
+/** Query at most this many Instant X-Ray universes at once. */
+const SCREENER_UNIVERSE_CONCURRENCY = 2;
+const SCREENER_TIMEOUT_MS = 10_000;
+
 /**
  * Instant X-Ray security screener on lt.morningstar.com.
  * www/global Morningstar search is often WAF-blocked; this endpoint is the
  * same family Instant X-Ray uses and returns 0P IDs, ISINs and tickers.
+ *
+ * Universes are queried in small parallel batches (not one joined request):
+ * a multi-universe URL often times out on serverless hosts.
  */
 @Injectable()
 export class InstantXrayScreenerStrategy implements SearchStrategy {
@@ -26,15 +32,34 @@ export class InstantXrayScreenerStrategy implements SearchStrategy {
   constructor(private readonly httpClient: HttpClientService) {}
 
   async search(query: string): Promise<SearchResult[]> {
-    const universeIds = joinScreenerUniverseIds(
-      screenerUniversesForQuery(query),
-    );
+    const universes = [...screenerUniversesForQuery(query)];
     this.logger.debug(
-      `[${this.name}] Searching Instant X-Ray screener for: ${query} (${universeIds})`,
+      `[${this.name}] Searching Instant X-Ray screener for: ${query} ` +
+        `(${universes.length} universes, concurrency ${SCREENER_UNIVERSE_CONCURRENCY})`,
     );
 
-    const results = await this.searchUniverse(query, universeIds);
-    const ranked = rankInstantXrayResults(results, query);
+    const collected: SearchResult[] = [];
+
+    for (let i = 0; i < universes.length; i += SCREENER_UNIVERSE_CONCURRENCY) {
+      const batch = universes.slice(i, i + SCREENER_UNIVERSE_CONCURRENCY);
+      const batchHits = await Promise.all(
+        batch.map((universeId) => this.searchUniverse(query, universeId)),
+      );
+
+      for (const hits of batchHits) {
+        collected.push(...hits);
+      }
+
+      if (collected.length > 0) {
+        this.logger.debug(
+          `[${this.name}] Stopping after universe batch starting at ${batch[0]} ` +
+            `(${collected.length} raw hit(s))`,
+        );
+        break;
+      }
+    }
+
+    const ranked = rankInstantXrayResults(collected, query);
     this.logger.debug(
       `[${this.name}] Unique Instant X-Ray hits for ${query}: ${ranked.length}`,
     );
@@ -49,7 +74,7 @@ export class InstantXrayScreenerStrategy implements SearchStrategy {
       buildInstantXrayScreenerUrl(query, universeId),
       {
         responseType: 'json',
-        timeout: 10000,
+        timeout: SCREENER_TIMEOUT_MS,
         retries: 1,
         retryDelay: 400,
         headers: { Accept: 'application/json' },
@@ -57,6 +82,9 @@ export class InstantXrayScreenerStrategy implements SearchStrategy {
     );
 
     if (!response.ok || !response.data) {
+      this.logger.debug(
+        `[${this.name}] No screener data for ${query} in ${universeId}`,
+      );
       return [];
     }
 
