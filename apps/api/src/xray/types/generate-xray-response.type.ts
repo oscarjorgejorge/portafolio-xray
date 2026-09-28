@@ -7,7 +7,7 @@ export class GenerateXRayResponse {
   @ApiProperty({
     description: 'Direct URL to Morningstar X-Ray PDF report',
     example:
-      'https://lt.morningstar.com/j2uwuwirpv/xraypdf/default.aspx?LanguageId=es-ES&PortfolioType=2&SecurityTokenList=...',
+      'https://lt.morningstar.com/j2uwuwirpv/xraypdf/default.aspx?LanguageId=es-ES&CurrencyId=EUR&securityIds=...',
   })
   morningstarUrl!: string;
 

@@ -78,10 +78,8 @@ export const MORNINGSTAR_URL = {
   XRAY_PATH: '/j2uwuwirpv/xraypdf/default.aspx',
   /** Default language ID for URLs */
   LANGUAGE_ID: 'es-ES',
-  /** Portfolio type for X-Ray */
-  PORTFOLIO_TYPE: '2',
-  /** Weight multiplier (percentage to basis points) */
+  /** Report currency (short URL format) */
+  CURRENCY_ID: 'EUR',
+  /** Weight multiplier (percentage to basis points for marketValues) */
   WEIGHT_MULTIPLIER: 100,
-  /** Security token suffix */
-  SECURITY_TOKEN_SUFFIX: '$$ALL_1340',
 } as const;
