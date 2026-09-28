@@ -29,7 +29,7 @@ const createMockAsset = (overrides = {}) => ({
 describe('XRayService', () => {
   let service: XRayService;
   let repository: jest.Mocked<AssetsRepository>;
-  let shareClassLookup: { lookupShareClassIdFromScreener: jest.Mock };
+  let shareClassLookup: { lookupIdentityFromScreener: jest.Mock };
 
   const mockBaseUrl = 'https://lt.morningstar.com';
 
@@ -59,7 +59,10 @@ describe('XRayService', () => {
     } as unknown as jest.Mocked<AssetsRepository>;
 
     shareClassLookup = {
-      lookupShareClassIdFromScreener: jest.fn().mockResolvedValue(null),
+      lookupIdentityFromScreener: jest.fn().mockResolvedValue({
+        shareClassId: null,
+        proxyShareClassId: null,
+      }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -278,7 +281,7 @@ describe('XRayService', () => {
         expect(result.morningstarUrl).not.toContain('0P000168OI');
         expect(result.holdingsUsingFallback).toBe(0);
         expect(
-          shareClassLookup.lookupShareClassIdFromScreener,
+          shareClassLookup.lookupIdentityFromScreener,
         ).not.toHaveBeenCalled();
       });
 
@@ -296,9 +299,7 @@ describe('XRayService', () => {
           assets: [{ morningstarId: '0P00016YQ5', weight: 100 }],
         });
 
-        expect(
-          shareClassLookup.lookupShareClassIdFromScreener,
-        ).toHaveBeenCalled();
+        expect(shareClassLookup.lookupIdentityFromScreener).toHaveBeenCalled();
         expect(result.morningstarUrl).toContain('0P00016YQ5');
         expect(result.morningstarUrl).not.toContain('F00000WI0D');
       });
@@ -350,9 +351,7 @@ describe('XRayService', () => {
           assets: [{ morningstarId: '0P000168OI', weight: 100 }],
         });
 
-        expect(
-          shareClassLookup.lookupShareClassIdFromScreener,
-        ).toHaveBeenCalled();
+        expect(shareClassLookup.lookupIdentityFromScreener).toHaveBeenCalled();
         expect(repository.tryAssignShareClassId).not.toHaveBeenCalled();
         expect(result.morningstarUrl).toContain('0P000168OI');
         expect(result.holdingsUsingFallback).toBe(1);
@@ -368,9 +367,10 @@ describe('XRayService', () => {
             name: 'Fidelity MSCI Japan Index EUR P Acc',
           }),
         ]);
-        shareClassLookup.lookupShareClassIdFromScreener.mockResolvedValue(
-          'F00001019C',
-        );
+        shareClassLookup.lookupIdentityFromScreener.mockResolvedValue({
+          shareClassId: 'F00001019C',
+          proxyShareClassId: null,
+        });
 
         const result = await service.generate({
           assets: [{ morningstarId: '0P0001CLDI', weight: 100 }],
@@ -379,6 +379,7 @@ describe('XRayService', () => {
         expect(result.morningstarUrl).toContain('F00001019C');
         expect(result.morningstarUrl).not.toContain('0P0001CLDI');
         expect(result.holdingsUsingFallback).toBe(0);
+        expect(result.holdingsUsingRelatedShareClass).toBe(0);
         expect(repository.tryAssignShareClassId).toHaveBeenCalledWith(
           expect.any(String),
           'F00001019C',
@@ -395,9 +396,10 @@ describe('XRayService', () => {
             name: 'Fidelity Iberia A-Acc-EUR',
           }),
         ]);
-        shareClassLookup.lookupShareClassIdFromScreener.mockResolvedValue(
-          'FOGBR05KLX',
-        );
+        shareClassLookup.lookupIdentityFromScreener.mockResolvedValue({
+          shareClassId: 'FOGBR05KLX',
+          proxyShareClassId: null,
+        });
 
         const result = await service.generate({
           assets: [{ morningstarId: '0P00006DAB', weight: 100 }],
@@ -425,9 +427,10 @@ describe('XRayService', () => {
             url: 'https://global.morningstar.com/es/inversiones/fondos/0P0000A9K5/cotizacion',
           }),
         ]);
-        shareClassLookup.lookupShareClassIdFromScreener.mockResolvedValue(
-          'F000000RB9',
-        );
+        shareClassLookup.lookupIdentityFromScreener.mockResolvedValue({
+          shareClassId: 'F000000RB9',
+          proxyShareClassId: null,
+        });
 
         const result = await service.generate({
           assets: [{ morningstarId: '0P0000A9K5', weight: 100 }],
@@ -442,6 +445,31 @@ describe('XRayService', () => {
           'F000000RB9',
           { verified: true },
         );
+      });
+
+      it('should use a related-class F ID in the URL without persisting it as verified', async () => {
+        repository.findManyByMorningstarIds.mockResolvedValue([
+          createMockAsset({
+            morningstarId: '0P0001JDIC',
+            isin: 'IE00BKSBDB61',
+            type: AssetType.FUND,
+            name: 'Polar Capital Healthcare Opps R Acc EUR',
+          }),
+        ]);
+        shareClassLookup.lookupIdentityFromScreener.mockResolvedValue({
+          shareClassId: null,
+          proxyShareClassId: 'F000014W7F',
+        });
+
+        const result = await service.generate({
+          assets: [{ morningstarId: '0P0001JDIC', weight: 100 }],
+        });
+
+        expect(result.morningstarUrl).toContain('F000014W7F');
+        expect(result.morningstarUrl).not.toContain('0P0001JDIC');
+        expect(result.holdingsUsingFallback).toBe(0);
+        expect(result.holdingsUsingRelatedShareClass).toBe(1);
+        expect(repository.tryAssignShareClassId).not.toHaveBeenCalled();
       });
 
       it('should count 0P fallbacks across a large portfolio when the screener finds nothing', async () => {

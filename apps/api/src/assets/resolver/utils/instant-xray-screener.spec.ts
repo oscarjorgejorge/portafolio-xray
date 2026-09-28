@@ -279,6 +279,7 @@ describe('instant-xray-screener', () => {
       }),
     ).toEqual({
       shareClassId: 'FOGBR05KLX',
+      proxyShareClassId: null,
       isin: 'LU0261948904',
     });
   });
@@ -321,6 +322,7 @@ describe('instant-xray-screener', () => {
       }),
     ).toEqual({
       shareClassId: 'F00000NG7B',
+      proxyShareClassId: null,
       isin: 'LU0666200265',
     });
   });
@@ -395,6 +397,7 @@ describe('instant-xray-screener', () => {
       }),
     ).toEqual({
       shareClassId: 'F00000NG7B',
+      proxyShareClassId: null,
       isin: 'LU0666200265',
     });
   });
@@ -473,6 +476,7 @@ describe('instant-xray-screener', () => {
       ]),
     ).toEqual({
       shareClassId: 'F00001019C',
+      proxyShareClassId: null,
       isin: 'IE00BYX5N771',
     });
   });
@@ -500,6 +504,7 @@ describe('instant-xray-screener', () => {
       ),
     ).toEqual({
       shareClassId: null,
+      proxyShareClassId: null,
       isin: 'LU0329355670',
     });
   });
@@ -527,7 +532,71 @@ describe('instant-xray-screener', () => {
       ),
     ).toEqual({
       shareClassId: 'F000000RB9',
+      proxyShareClassId: null,
       isin: 'LU0329355670',
     });
+  });
+
+  it('treats FundShareClassId as a related-class proxy when SecId is only 0P', () => {
+    const results = parseInstantXrayScreenerResponse(
+      {
+        total: 1,
+        rows: [
+          {
+            SecId: '0P0001JDIC',
+            Name: 'Polar Capital Healthcare Opps R Acc EUR',
+            ISIN: 'IE00BKSBDB61',
+            PerformanceId: '0P0001JDIC',
+            FundShareClassId: 'F000014W7F',
+          },
+        ],
+      },
+      'IE00BKSBDB61',
+      'FOESP$$ALL',
+    );
+
+    expect(results).toHaveLength(1);
+    expect(results[0]).toMatchObject({
+      morningstarId: '0P0001JDIC',
+      isin: 'IE00BKSBDB61',
+      proxyShareClassId: 'F000014W7F',
+    });
+    expect(results[0].shareClassId).toBeUndefined();
+    expect(
+      pickVerifiedIdentityFromScreenerResults(results, {
+        isin: 'IE00BKSBDB61',
+        performanceId: '0P0001JDIC',
+      }),
+    ).toEqual({
+      shareClassId: null,
+      proxyShareClassId: 'F000014W7F',
+      isin: 'IE00BKSBDB61',
+    });
+  });
+
+  it('keeps SecId F as own shareClassId for the USD sibling class', () => {
+    const results = parseInstantXrayScreenerResponse(
+      {
+        total: 1,
+        rows: [
+          {
+            SecId: 'F000014W7F',
+            Name: 'Polar Capital Healthcare Opps R Acc',
+            ISIN: 'IE00BKSBD942',
+            PerformanceId: '0P0001JDIB',
+            FundShareClassId: 'F000014W7F',
+          },
+        ],
+      },
+      'IE00BKSBD942',
+      'FOESP$$ALL',
+    );
+
+    expect(results[0]).toMatchObject({
+      morningstarId: '0P0001JDIB',
+      shareClassId: 'F000014W7F',
+      isin: 'IE00BKSBD942',
+    });
+    expect(results[0].proxyShareClassId).toBeUndefined();
   });
 });

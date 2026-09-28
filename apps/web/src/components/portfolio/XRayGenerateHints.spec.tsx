@@ -26,6 +26,20 @@ describe('XRayGenerateHints', () => {
     ).toBeInTheDocument();
   });
 
+  it('shows a related share-class hint when a sibling F ID is used', () => {
+    render(
+      <XRayGenerateHints
+        unsupportedCount={0}
+        holdingsUsingFallback={0}
+        holdingsUsingRelatedShareClass={1}
+      />,
+    );
+
+    expect(
+      screen.getByText(/related class/i),
+    ).toBeInTheDocument();
+  });
+
   it('shows both hints when unsupported and unmapped holdings coexist', () => {
     render(
       <XRayGenerateHints unsupportedCount={4} holdingsUsingFallback={5} />,

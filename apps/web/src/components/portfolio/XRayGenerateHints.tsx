@@ -7,6 +7,7 @@ import { unmappedInstantXrayFallbackCount } from '@/lib/utils';
 interface XRayGenerateHintsProps {
   unsupportedCount: number;
   holdingsUsingFallback: number;
+  holdingsUsingRelatedShareClass?: number;
   namespace?: 'portfolio' | 'xray';
   className?: string;
 }
@@ -14,6 +15,7 @@ interface XRayGenerateHintsProps {
 export function XRayGenerateHints({
   unsupportedCount,
   holdingsUsingFallback,
+  holdingsUsingRelatedShareClass = 0,
   namespace = 'portfolio',
   className,
 }: XRayGenerateHintsProps) {
@@ -23,7 +25,11 @@ export function XRayGenerateHints({
     unsupportedCount,
   );
 
-  if (unsupportedCount <= 0 && unmappedCount <= 0) {
+  if (
+    unsupportedCount <= 0 &&
+    unmappedCount <= 0 &&
+    holdingsUsingRelatedShareClass <= 0
+  ) {
     return null;
   }
 
@@ -35,8 +41,23 @@ export function XRayGenerateHints({
         </Alert>
       )}
       {unmappedCount > 0 && (
-        <Alert variant="info" className={unsupportedCount > 0 ? 'mt-3' : undefined}>
+        <Alert
+          variant="info"
+          className={unsupportedCount > 0 ? 'mt-3' : undefined}
+        >
           {t('unmappedHint', { count: unmappedCount })}
+        </Alert>
+      )}
+      {holdingsUsingRelatedShareClass > 0 && (
+        <Alert
+          variant="info"
+          className={
+            unsupportedCount > 0 || unmappedCount > 0 ? 'mt-3' : undefined
+          }
+        >
+          {t('relatedShareClassHint', {
+            count: holdingsUsingRelatedShareClass,
+          })}
         </Alert>
       )}
     </div>

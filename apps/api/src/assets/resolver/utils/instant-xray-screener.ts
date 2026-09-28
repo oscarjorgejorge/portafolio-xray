@@ -134,18 +134,49 @@ export function morningstarIdFromScreenerRow(
 }
 
 /**
- * Instant X-Ray often puts the F share-class ID in SecId and leaves
- * ShareClassId empty. PerformanceId stays the 0P quote ID.
+ * Own Instant X-Ray F ID for this row's share class / ISIN.
+ * Prefer ShareClassId, then SecId when it is an F ID.
+ * Do not use FundShareClassId alone: Morningstar often points that field at a
+ * sibling currency class (e.g. EUR row → USD F000…), which must not be
+ * persisted as verified for this ISIN.
  */
 export function shareClassIdFromScreenerRow(
   row: InstantXrayScreenerRow,
 ): string | undefined {
-  const candidates = [row.ShareClassId, row.FundShareClassId, row.SecId];
+  const candidates = [row.ShareClassId, row.SecId];
   for (const candidate of candidates) {
     const value = candidate?.trim().toUpperCase();
     if (value && isFundShareClassId(value)) {
       return value;
     }
+  }
+
+  const fundShare = row.FundShareClassId?.trim().toUpperCase();
+  const secId = row.SecId?.trim().toUpperCase();
+  if (
+    fundShare &&
+    isFundShareClassId(fundShare) &&
+    secId &&
+    secId === fundShare
+  ) {
+    return fundShare;
+  }
+  return undefined;
+}
+
+/**
+ * Related-class F ID from FundShareClassId when this row has no own F ID.
+ * Safe for Instant X-Ray PDF tokens only — never mark shareClassVerified.
+ */
+export function proxyShareClassIdFromScreenerRow(
+  row: InstantXrayScreenerRow,
+): string | undefined {
+  if (shareClassIdFromScreenerRow(row)) {
+    return undefined;
+  }
+  const fundShare = row.FundShareClassId?.trim().toUpperCase();
+  if (fundShare && isFundShareClassId(fundShare)) {
+    return fundShare;
   }
   return undefined;
 }
@@ -214,6 +245,7 @@ export function parseInstantXrayScreenerResponse(
     const ticker = row.Ticker?.trim().toUpperCase() || undefined;
     const isin = row.ISIN?.trim().toUpperCase() || undefined;
     const shareClassId = shareClassIdFromScreenerRow(row);
+    const proxyShareClassId = proxyShareClassIdFromScreenerRow(row);
 
     results.push({
       url: buildMorningstarUrl(morningstarId, assetType, 'eu'),
@@ -226,6 +258,10 @@ export function parseInstantXrayScreenerResponse(
       shareClassId:
         shareClassId && shareClassId !== morningstarId
           ? shareClassId
+          : undefined,
+      proxyShareClassId:
+        proxyShareClassId && proxyShareClassId !== morningstarId
+          ? proxyShareClassId
           : undefined,
       assetType,
     });
@@ -301,25 +337,13 @@ export function rankInstantXrayResults(
   });
 }
 
-/**
- * Instant X-Ray F ID from screener hits (SecId / ShareClassId).
- */
-export function pickShareClassIdFromScreenerResults(
-  results: SearchResult[],
-): string | null {
-  for (const result of results) {
-    if (isFundShareClassId(result.shareClassId)) {
-      return result.shareClassId as string;
-    }
-    if (isFundShareClassId(result.morningstarId)) {
-      return result.morningstarId as string;
-    }
-  }
-  return null;
-}
-
 export type ScreenerIdentityHit = {
+  /** Own F ID for this ISIN — safe to persist with shareClassVerified. */
   shareClassId: string | null;
+  /**
+   * Sibling-class F ID for Instant X-Ray URLs only (never persist as verified).
+   */
+  proxyShareClassId?: string | null;
   isin?: string;
 };
 
@@ -339,9 +363,17 @@ function fundShareClassIdFromResult(result: SearchResult): string | null {
   return null;
 }
 
+function proxyShareClassIdFromResult(result: SearchResult): string | null {
+  if (isFundShareClassId(result.proxyShareClassId)) {
+    return result.proxyShareClassId as string;
+  }
+  return null;
+}
+
 /**
  * Instant X-Ray F ID that matches the user's ISIN (and 0P / name when no ISIN).
- * Never returns an F ID from a different share class.
+ * Never returns an F ID from a different share class as shareClassId.
+ * Sibling FundShareClassId values are returned as proxyShareClassId only.
  */
 export function pickVerifiedIdentityFromScreenerResults(
   results: SearchResult[],
@@ -355,7 +387,10 @@ export function pickVerifiedIdentityFromScreenerResults(
   );
 
   const matched = results.filter((result) => {
-    if (!fundShareClassIdFromResult(result)) {
+    if (
+      !fundShareClassIdFromResult(result) &&
+      !proxyShareClassIdFromResult(result)
+    ) {
       return false;
     }
     if (expectedIsin) {
@@ -375,10 +410,16 @@ export function pickVerifiedIdentityFromScreenerResults(
 
   if (matched.length === 0) {
     const withIsin = results.find((result) => result.isin);
+    if (requireMatch) {
+      return {
+        shareClassId: null,
+        proxyShareClassId: null,
+        isin: expectedIsin || withIsin?.isin,
+      };
+    }
     return {
-      shareClassId: requireMatch
-        ? null
-        : pickShareClassIdFromScreenerResults(results),
+      shareClassId: pickShareClassIdFromScreenerResults(results),
+      proxyShareClassId: pickProxyShareClassIdFromScreenerResults(results),
       isin: expectedIsin || withIsin?.isin,
     };
   }
@@ -386,6 +427,7 @@ export function pickVerifiedIdentityFromScreenerResults(
   const best = matched[0];
   return {
     shareClassId: fundShareClassIdFromResult(best),
+    proxyShareClassId: proxyShareClassIdFromResult(best),
     isin: best.isin || expectedIsin,
   };
 }
@@ -398,11 +440,44 @@ export function pickIdentityFromScreenerResults(
     return pickVerifiedIdentityFromScreenerResults(results, expected);
   }
   const shareClassId = pickShareClassIdFromScreenerResults(results);
+  const proxyShareClassId = pickProxyShareClassIdFromScreenerResults(results);
   const withIsin = results.find((result) => result.isin);
   return {
     shareClassId,
+    proxyShareClassId,
     isin: withIsin?.isin,
   };
+}
+
+/**
+ * Own Instant X-Ray F ID from screener hits (SecId / ShareClassId), not proxy.
+ */
+export function pickShareClassIdFromScreenerResults(
+  results: SearchResult[],
+): string | null {
+  for (const result of results) {
+    if (isFundShareClassId(result.shareClassId)) {
+      return result.shareClassId as string;
+    }
+    if (isFundShareClassId(result.morningstarId)) {
+      return result.morningstarId as string;
+    }
+  }
+  return null;
+}
+
+/**
+ * Sibling-class F ID when no own F ID is present.
+ */
+export function pickProxyShareClassIdFromScreenerResults(
+  results: SearchResult[],
+): string | null {
+  for (const result of results) {
+    if (isFundShareClassId(result.proxyShareClassId)) {
+      return result.proxyShareClassId as string;
+    }
+  }
+  return null;
 }
 
 function resolveRowUniverse(
@@ -425,13 +500,15 @@ function universeFromSnippet(snippet: string): string | undefined {
 }
 
 function screenerHitRank(result: SearchResult): number {
-  const hasShareClass =
+  const hasOwnShareClass =
     isFundShareClassId(result.shareClassId) ||
     isFundShareClassId(result.morningstarId)
       ? 0
-      : 1;
+      : isFundShareClassId(result.proxyShareClassId)
+        ? 1
+        : 2;
   return (
-    hasShareClass * 100 + universeRank(universeFromSnippet(result.snippet))
+    hasOwnShareClass * 100 + universeRank(universeFromSnippet(result.snippet))
   );
 }
 

@@ -2321,7 +2321,7 @@ evaluame este analisis con el estado actual del codigo y dame un plan de accion
 ### Prompt 194
 implementa todo el plan recomendado
 
-### Prompt 195
-aplica todos los cambios requeridos
+### Prompt 196
+aplica la solucion recomendada, deja aparte esto de momento : 4. Aparte: el 404 de la cartera de 44 fondos
 
 
