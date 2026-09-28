@@ -21,7 +21,13 @@ export interface SearchResult {
   domain: string;
   ticker?: string;
   isin?: string;
+  /** Own Instant X-Ray F ID for this ISIN (safe to persist as verified). */
   shareClassId?: string;
+  /**
+   * Sibling-class F ID from FundShareClassId when this row has no own F.
+   * Usable in Instant X-Ray URLs only — do not mark shareClassVerified.
+   */
+  proxyShareClassId?: string;
   assetType?: MorningstarAssetType;
   rawType?: string;
 }

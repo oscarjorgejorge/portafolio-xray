@@ -25,6 +25,8 @@ interface UseXRayGenerationReturn {
   morningstarUrl: string | null;
   /** Holdings that still used a 0P token because the F ID is not cached yet */
   holdingsUsingFallback: number;
+  /** Holdings that use a sibling Instant X-Ray F ID (related share class) */
+  holdingsUsingRelatedShareClass: number;
   /** Whether the URL was recently copied */
   copied: boolean;
   /** Whether a copy error occurred */
@@ -129,6 +131,8 @@ export function useXRayGeneration({
     fullShareableUrl,
     morningstarUrl,
     holdingsUsingFallback: generateMutation.data?.holdingsUsingFallback ?? 0,
+    holdingsUsingRelatedShareClass:
+      generateMutation.data?.holdingsUsingRelatedShareClass ?? 0,
     copied,
     copyError,
     isGenerating: generateMutation.isPending,

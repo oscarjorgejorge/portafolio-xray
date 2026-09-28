@@ -29,6 +29,8 @@ type XRayHolding = {
   typeCode: string;
   exchangeCode: string;
   usedFallback: boolean;
+  /** True when Instant X-Ray token is a sibling-class F ID (not verified for this ISIN). */
+  usedRelatedShareClass: boolean;
   assetId?: string;
   lookup?: {
     morningstarId: string;
@@ -65,17 +67,25 @@ export class XRayService implements IXRayService {
     const holdingsUsingFallback = holdings.filter(
       (holding) => holding.usedFallback,
     ).length;
+    const holdingsUsingRelatedShareClass = holdings.filter(
+      (holding) => holding.usedRelatedShareClass,
+    ).length;
     const durationMs = Date.now() - startedAt;
 
     this.logger.log(
       `[XRAY] Generated URL for ${holdings.length} holdings in ${durationMs}ms ` +
-        `(${holdingsUsingFallback} using 0P fallback)`,
+        `(${holdingsUsingFallback} using 0P fallback` +
+        (holdingsUsingRelatedShareClass > 0
+          ? `, ${holdingsUsingRelatedShareClass} using related-class F`
+          : '') +
+        `)`,
     );
 
     return {
       morningstarUrl: this.formatMorningstarUrl(holdings),
       shareableUrl: this.formatShareableUrl(holdings),
       holdingsUsingFallback,
+      holdingsUsingRelatedShareClass,
     };
   }
 
@@ -133,6 +143,7 @@ export class XRayService implements IXRayService {
           tokenId,
           dbAsset,
         ),
+        usedRelatedShareClass: false,
         assetId: dbAsset?.id,
         lookup: {
           morningstarId: dbAsset?.morningstarId ?? asset.morningstarId,
@@ -147,6 +158,8 @@ export class XRayService implements IXRayService {
   /**
    * Instant X-Ray blank rows are 0P tokens. Unverified F IDs are also
    * re-resolved from the screener so a stale mapping cannot reach the PDF.
+   * Sibling-class F IDs (proxy) may be used in the URL but are never persisted
+   * as shareClassVerified for a different ISIN.
    */
   private async fillMissingShareClassIds(
     holdings: XRayHolding[],
@@ -159,26 +172,30 @@ export class XRayService implements IXRayService {
     }
 
     await this.runPool(missing, SCREENER_REMAP_CONCURRENCY, async (holding) => {
-      const shareClassId =
-        await this.shareClassLookup.lookupShareClassIdFromScreener(
-          holding.lookup!,
-        );
-      if (!shareClassId) {
+      const identity = await this.shareClassLookup.lookupIdentityFromScreener(
+        holding.lookup!,
+      );
+      const ownId = identity.shareClassId;
+      const proxyId = identity.proxyShareClassId;
+      const tokenId = ownId ?? proxyId ?? null;
+      if (!tokenId) {
         return;
       }
-      holding.tokenId = shareClassId;
+      holding.tokenId = tokenId;
       holding.usedFallback = false;
-      if (!holding.assetId) {
+      holding.usedRelatedShareClass = !ownId && Boolean(proxyId);
+
+      if (!ownId || !holding.assetId) {
         return;
       }
       const assigned = await this.assetsRepository.tryAssignShareClassId(
         holding.assetId,
-        shareClassId,
+        ownId,
         { verified: true },
       );
       if (!assigned) {
         this.logger.debug(
-          `[XRAY] shareClassId ${shareClassId} already owned; token still used for ${holding.lookup?.morningstarId}`,
+          `[XRAY] shareClassId ${ownId} already owned; token still used for ${holding.lookup?.morningstarId}`,
         );
       }
     });

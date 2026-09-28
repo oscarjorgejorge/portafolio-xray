@@ -57,6 +57,12 @@ export const GenerateXRayResponseSchema = z.object({
   morningstarUrl: z.string(),
   shareableUrl: z.string(),
   holdingsUsingFallback: z.number().int().nonnegative().optional().default(0),
+  holdingsUsingRelatedShareClass: z
+    .number()
+    .int()
+    .nonnegative()
+    .optional()
+    .default(0),
 });
 
 // ============================================

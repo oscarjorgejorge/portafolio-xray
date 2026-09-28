@@ -60,6 +60,7 @@ interface UsePortfolioBuilderReturn {
   isGenerating: boolean;
   generateError: Error | null;
   holdingsUsingFallback: number;
+  holdingsUsingRelatedShareClass: number;
   isDirty: boolean;
 
   // Actions
@@ -394,6 +395,8 @@ export function usePortfolioBuilder({
     isGenerating: xrayGeneration.isGenerating,
     generateError: xrayGeneration.generateError,
     holdingsUsingFallback: xrayGeneration.holdingsUsingFallback,
+    holdingsUsingRelatedShareClass:
+      xrayGeneration.holdingsUsingRelatedShareClass,
     isDirty,
 
     // Actions (memoized for stable references)

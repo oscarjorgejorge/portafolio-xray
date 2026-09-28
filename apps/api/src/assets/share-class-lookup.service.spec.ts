@@ -78,6 +78,7 @@ describe('ShareClassLookupService', () => {
 
     expect(identity).toEqual({
       shareClassId: 'F0GBR04EZP',
+      proxyShareClassId: null,
       isin: 'FR0000447823',
     });
     expect(screener.search).toHaveBeenCalledWith('0P00000F24');
@@ -105,6 +106,7 @@ describe('ShareClassLookupService', () => {
 
     expect(identity).toEqual({
       shareClassId: 'FOGBR05KLX',
+      proxyShareClassId: null,
       isin: 'LU0261948904',
     });
     expect(screener.search).toHaveBeenCalledWith('LU0261948904');
@@ -131,7 +133,40 @@ describe('ShareClassLookupService', () => {
     });
 
     expect(identity.shareClassId).toBeNull();
+    expect(identity.proxyShareClassId).toBeNull();
     expect(httpClient.get).not.toHaveBeenCalled();
+  });
+
+  it('should expose a related-class F ID without treating it as verified own ID', async () => {
+    screener.search.mockResolvedValue([
+      {
+        morningstarId: '0P0001JDIC',
+        proxyShareClassId: 'F000014W7F',
+        isin: 'IE00BKSBDB61',
+        title: 'Polar Capital Healthcare Opps R Acc EUR',
+        url: 'https://global.morningstar.com/en-eu/investments/funds/0P0001JDIC/quote',
+        domain: 'lt.morningstar.com',
+        assetType: MS_ASSET_TYPES.FUND,
+      },
+    ]);
+
+    const identity = await service.lookupIdentityFromScreener({
+      morningstarId: '0P0001JDIC',
+      isin: 'IE00BKSBDB61',
+      name: 'Polar Capital Healthcare Opps R Acc EUR',
+    });
+
+    expect(identity).toEqual({
+      shareClassId: null,
+      proxyShareClassId: 'F000014W7F',
+      isin: 'IE00BKSBDB61',
+    });
+    expect(
+      await service.lookupShareClassIdFromScreener({
+        morningstarId: '0P0001JDIC',
+        isin: 'IE00BKSBDB61',
+      }),
+    ).toBe('F000014W7F');
   });
 
   it('should fall back to quote pages when the screener has no F ID', async () => {

@@ -28,6 +28,7 @@
     "timeout": "La petición tardó demasiado. Vuelve a intentarlo.",
     "unsupportedHint": "{count, plural, one {# posición no es compatible con Instant X-Ray (plan de pensiones, EPSV o FIL). No está recomendada; el informe la omitirá.} other {# posiciones no son compatibles con Instant X-Ray (planes de pensiones, EPSV o FIL). No están recomendadas; el informe las omitirá.}}",
     "unmappedHint": "{count, plural, one {# fondo no se ha podido mapear a Instant X-Ray.} other {# fondos no se han podido mapear a Instant X-Ray.}}",
+    "relatedShareClassHint": "{count, plural, one {# fondo no tiene ID de Instant X-Ray para su clase exacta; en el informe se usa una clase relacionada (p. ej. otra divisa).} other {# fondos no tienen ID de Instant X-Ray para su clase exacta; en el informe se usa una clase relacionada (p. ej. otra divisa).}}",
     "noPortfolioData": "No se encontraron datos de cartera en la URL.",
     "backToBuilder": "Crea tu cartera",
     "createNew": "Crear Nueva Cartera",
@@ -50,6 +51,7 @@
     "generateTimeout": "La petición tardó demasiado. Vuelve a intentarlo.",
     "unsupportedHint": "{count, plural, one {# posición no es compatible con Instant X-Ray (plan de pensiones, EPSV o FIL). No está recomendada; el informe la omitirá.} other {# posiciones no son compatibles con Instant X-Ray (planes de pensiones, EPSV o FIL). No están recomendadas; el informe las omitirá.}}",
     "unmappedHint": "{count, plural, one {# fondo no se ha podido mapear a Instant X-Ray.} other {# fondos no se han podido mapear a Instant X-Ray.}}",
+    "relatedShareClassHint": "{count, plural, one {# fondo no tiene ID de Instant X-Ray para su clase exacta; en el informe se usa una clase relacionada (p. ej. otra divisa).} other {# fondos no tienen ID de Instant X-Ray para su clase exacta; en el informe se usa una clase relacionada (p. ej. otra divisa).}}",
     "xrayIssueHint": "Si el X-Ray no se genera bien o faltan activos, escríbenos a través del <contactLink>formulario de contacto</contactLink> indicando los que no aparecen y sus ISINs para poder corregirlos manualmente."
   },
   "assetInput": {
