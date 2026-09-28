@@ -96,10 +96,10 @@ describe('XRayService', () => {
         expect(result.morningstarUrl).toContain(mockBaseUrl);
         expect(result.morningstarUrl).toContain(MORNINGSTAR_URL.XRAY_PATH);
         expect(result.morningstarUrl).toContain('LanguageId=es-ES');
-        expect(result.morningstarUrl).toContain('PortfolioType=2');
+        expect(result.morningstarUrl).toContain('CurrencyId=EUR');
       });
 
-      it('should include SecurityTokenList parameter', async () => {
+      it('should include securityIds parameter', async () => {
         repository.findManyByMorningstarIds.mockResolvedValue([
           createMockAsset({ morningstarId: '0P0000YXJO', type: AssetType.ETF }),
         ]);
@@ -108,11 +108,11 @@ describe('XRayService', () => {
           assets: [{ morningstarId: '0P0000YXJO', weight: 100 }],
         });
 
-        expect(result.morningstarUrl).toContain('SecurityTokenList=');
+        expect(result.morningstarUrl).toContain('securityIds=');
         expect(result.morningstarUrl).toContain('0P0000YXJO');
       });
 
-      it('should include values parameter with weights in basis points', async () => {
+      it('should include marketValues parameter with weights in basis points', async () => {
         repository.findManyByMorningstarIds.mockResolvedValue([
           createMockAsset({ morningstarId: '0P0000YXJO' }),
         ]);
@@ -122,7 +122,7 @@ describe('XRayService', () => {
         });
 
         // 50% weight should be 5000 basis points
-        expect(result.morningstarUrl).toContain('values=5000');
+        expect(result.morningstarUrl).toContain('marketValues=5000');
       });
     });
 
@@ -143,11 +143,10 @@ describe('XRayService', () => {
           ],
         });
 
-        // URL-encoded | separator
-        expect(result.morningstarUrl).toContain('SecurityTokenList=');
-        // Values should be separated by |
-        expect(result.morningstarUrl).toContain('values=6000');
+        expect(result.morningstarUrl).toContain('securityIds=');
+        expect(result.morningstarUrl).toContain('marketValues=6000');
         expect(result.morningstarUrl).toContain('4000');
+        expect(result.morningstarUrl).toContain('typeids=');
       });
 
       it('should batch lookup assets efficiently', async () => {
@@ -176,7 +175,7 @@ describe('XRayService', () => {
     });
 
     describe('asset type handling', () => {
-      it('should use FUND type code (2) for ETFs', async () => {
+      it('should use FO typeid for ETFs', async () => {
         repository.findManyByMorningstarIds.mockResolvedValue([
           createMockAsset({ morningstarId: '0P0000YXJO', type: AssetType.ETF }),
         ]);
@@ -185,11 +184,10 @@ describe('XRayService', () => {
           assets: [{ morningstarId: '0P0000YXJO', weight: 100 }],
         });
 
-        // Type code 2 in security token
-        expect(result.morningstarUrl).toContain('%5D2%5D'); // ]2]
+        expect(result.morningstarUrl).toContain('typeids=FO');
       });
 
-      it('should use FUND type code (2) for FUNDs', async () => {
+      it('should use FO typeid for FUNDs', async () => {
         repository.findManyByMorningstarIds.mockResolvedValue([
           createMockAsset({
             morningstarId: 'F00000THA5',
@@ -201,10 +199,10 @@ describe('XRayService', () => {
           assets: [{ morningstarId: 'F00000THA5', weight: 100 }],
         });
 
-        expect(result.morningstarUrl).toContain('%5D2%5D'); // ]2]
+        expect(result.morningstarUrl).toContain('typeids=FO');
       });
 
-      it('should use STOCK type code (3) for stocks', async () => {
+      it('should use ST typeid for stocks', async () => {
         repository.findManyByMorningstarIds.mockResolvedValue([
           createMockAsset({
             morningstarId: '0P0000AAPL',
@@ -216,48 +214,18 @@ describe('XRayService', () => {
           assets: [{ morningstarId: '0P0000AAPL', weight: 100 }],
         });
 
-        // Type code 3 in security token
-        expect(result.morningstarUrl).toContain('%5D3%5D'); // ]3]
+        expect(result.morningstarUrl).toContain('typeids=ST');
       });
 
-      it('should use FUND exchange code (FOESP) for funds/ETFs', async () => {
-        repository.findManyByMorningstarIds.mockResolvedValue([
-          createMockAsset({ morningstarId: '0P0000YXJO', type: AssetType.ETF }),
-        ]);
-
-        const result = await service.generate({
-          assets: [{ morningstarId: '0P0000YXJO', weight: 100 }],
-        });
-
-        expect(result.morningstarUrl).toContain('FOESP');
-      });
-
-      it('should use STOCK exchange code (E0WWE) for stocks', async () => {
-        repository.findManyByMorningstarIds.mockResolvedValue([
-          createMockAsset({
-            morningstarId: '0P0000AAPL',
-            type: AssetType.STOCK,
-          }),
-        ]);
-
-        const result = await service.generate({
-          assets: [{ morningstarId: '0P0000AAPL', weight: 100 }],
-        });
-
-        expect(result.morningstarUrl).toContain('E0WWE');
-      });
-
-      it('should use default codes for assets not found in database', async () => {
-        // Asset not in database
+      it('should default to FO typeid for assets not found in database', async () => {
         repository.findManyByMorningstarIds.mockResolvedValue([]);
 
         const result = await service.generate({
           assets: [{ morningstarId: 'UNKNOWN123', weight: 100 }],
         });
 
-        // Should default to FUND type code (2) and FOESP exchange
-        expect(result.morningstarUrl).toContain('%5D2%5D'); // ]2]
-        expect(result.morningstarUrl).toContain('FOESP');
+        expect(result.morningstarUrl).toContain('typeids=FO');
+        expect(result.morningstarUrl).toContain('securityIds=UNKNOWN123');
       });
     });
 
@@ -522,7 +490,7 @@ describe('XRayService', () => {
         expect(ids).toHaveLength(20);
       });
 
-      it('should include security token suffix', async () => {
+      it('should use the short Instant X-Ray URL format', async () => {
         repository.findManyByMorningstarIds.mockResolvedValue([
           createMockAsset({ morningstarId: '0P0000YXJO' }),
         ]);
@@ -531,10 +499,11 @@ describe('XRayService', () => {
           assets: [{ morningstarId: '0P0000YXJO', weight: 100 }],
         });
 
-        // Should include $$ALL_1340 suffix (URL encoded)
-        expect(result.morningstarUrl).toContain(
-          encodeURIComponent('$$ALL_1340'),
-        );
+        expect(result.morningstarUrl).toContain('securityIds=');
+        expect(result.morningstarUrl).toContain('marketValues=');
+        expect(result.morningstarUrl).toContain('typeids=');
+        expect(result.morningstarUrl).not.toContain('SecurityTokenList=');
+        expect(result.morningstarUrl).not.toContain('$$ALL_1340');
       });
     });
 

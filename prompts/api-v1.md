@@ -2324,4 +2324,7 @@ implementa todo el plan recomendado
 ### Prompt 196
 aplica la solucion recomendada, deja aparte esto de momento : 4. Aparte: el 404 de la cartera de 44 fondos
 
+### Prompt 197
+aplica los cambios
+
 

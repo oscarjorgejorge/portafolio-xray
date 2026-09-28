@@ -7,17 +7,15 @@ export type XRayProbeResult = {
 };
 
 /**
- * Instant X-Ray URL for a single fund at 100% weight
+ * Instant X-Ray URL for a single fund at 100% weight (short format).
  */
 export function buildXRayProbeUrl(baseUrl: string, fundId: string): string {
   const url = new URL(`${baseUrl}${MORNINGSTAR_URL.XRAY_PATH}`);
   url.searchParams.set('LanguageId', MORNINGSTAR_URL.LANGUAGE_ID);
-  url.searchParams.set('PortfolioType', MORNINGSTAR_URL.PORTFOLIO_TYPE);
-  url.searchParams.set(
-    'SecurityTokenList',
-    `${fundId}]2]0]FOESP${MORNINGSTAR_URL.SECURITY_TOKEN_SUFFIX}`,
-  );
-  url.searchParams.set('values', '10000');
+  url.searchParams.set('CurrencyId', MORNINGSTAR_URL.CURRENCY_ID);
+  url.searchParams.set('securityIds', `${fundId}|`);
+  url.searchParams.set('marketValues', '10000|');
+  url.searchParams.set('typeids', 'FO|');
   return url.toString();
 }
 
