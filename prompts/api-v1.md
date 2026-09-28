@@ -2327,4 +2327,8 @@ aplica la solucion recomendada, deja aparte esto de momento : 4. Aparte: el 404 
 ### Prompt 197
 aplica los cambios
 
+### Prompt 198
+Opcional: 2 en paralelo, haz esta opcion 
+Mantener timeout ~10s por request
+
 
