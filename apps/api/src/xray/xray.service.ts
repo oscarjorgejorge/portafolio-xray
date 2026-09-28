@@ -7,10 +7,7 @@ import type { AppConfig } from '../config';
 import type { Asset } from '@prisma/client';
 import { IXRayService } from './interfaces';
 import { GenerateXRayResponse } from './types';
-import {
-  getMorningstarTypeCode,
-  getMorningstarExchangeCode,
-} from './constants';
+import { getMorningstarTypeId } from './constants';
 import { MORNINGSTAR_URL } from '../common/constants';
 import {
   extractPreferredFundId,
@@ -26,8 +23,8 @@ const SCREENER_REMAP_CONCURRENCY = 4;
 type XRayHolding = {
   tokenId: string;
   weight: number;
-  typeCode: string;
-  exchangeCode: string;
+  /** Instant X-Ray short-format typeid (FO / ST) */
+  typeId: string;
   usedFallback: boolean;
   /** True when Instant X-Ray token is a sibling-class F ID (not verified for this ISIN). */
   usedRelatedShareClass: boolean;
@@ -127,7 +124,6 @@ export class XRayService implements IXRayService {
 
     return assets.map((asset) => {
       const dbAsset = assetMap.get(asset.morningstarId);
-      const { typeCode, exchangeCode } = this.getAssetCodes(dbAsset);
       const tokenId = this.resolveCanonicalTokenId(
         asset.morningstarId,
         dbAsset,
@@ -136,8 +132,7 @@ export class XRayService implements IXRayService {
       return {
         tokenId,
         weight: asset.weight,
-        typeCode,
-        exchangeCode,
+        typeId: getMorningstarTypeId(dbAsset?.type ?? null),
         usedFallback: this.isUsingPerformanceFallback(
           asset.morningstarId,
           tokenId,
@@ -220,40 +215,34 @@ export class XRayService implements IXRayService {
     );
   }
 
+  /**
+   * Compact Instant X-Ray PDF URL (securityIds / marketValues / typeids).
+   * Shorter than SecurityTokenList so large portfolios stay under IIS query limits.
+   */
   private formatMorningstarUrl(
     holdings: Array<{
       tokenId: string;
       weight: number;
-      typeCode: string;
-      exchangeCode: string;
+      typeId: string;
     }>,
   ): string {
     const baseUrl = `${this.morningstarBaseUrl}${MORNINGSTAR_URL.XRAY_PATH}`;
-    const securityTokens = holdings.map(
-      (holding) =>
-        `${holding.tokenId}]${holding.typeCode}]0]${holding.exchangeCode}${MORNINGSTAR_URL.SECURITY_TOKEN_SUFFIX}`,
-    );
-    const values = holdings.map((holding) =>
-      Math.round(holding.weight * MORNINGSTAR_URL.WEIGHT_MULTIPLIER),
-    );
+    const securityIds = holdings.map((holding) => holding.tokenId).join('|');
+    const marketValues = holdings
+      .map((holding) =>
+        Math.round(holding.weight * MORNINGSTAR_URL.WEIGHT_MULTIPLIER),
+      )
+      .join('|');
+    const typeids = holdings.map((holding) => holding.typeId).join('|');
 
     const url = new URL(baseUrl);
     url.searchParams.set('LanguageId', MORNINGSTAR_URL.LANGUAGE_ID);
-    url.searchParams.set('PortfolioType', MORNINGSTAR_URL.PORTFOLIO_TYPE);
-    url.searchParams.set('SecurityTokenList', securityTokens.join('|'));
-    url.searchParams.set('values', values.join('|'));
+    url.searchParams.set('CurrencyId', MORNINGSTAR_URL.CURRENCY_ID);
+    // Trailing | matches Instant X-Ray / Rankia short-format URLs that work in production.
+    url.searchParams.set('securityIds', `${securityIds}|`);
+    url.searchParams.set('marketValues', `${marketValues}|`);
+    url.searchParams.set('typeids', `${typeids}|`);
     return url.toString();
-  }
-
-  private getAssetCodes(dbAsset: Asset | undefined): {
-    typeCode: string;
-    exchangeCode: string;
-  } {
-    const assetType = dbAsset?.type ?? null;
-    return {
-      typeCode: getMorningstarTypeCode(assetType),
-      exchangeCode: getMorningstarExchangeCode(assetType),
-    };
   }
 
   /**

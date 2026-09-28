@@ -15,7 +15,7 @@ const FUND_LIKE_TYPES = new Set<string>([
 ]);
 
 /**
- * Funds, ETFs and ETCs use Instant X-Ray fund tokens (type 2 / FOESP)
+ * Funds, ETFs and ETCs use Instant X-Ray fund tokens (typeid FO)
  */
 export function isFundLikeType(type: string | null | undefined): boolean {
   if (!type) return false;

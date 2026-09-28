@@ -6,7 +6,9 @@ describe('xray-probe', () => {
       const url = buildXRayProbeUrl('https://lt.morningstar.com', 'F00000WI0D');
       expect(url).toContain('/j2uwuwirpv/xraypdf/default.aspx');
       expect(url).toContain('F00000WI0D');
-      expect(url).toContain('values=10000');
+      expect(url).toContain('marketValues=10000');
+      expect(url).toContain('typeids=FO');
+      expect(url).toContain('CurrencyId=EUR');
     });
   });
 
