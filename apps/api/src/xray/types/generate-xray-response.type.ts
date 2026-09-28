@@ -23,4 +23,11 @@ export class GenerateXRayResponse {
     example: 0,
   })
   holdingsUsingFallback!: number;
+
+  @ApiProperty({
+    description:
+      'Number of holdings that use a related Instant X-Ray share-class F ID (sibling currency/class) because this ISIN has no own F ID',
+    example: 0,
+  })
+  holdingsUsingRelatedShareClass!: number;
 }

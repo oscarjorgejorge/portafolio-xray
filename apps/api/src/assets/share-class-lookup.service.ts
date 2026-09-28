@@ -50,7 +50,7 @@ export class ShareClassLookupService {
     name?: string | null;
   }): Promise<string | null> {
     const identity = await this.lookupIdentityFromScreener(asset);
-    return identity.shareClassId;
+    return identity.shareClassId ?? identity.proxyShareClassId ?? null;
   }
 
   async lookupIdentityFromScreener(asset: {
@@ -58,7 +58,11 @@ export class ShareClassLookupService {
     isin?: string | null;
     url?: string | null;
     name?: string | null;
-  }): Promise<{ shareClassId: string | null; isin?: string }> {
+  }): Promise<{
+    shareClassId: string | null;
+    proxyShareClassId?: string | null;
+    isin?: string;
+  }> {
     return this.lookupFromScreener(asset);
   }
 
@@ -68,14 +72,19 @@ export class ShareClassLookupService {
     type?: string | null;
     isin?: string | null;
     name?: string | null;
-  }): Promise<{ shareClassId: string | null; isin?: string }> {
+  }): Promise<{
+    shareClassId: string | null;
+    proxyShareClassId?: string | null;
+    isin?: string;
+  }> {
     const fromScreener = await this.lookupFromScreener(asset);
-    if (fromScreener.shareClassId) {
+    if (fromScreener.shareClassId || fromScreener.proxyShareClassId) {
       return fromScreener;
     }
     const fromQuote = await this.lookupFromQuotePages(asset);
     return {
       shareClassId: fromQuote,
+      proxyShareClassId: fromScreener.proxyShareClassId,
       isin: fromScreener.isin,
     };
   }
@@ -95,7 +104,11 @@ export class ShareClassLookupService {
     isin?: string | null;
     url?: string | null;
     name?: string | null;
-  }): Promise<{ shareClassId: string | null; isin?: string }> {
+  }): Promise<{
+    shareClassId: string | null;
+    proxyShareClassId?: string | null;
+    isin?: string;
+  }> {
     const terms = this.screenerTerms(asset);
     for (const term of terms) {
       try {
@@ -105,10 +118,18 @@ export class ShareClassLookupService {
           performanceId: asset.morningstarId,
           name: asset.name,
         });
-        if (identity.shareClassId || identity.isin) {
+        if (
+          identity.shareClassId ||
+          identity.proxyShareClassId ||
+          identity.isin
+        ) {
           if (identity.shareClassId) {
             this.logger.log(
               `[SHARE-CLASS] Share-class ID from Instant X-Ray screener ${term}: ${identity.shareClassId}`,
+            );
+          } else if (identity.proxyShareClassId) {
+            this.logger.log(
+              `[SHARE-CLASS] Related-class F ID from Instant X-Ray screener ${term}: ${identity.proxyShareClassId} (URL only; not verified for this ISIN)`,
             );
           }
           return identity;
@@ -119,7 +140,7 @@ export class ShareClassLookupService {
         );
       }
     }
-    return { shareClassId: null };
+    return { shareClassId: null, proxyShareClassId: null };
   }
 
   private screenerTerms(asset: {

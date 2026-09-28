@@ -113,6 +113,7 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
     isDirty,
     generateError,
     holdingsUsingFallback,
+    holdingsUsingRelatedShareClass,
     setAllocationMode,
     handleAssetResolved,
     handleWeightChange,
@@ -295,6 +296,7 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
                 className="mt-4"
                 unsupportedCount={countInstantXrayUnsupportedHoldings(assets)}
                 holdingsUsingFallback={holdingsUsingFallback}
+                holdingsUsingRelatedShareClass={holdingsUsingRelatedShareClass}
               />
             )}
 

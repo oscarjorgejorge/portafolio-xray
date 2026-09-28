@@ -134,9 +134,15 @@ export class ShareClassEnrichmentService implements IShareClassEnrichmentService
       const identity =
         await this.shareClassLookup.lookupIdentityFromScreener(asset);
       if (!identity.shareClassId && !(identity.isin && !asset.isin)) {
-        this.logger.warn(
-          `[SHARE-CLASS] Could not find F ID for ${asset.morningstarId}`,
-        );
+        if (identity.proxyShareClassId) {
+          this.logger.log(
+            `[SHARE-CLASS] Related-class F ${identity.proxyShareClassId} for ${asset.morningstarId}; not persisted (sibling ISIN)`,
+          );
+        } else {
+          this.logger.warn(
+            `[SHARE-CLASS] Could not find F ID for ${asset.morningstarId}`,
+          );
+        }
         return;
       }
 

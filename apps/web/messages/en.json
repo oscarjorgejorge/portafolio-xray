@@ -28,6 +28,7 @@
     "timeout": "The request took too long. Please try again.",
     "unsupportedHint": "{count, plural, one {# holding is not compatible with Instant X-Ray (pension plan, EPSV or FIL). It is not recommended; the report will omit it.} other {# holdings are not compatible with Instant X-Ray (pension plans, EPSV or FIL). They are not recommended; the report will omit them.}}",
     "unmappedHint": "{count, plural, one {# fund could not be mapped to Instant X-Ray.} other {# funds could not be mapped to Instant X-Ray.}}",
+    "relatedShareClassHint": "{count, plural, one {# fund has no Instant X-Ray ID for its exact share class; a related class (e.g. another currency) is used in the report.} other {# funds have no Instant X-Ray ID for their exact share class; a related class (e.g. another currency) is used in the report.}}",
     "noPortfolioData": "No portfolio data found in URL.",
     "backToBuilder": "Back to Portfolio Builder",
     "createNew": "Create New Portfolio",
@@ -50,6 +51,7 @@
     "generateTimeout": "The request took too long. Please try again.",
     "unsupportedHint": "{count, plural, one {# holding is not compatible with Instant X-Ray (pension plan, EPSV or FIL). It is not recommended; the report will omit it.} other {# holdings are not compatible with Instant X-Ray (pension plans, EPSV or FIL). They are not recommended; the report will omit them.}}",
     "unmappedHint": "{count, plural, one {# fund could not be mapped to Instant X-Ray.} other {# funds could not be mapped to Instant X-Ray.}}",
+    "relatedShareClassHint": "{count, plural, one {# fund has no Instant X-Ray ID for its exact share class; a related class (e.g. another currency) is used in the report.} other {# funds have no Instant X-Ray ID for their exact share class; a related class (e.g. another currency) is used in the report.}}",
     "xrayIssueHint": "If the X-Ray is incomplete or missing assets, write through the <contactLink>contact form</contactLink> with the missing assets and their ISINs so we can correct them manually."
   },
   "assetInput": {

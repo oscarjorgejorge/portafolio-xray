@@ -856,6 +856,10 @@ export class AssetsService implements IAssetsService {
             `[ASSET] Marked shareClassId ${current.shareClassId} verified for ${asset.morningstarId}`,
           );
         }
+      } else if (identity.proxyShareClassId) {
+        this.logger.log(
+          `[ASSET] Related-class F ${identity.proxyShareClassId} for ${asset.morningstarId}; not verified (sibling ISIN)`,
+        );
       } else {
         this.logger.warn(
           `[ASSET] Instant X-Ray screener returned no F ID for ${asset.morningstarId}`,

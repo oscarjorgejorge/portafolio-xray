@@ -158,6 +158,9 @@ function XRayPageContent() {
           holdingsUsingFallback={
             generateMutation.data?.holdingsUsingFallback ?? 0
           }
+          holdingsUsingRelatedShareClass={
+            generateMutation.data?.holdingsUsingRelatedShareClass ?? 0
+          }
         />
 
         <div className="space-y-6">
