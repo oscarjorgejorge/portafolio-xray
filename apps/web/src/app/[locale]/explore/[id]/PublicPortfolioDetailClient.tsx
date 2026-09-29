@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from '@/i18n/navigation';
@@ -9,7 +9,6 @@ import {
   type PublicPortfolioListItem,
 } from '@/lib/api/portfolios';
 import { queryKeys } from '@/lib/api/queryKeys';
-import { resolveAsset } from '@/lib/api/assets';
 import {
   createComment,
   deleteComment,
@@ -24,7 +23,7 @@ import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { Spinner } from '@/components/ui/Spinner';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
-import { EditIcon, ExternalLinkIcon, HeartFilledIcon, HeartOutlineIcon, TrashIcon } from '@/components/ui/Icons';
+import { EditIcon, HeartFilledIcon, HeartOutlineIcon, TrashIcon } from '@/components/ui/Icons';
 import { clearPendingComment, getPendingComment, setPendingComment } from '@/lib/comments/pending-comment-storage';
 
 function buildAssetsParam(assets: { morningstarId: string; weight: number }[]): string {
@@ -34,8 +33,10 @@ function buildAssetsParam(assets: { morningstarId: string; weight: number }[]): 
 
 export function PublicPortfolioDetailClient({
   initialPortfolio,
+  children,
 }: {
   initialPortfolio: PublicPortfolioListItem;
+  children?: ReactNode;
 }) {
   const t = useTranslations('portfolios');
   const tCommon = useTranslations('common');
@@ -91,7 +92,9 @@ export function PublicPortfolioDetailClient({
       isAuthenticated={isAuthenticated}
       onOpenInBuilder={handleOpenInBuilder}
       openAuthModalAndWait={openAuthModalAndWait}
-    />
+    >
+      {children}
+    </PublicPortfolioContent>
   );
 }
 
@@ -100,6 +103,7 @@ interface PublicPortfolioContentProps {
   isAuthenticated: boolean;
   onOpenInBuilder: (p: PublicPortfolioListItem) => void;
   openAuthModalAndWait: () => Promise<void>;
+  children?: ReactNode;
 }
 
 function PublicPortfolioContent({
@@ -107,6 +111,7 @@ function PublicPortfolioContent({
   isAuthenticated,
   onOpenInBuilder,
   openAuthModalAndWait,
+  children,
 }: PublicPortfolioContentProps) {
   const t = useTranslations('portfolios');
   const tCommon = useTranslations('common');
@@ -143,12 +148,10 @@ function PublicPortfolioContent({
   return (
     <main className="min-h-screen bg-slate-100 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto space-y-6">
+        {children}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex-1 space-y-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-2xl font-bold text-slate-900">
-                {portfolio.name}
-              </h1>
               {isOwner && (
                 <button
                   type="button"
@@ -218,18 +221,6 @@ function PublicPortfolioContent({
           </p>
         )}
 
-        <div className="space-y-4">
-          {portfolio.assets
-            .slice()
-            .sort((a, b) => b.weight - a.weight)
-            .map((asset) => (
-              <PublicPortfolioAssetRow
-                key={asset.morningstarId}
-                asset={asset}
-              />
-            ))}
-        </div>
-
         <CommentsSection
           portfolioId={portfolio.id}
           isAuthenticated={isAuthenticated}
@@ -237,79 +228,6 @@ function PublicPortfolioContent({
         />
       </div>
     </main>
-  );
-}
-
-interface PublicPortfolioAssetRowProps {
-  asset: { morningstarId: string; weight: number };
-}
-
-function PublicPortfolioAssetRow({ asset }: PublicPortfolioAssetRowProps) {
-  const tAssetRow = useTranslations('assetRow');
-
-  const {
-    data,
-    isLoading,
-    error,
-  } = useQuery({
-    queryKey: queryKeys.assets.resolve(asset.morningstarId),
-    queryFn: () => resolveAsset(asset.morningstarId),
-  });
-
-  const resolved = data?.asset;
-  const displayName = resolved?.name ?? asset.morningstarId;
-  const type = resolved?.type;
-  const ticker = resolved?.ticker ?? undefined;
-  const morningstarId = resolved?.morningstarId ?? asset.morningstarId;
-  const url = resolved?.url;
-
-  return (
-    <div className="border border-slate-200 rounded-lg p-4 bg-white flex items-start gap-3">
-      <div className="flex-1 min-w-0 pr-2">
-        <h4 className="font-semibold text-slate-900 break-words leading-tight">
-          {displayName}
-          {url && (
-            <a
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex align-middle ml-1 mb-2 text-blue-600 hover:text-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded flex-shrink-0"
-              aria-label={displayName}
-            >
-              <ExternalLinkIcon />
-            </a>
-          )}
-        </h4>
-        <div className="flex items-center gap-2 sm:gap-4 text-sm text-slate-600 mt-1 flex-wrap">
-          {type && (
-            <span className="font-medium uppercase">
-              {type}
-            </span>
-          )}
-          {ticker && (
-            <span>
-              <span className="font-medium">{tAssetRow('ticker')}</span> {ticker}
-            </span>
-          )}
-          {morningstarId && (
-            <span>
-              <span className="font-medium">{tAssetRow('morningstarId')}</span> {morningstarId}
-            </span>
-          )}
-          {isLoading && <Spinner size="sm" className="text-slate-400" />}
-        </div>
-        {error && (
-          <p className="mt-2 text-xs text-red-600">
-            {error instanceof Error
-              ? error.message
-              : 'Failed to resolve asset details.'}
-          </p>
-        )}
-      </div>
-      <div className="flex-shrink-0 text-sm font-medium text-slate-700">
-        {asset.weight.toFixed(2)}%
-      </div>
-    </div>
   );
 }
 

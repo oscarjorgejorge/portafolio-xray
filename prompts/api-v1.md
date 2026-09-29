@@ -2331,4 +2331,7 @@ aplica los cambios
 Opcional: 2 en paralelo, haz esta opcion 
 Mantener timeout ~10s por request
 
+### Prompt 199
+Arregla varios problemas de SEO/indexación, uno por uno, con un commit por punto. Confirma el redirect 308 de / a /es. Enriquece /explore/[id] con holdings, H1 y resumen en el HTML de servidor, y title/description a partir del nombre y la composición (fallback por activos si no hay nombre). Confirma enlaces rastreables en /explore y añade entrada desde la home. Revisa title/description de /terms. Filtra en el sitemap las carteras no indexables. Confirma compresión HTTP y el favicon.
+
 
