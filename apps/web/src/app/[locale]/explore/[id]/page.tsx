@@ -44,10 +44,12 @@ export async function generateMetadata({
     };
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) {
+      // notFound() inserts the only robots meta (noindex). Null clears the
+      // layout's index,follow so this response does not emit a second tag.
       return {
         ...seo,
         title: brandedAbsoluteTitle(t('exploreTitle')),
-        robots: { index: false, follow: false },
+        robots: null,
       };
     }
     throw error;
