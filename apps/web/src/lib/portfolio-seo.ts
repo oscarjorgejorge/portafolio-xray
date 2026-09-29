@@ -4,6 +4,8 @@
  * so detail pages do not share one generic string.
  */
 
+import { VALIDATION } from '@/lib/constants';
+
 export interface PortfolioHoldingView {
   morningstarId: string;
   weight: number;
@@ -185,4 +187,27 @@ export function buildPortfolioPageCopy(
     columnIdentifier: 'Ticker / ISIN',
     columnWeight: spanish ? 'Peso' : 'Weight',
   };
+}
+
+/**
+ * Sitemap gate. Portfolio has no noindex, isIndexable, or moderationStatus
+ * column. A public page is indexable only when it is public and fully allocated,
+ * which is the same rule that keeps it out of the 404 noindex response.
+ */
+export function isIndexablePublicPortfolio(portfolio: {
+  id?: string | null;
+  isPublic?: boolean;
+  assets?: Array<{ weight?: number | null }>;
+}): boolean {
+  if (!portfolio.id || portfolio.isPublic !== true) {
+    return false;
+  }
+
+  const assets = portfolio.assets ?? [];
+  if (assets.length === 0) {
+    return false;
+  }
+
+  const total = assets.reduce((sum, asset) => sum + (asset.weight || 0), 0);
+  return Math.abs(total - VALIDATION.PERCENTAGE_TOTAL) <= VALIDATION.PERCENTAGE_TOLERANCE;
 }

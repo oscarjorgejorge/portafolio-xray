@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildPortfolioPageCopy,
   formatHoldingIdentifier,
+  isIndexablePublicPortfolio,
   type PortfolioHoldingView,
 } from './portfolio-seo';
 
@@ -69,6 +70,39 @@ describe('buildPortfolioPageCopy', () => {
     expect(copy.description).toContain('diversified');
     expect(copy.description).toContain('funds');
     expect(copy.title).toBe('Portfolio Wide: 8 assets — free X-Ray');
+  });
+});
+
+describe('isIndexablePublicPortfolio', () => {
+  it('requires a public id and a fully allocated book', () => {
+    expect(
+      isIndexablePublicPortfolio({
+        id: 'abc',
+        isPublic: true,
+        assets: [{ weight: 60 }, { weight: 40 }],
+      }),
+    ).toBe(true);
+    expect(
+      isIndexablePublicPortfolio({
+        id: 'abc',
+        isPublic: false,
+        assets: [{ weight: 100 }],
+      }),
+    ).toBe(false);
+    expect(
+      isIndexablePublicPortfolio({
+        id: 'abc',
+        isPublic: true,
+        assets: [{ weight: 40 }],
+      }),
+    ).toBe(false);
+    expect(
+      isIndexablePublicPortfolio({
+        id: '',
+        isPublic: true,
+        assets: [{ weight: 100 }],
+      }),
+    ).toBe(false);
   });
 });
 
