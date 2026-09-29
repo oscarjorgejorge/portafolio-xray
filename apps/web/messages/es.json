@@ -314,6 +314,8 @@
     "noPublicPortfolios": "No se encontraron carteras públicas que coincidan con estos filtros.",
     "publicPortfolioByUser": "Cartera de {userName}",
     "publicPortfolioSeoDescription": "{name} — cartera pública de {userName} | X-Ray de cartera en Portfolio X-Ray.",
+    "recentPublicHeading": "Carteras públicas recientes",
+    "recentPublicLead": "Entra en carteras públicas guardadas por otros usuarios.",
     "thisIsYourPortfolio": "Esta es tu cartera",
     "copyPortfolioLink": "Copiar link de la cartera",
     "sortByLabel": "Ordenar por",
