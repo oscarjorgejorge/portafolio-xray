@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
 import { localeMetadata, absoluteUrl } from '@/lib/seo';
 import { HomePage } from './HomePageClient';
+import { RecentPublicPortfolios } from './RecentPublicPortfolios';
 
 interface HomePageProps {
   params: Promise<{ locale: string }>;
@@ -29,6 +30,13 @@ export async function generateMetadata({
   };
 }
 
-export default function LocaleHomePage() {
-  return <HomePage />;
+export default async function LocaleHomePage({ params }: HomePageProps) {
+  const { locale } = await params;
+
+  return (
+    <>
+      <HomePage />
+      <RecentPublicPortfolios locale={locale} />
+    </>
+  );
 }

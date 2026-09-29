@@ -313,6 +313,8 @@
     "noPublicPortfolios": "No public portfolios found for these filters.",
     "publicPortfolioByUser": "Portfolio by {userName}",
     "publicPortfolioSeoDescription": "{name} — public portfolio by {userName} | Portfolio X-Ray.",
+    "recentPublicHeading": "Recent public portfolios",
+    "recentPublicLead": "Open public portfolios saved by other people.",
     "thisIsYourPortfolio": "This is your portfolio",
     "copyPortfolioLink": "Copy portfolio link",
     "sortByLabel": "Sort by",

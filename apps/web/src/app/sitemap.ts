@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { headers } from 'next/headers';
 import { getPublicPortfolios } from '@/lib/api/portfolios';
+import { isIndexablePublicPortfolio } from '@/lib/portfolio-seo';
 import { API } from '@/lib/constants';
 import { routing } from '@/i18n/routing';
 import {
@@ -66,7 +67,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         API.SITEMAP_TIMEOUT_MS,
       );
       const portfolioEntries = portfolios.flatMap((portfolio) => {
-        if (!portfolio?.id) {
+        if (!isIndexablePublicPortfolio(portfolio)) {
           return [];
         }
 
