@@ -133,6 +133,89 @@ function concentrationSentence(spanish: boolean, diversified: boolean): string {
   return 'The portfolio is concentrated.';
 }
 
+const TITLE_ASSET_LIMIT = 65;
+const SHORT_ID_LENGTH = 8;
+
+function byWeight(holdings: PortfolioHoldingView[]): PortfolioHoldingView[] {
+  return [...holdings].sort((left, right) => right.weight - left.weight);
+}
+
+/**
+ * First 8 characters of the portfolio id. Always appended to the title and
+ * description: duplicate names are not only generic labels, and this render
+ * path cannot see the other portfolios to detect a collision.
+ */
+function withShortId(text: string, portfolioId: string | null | undefined): string {
+  const shortId = portfolioId?.trim().slice(0, SHORT_ID_LENGTH) ?? '';
+  if (shortId.length < SHORT_ID_LENGTH) {
+    return text;
+  }
+  return `${text} (${shortId})`;
+}
+
+function namedTitle(locale: string, name: string, clause: string): string {
+  return isSpanish(locale)
+    ? `Cartera ${name}: ${clause} — X-Ray gratis`
+    : `Portfolio ${name}: ${clause} — free X-Ray`;
+}
+
+function holdingTitleClause(
+  locale: string,
+  name: string,
+  ranked: PortfolioHoldingView[],
+): string {
+  const spanish = isSpanish(locale);
+  const labels = ranked.map(holdingDisplayName).filter(Boolean);
+  const count = ranked.length;
+
+  if (labels.length === 0) {
+    return spanish ? `${count} activos` : `${count} assets`;
+  }
+
+  if (labels.length === 1) {
+    return labels[0];
+  }
+
+  const single = spanish
+    ? `${labels[0]} y ${labels.length - 1} más`
+    : `${labels[0]} and ${labels.length - 1} more`;
+  const remaining = labels.length - 2;
+  let pair = spanish
+    ? `${labels[0]} y ${labels[1]}`
+    : `${labels[0]} and ${labels[1]}`;
+
+  if (remaining > 0) {
+    pair = spanish
+      ? `${pair} y ${remaining} más`
+      : `${pair} and ${remaining} more`;
+  }
+
+  if (namedTitle(locale, name, pair).length <= TITLE_ASSET_LIMIT) {
+    return pair;
+  }
+
+  return single;
+}
+
+function leadHoldingSentence(
+  spanish: boolean,
+  holding: PortfolioHoldingView | undefined,
+): string | null {
+  if (!holding) {
+    return null;
+  }
+
+  const label = holdingDisplayName(holding);
+  if (!label) {
+    return null;
+  }
+
+  const share = Math.round(holding.weight);
+  return spanish
+    ? `${label} es la posición principal (${share}% del peso).`
+    : `${label} is the largest holding (${share}% of weight).`;
+}
+
 function buildSummary(
   locale: string,
   subject: string,
@@ -143,40 +226,53 @@ function buildSummary(
   const diversified = isDiversified(holdings);
   const leading = predominantClass(holdings);
   const concentration = concentrationSentence(spanish, diversified);
+  const lead = leadHoldingSentence(spanish, holdings[0]);
 
   const countSentence = spanish
     ? `${subject} reúne ${count} activos.`
     : `${subject} holds ${count} assets.`;
 
-  if (!leading) {
-    return `${countSentence} ${concentration}`;
+  const parts = [countSentence];
+  if (lead) {
+    parts.push(lead);
   }
 
-  const label = TYPE_LABELS[spanish ? 'es' : 'en'][leading.type] ?? leading.type;
-  const share = Math.round(leading.weight);
-  const classSentence = spanish
-    ? `La clase predominante es ${label} (${share}% del peso).`
-    : `The leading asset class is ${label} (${share}% of weight).`;
+  if (leading) {
+    const label = TYPE_LABELS[spanish ? 'es' : 'en'][leading.type] ?? leading.type;
+    const share = Math.round(leading.weight);
+    parts.push(
+      spanish
+        ? `La clase predominante es ${label} (${share}% del peso).`
+        : `The leading asset class is ${label} (${share}% of weight).`,
+    );
+  }
 
-  return `${countSentence} ${classSentence} ${concentration}`;
+  parts.push(concentration);
+  return parts.join(' ');
 }
 
 export function buildPortfolioPageCopy(
   locale: string,
   portfolioName: string | null | undefined,
   holdings: PortfolioHoldingView[],
+  portfolioId?: string | null,
 ): PortfolioPageCopy {
   const spanish = isSpanish(locale);
   const name = portfolioName?.trim() ?? '';
-  const count = holdings.length;
-  const headline = name || fallbackHeadline(locale, holdings);
-  let title = headline;
-  if (name) {
-    title = spanish
-      ? `Cartera ${name}: ${count} activos — X-Ray gratis`
-      : `Portfolio ${name}: ${count} assets — free X-Ray`;
-  }
-  const summary = buildSummary(locale, name || (spanish ? 'Esta cartera' : 'This portfolio'), holdings);
+  const ranked = byWeight(holdings);
+  const headline = name || fallbackHeadline(locale, ranked);
+  const baseTitle = name
+    ? namedTitle(locale, name, holdingTitleClause(locale, name, ranked))
+    : headline;
+  const title = withShortId(baseTitle, portfolioId);
+  const summary = withShortId(
+    buildSummary(
+      locale,
+      name || (spanish ? 'Esta cartera' : 'This portfolio'),
+      ranked,
+    ),
+    portfolioId,
+  );
 
   return {
     title,
