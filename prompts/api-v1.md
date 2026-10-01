@@ -2346,4 +2346,6 @@ hay alguna forma de resolver mejor las acciones? nunca las resuelve bien
 ### Prompt 203
 podemos solucionar todos los casos que estas nombrando?
 
+### Prompt 204
+cual es la diferencia entre cada respuesta? podriamos dar alguna informacion adicional al usuario para guiarle?
 

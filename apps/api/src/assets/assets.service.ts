@@ -24,6 +24,7 @@ import {
   needsShareClassVerification,
 } from './resolver/utils/canonical-fund-id';
 import { isValidIsin } from './resolver/utils/id-extractor';
+import { exchangeFromSnippet } from './resolver/utils/instant-xray-screener';
 import {
   ResolveAssetDto,
   ConfirmAssetDto,
@@ -1179,6 +1180,7 @@ export class AssetsService implements IAssetsService {
       ticker?: string | null;
       assetType?: string | null;
       isin?: string | null;
+      snippet?: string | null;
     }[],
     bestMatch?: {
       morningstarId: string | null;
@@ -1188,6 +1190,7 @@ export class AssetsService implements IAssetsService {
       ticker?: string | null;
       assetType?: string | null;
       isin?: string | null;
+      snippet?: string | null;
     } | null,
   ) {
     const resultsWithId = allResults.filter((r) => r.morningstarId);
@@ -1205,6 +1208,7 @@ export class AssetsService implements IAssetsService {
       score: r.score,
       ticker: r.ticker ?? undefined,
       isin: r.isin ?? undefined,
+      exchange: exchangeFromSnippet(r.snippet ?? '') ?? undefined,
       assetType: this.mapAssetType(r.assetType ?? undefined),
       market: this.detectMarketFromUrl(r.url),
     }));

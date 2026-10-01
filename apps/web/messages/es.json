@@ -121,7 +121,14 @@
     "confirmSingle": "Por favor, confirma que este es el activo correcto:",
     "selectFromList": "Por favor, selecciona el activo correcto de la lista:",
     "nameSearchNotice": "Buscaste por nombre o ticker. Selecciona el activo correcto de la lista.",
-    "nameSearchTip": "La próxima vez, prueba con un ISIN o ID de Morningstar para una resolución más rápida y precisa."
+    "nameSearchTip": "La próxima vez, prueba con un ISIN o ID de Morningstar para una resolución más rápida y precisa.",
+    "listingGuide": "Es la misma empresa en mercados distintos. Elige el mercado donde compraste las acciones. Si operas en España, suele ser la acción ordinaria cuyo ISIN empieza por ES.",
+    "listingOrdinary": "Acción ordinaria en {place}.",
+    "listingAdr": "ADR: recibo que cotiza en {place}. Tiene otro ISIN y no es la acción de la bolsa local.",
+    "listingCdr": "CDR: recibo canadiense ({place}), a menudo cubierto a dólares canadienses.",
+    "listingCedear": "Cedear: certificado que cotiza en {place}. No es la acción de Madrid.",
+    "listingGdr": "GDR: recibo internacional que cotiza en {place}.",
+    "listingOther": "Otra cotización en {place}."
   },
   "editableIsin": {
     "manual": "(manual)",
