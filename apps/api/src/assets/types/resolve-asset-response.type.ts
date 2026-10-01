@@ -79,6 +79,12 @@ export class AssetAlternativeDto {
   isin?: string;
 
   @ApiPropertyOptional({
+    description: 'Exchange MIC of the chosen listing (XMAD, XNYS, …)',
+    example: 'XMAD',
+  })
+  exchange?: string;
+
+  @ApiPropertyOptional({
     description: 'Detected asset type (ETF, FUND, STOCK, ETC)',
     enum: ['ETF', 'FUND', 'STOCK', 'ETC'],
     example: 'STOCK',

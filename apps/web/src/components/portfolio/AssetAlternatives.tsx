@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { confirmAsset } from '@/lib/api/assets';
@@ -12,6 +12,16 @@ import {
 import type { AlternativeAsset, Asset, AssetType } from '@/types';
 import { useMutation } from '@tanstack/react-query';
 import { ASSET_TYPES } from '@/lib/constants';
+import { listingKind, listingPlace, type ListingKind } from '@/lib/utils/listing-hint';
+
+const LISTING_MESSAGE: Record<ListingKind, 'listingOrdinary' | 'listingAdr' | 'listingCdr' | 'listingCedear' | 'listingGdr' | 'listingOther'> = {
+  ordinary: 'listingOrdinary',
+  adr: 'listingAdr',
+  cdr: 'listingCdr',
+  cedear: 'listingCedear',
+  gdr: 'listingGdr',
+  other: 'listingOther',
+};
 
 export interface AssetSelectedPayload {
   morningstarId: string;
@@ -72,6 +82,10 @@ export const AssetAlternatives: React.FC<AssetAlternativesProps> = ({
   const t = useTranslations('alternatives');
   const tCommon = useTranslations('common');
   const tAssetRow = useTranslations('assetRow');
+  const locale = useLocale();
+  const showListingGuide = alternatives.some(
+    (alt) => listingKind(alt.name) !== 'ordinary',
+  );
 
   // Track selected asset type per alternative (for user override)
   const [selectedTypes, setSelectedTypes] = useState<Record<string, AssetType>>(() => {
@@ -145,9 +159,15 @@ export const AssetAlternatives: React.FC<AssetAlternativesProps> = ({
           ? t('confirmSingle')
           : t('selectFromList')}
       </p>
+      {showListingGuide && (
+        <p className="text-sm text-slate-600 mb-4">{t('listingGuide')}</p>
+      )}
       <div className="space-y-2">
         {alternatives.map((alt) => {
           const currentType = selectedTypes[alt.morningstarId] || determineAssetType(alt);
+          const kind = listingKind(alt.name);
+          const place = listingPlace(alt.isin, alt.exchange, locale);
+          const badge = place || alt.market;
 
           return (
             <div
@@ -158,12 +178,17 @@ export const AssetAlternatives: React.FC<AssetAlternativesProps> = ({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <h4 className="font-medium text-slate-900">{alt.name}</h4>
-                    {alt.market && (
+                    {badge && (
                       <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                        {alt.market}
+                        {badge}
                       </span>
                     )}
                   </div>
+                  {place && currentType === 'STOCK' && (
+                    <p className="text-sm text-slate-700 mt-1">
+                      {t(LISTING_MESSAGE[kind], { place })}
+                    </p>
+                  )}
                   <p className="text-sm text-slate-600 mt-1">
                     {tAssetRow('morningstarId')} {alt.morningstarId}
                   </p>
