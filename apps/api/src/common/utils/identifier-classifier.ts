@@ -24,8 +24,8 @@ export class IdentifierClassifier {
   private static readonly MS_ID_REGEX =
     /^(0P[A-Z0-9]{8}|F0[A-Z0-9]{8,10}|FOGBR[A-Z0-9]{5,8})$/i;
 
-  // Ticker: 1-5 uppercase letters
-  private static readonly TICKER_REGEX = /^[A-Z]{1,5}$/;
+  // Ticker: 1-6 letters, optional exchange or class suffix (BBVA.MC, BRK.B, BRK-B)
+  private static readonly TICKER_REGEX = /^[A-Z]{1,6}([.-][A-Z]{1,2})?$/;
 
   /**
    * Normalize input string for consistent processing

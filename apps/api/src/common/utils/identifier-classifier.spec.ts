@@ -118,8 +118,15 @@ describe('IdentifierClassifier', () => {
       expect(IdentifierClassifier.isTicker('GOOGL')).toBe(true);
     });
 
-    it('should return false for 6+ letter string', () => {
-      expect(IdentifierClassifier.isTicker('GOOGLE')).toBe(false);
+    it('should accept a 6 letter ticker and an exchange or class suffix', () => {
+      expect(IdentifierClassifier.isTicker('GOOGLE')).toBe(true);
+      expect(IdentifierClassifier.isTicker('BBVA.MC')).toBe(true);
+      expect(IdentifierClassifier.isTicker('BRK.B')).toBe(true);
+      expect(IdentifierClassifier.isTicker('BRK-B')).toBe(true);
+    });
+
+    it('should return false for a long company name', () => {
+      expect(IdentifierClassifier.isTicker('INDITEX')).toBe(false);
     });
 
     it('should return false for string with numbers', () => {
@@ -213,9 +220,18 @@ describe('IdentifierClassifier', () => {
         );
       });
 
-      it('should classify 6+ letter word as FREE_TEXT', () => {
-        expect(IdentifierClassifier.classify('GOOGLE')).toBe(
+      it('should classify a long company name as FREE_TEXT', () => {
+        expect(IdentifierClassifier.classify('INDITEX')).toBe(
           IdentifierType.FREE_TEXT,
+        );
+      });
+
+      it('should classify an exchange suffix as a ticker', () => {
+        expect(IdentifierClassifier.classify('BBVA.MC')).toBe(
+          IdentifierType.TICKER,
+        );
+        expect(IdentifierClassifier.classify('brk.b')).toBe(
+          IdentifierType.TICKER,
         );
       });
 

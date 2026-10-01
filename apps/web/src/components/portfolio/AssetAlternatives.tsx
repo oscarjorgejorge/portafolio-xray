@@ -89,7 +89,9 @@ export const AssetAlternatives: React.FC<AssetAlternativesProps> = ({
   const confirmMutation = useMutation({
     mutationFn: async (alt: AlternativeAsset) => {
       const isIsinFormat = /^[A-Z]{2}[A-Z0-9]{10}$/.test(identifier.toUpperCase());
-      const isin = isIsinFormat ? identifier.toUpperCase() : undefined;
+      const isin =
+        alt.isin?.toUpperCase() ||
+        (isIsinFormat ? identifier.toUpperCase() : undefined);
 
       const assetType = selectedTypes[alt.morningstarId] || determineAssetType(alt);
 
@@ -167,6 +169,9 @@ export const AssetAlternatives: React.FC<AssetAlternativesProps> = ({
                   </p>
                   {alt.ticker && (
                     <p className="text-sm text-slate-500">Ticker: {alt.ticker}</p>
+                  )}
+                  {alt.isin && (
+                    <p className="text-sm text-slate-500">ISIN: {alt.isin}</p>
                   )}
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">

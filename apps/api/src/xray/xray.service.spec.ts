@@ -202,7 +202,7 @@ describe('XRayService', () => {
         expect(result.morningstarUrl).toContain('typeids=FO');
       });
 
-      it('should use ST typeid for stocks', async () => {
+      it('should use SecurityTokenList for stocks', async () => {
         repository.findManyByMorningstarIds.mockResolvedValue([
           createMockAsset({
             morningstarId: '0P0000AAPL',
@@ -214,7 +214,39 @@ describe('XRayService', () => {
           assets: [{ morningstarId: '0P0000AAPL', weight: 100 }],
         });
 
-        expect(result.morningstarUrl).toContain('typeids=ST');
+        expect(result.morningstarUrl).toContain('SecurityTokenList=');
+        expect(result.morningstarUrl).toContain('PortfolioType=2');
+        expect(result.morningstarUrl).toContain('%5D3%5D');
+        expect(result.morningstarUrl).toContain('E0WWE');
+        expect(result.morningstarUrl).toContain('values=10000');
+        expect(result.morningstarUrl).not.toContain('typeids=ST');
+      });
+
+      it('should tokenise funds and stocks together when any holding is a stock', async () => {
+        repository.findManyByMorningstarIds.mockResolvedValue([
+          createMockAsset({
+            morningstarId: 'F00000THA5',
+            type: AssetType.FUND,
+          }),
+          createMockAsset({
+            morningstarId: '0P000003RE',
+            type: AssetType.STOCK,
+          }),
+        ]);
+
+        const result = await service.generate({
+          assets: [
+            { morningstarId: 'F00000THA5', weight: 50 },
+            { morningstarId: '0P000003RE', weight: 50 },
+          ],
+        });
+
+        const tokenList = new URL(result.morningstarUrl).searchParams.get(
+          'SecurityTokenList',
+        );
+        expect(tokenList).toContain('F00000THA5]2]0]FOESP$$ALL_1340');
+        expect(tokenList).toContain('0P000003RE]3]0]E0WWE$$ALL_1340');
+        expect(result.morningstarUrl).not.toContain('typeids=');
       });
 
       it('should default to FO typeid for assets not found in database', async () => {

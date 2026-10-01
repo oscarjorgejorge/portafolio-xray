@@ -18,6 +18,7 @@ import { Card } from '@/components/ui/Card';
 import { Alert } from '@/components/ui/Alert';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { generateXRay } from '@/lib/api/xray';
+import { openMorningstarReport } from '@/lib/morningstar-report';
 import { VALIDATION } from '@/lib/constants';
 import { TrashIcon, EditIcon, ShareIcon } from '@/components/ui/Icons';
 import { EditPortfolioModal } from '@/components/portfolio/EditPortfolioModal';
@@ -117,7 +118,7 @@ export default function PortfoliosPage() {
       }
 
       if (result.morningstarUrl) {
-        window.open(result.morningstarUrl, '_blank', 'noopener,noreferrer');
+        openMorningstarReport(result.morningstarUrl);
       }
     } catch (err) {
       const message =

@@ -7,7 +7,11 @@ import type { AppConfig } from '../config';
 import type { Asset } from '@prisma/client';
 import { IXRayService } from './interfaces';
 import { GenerateXRayResponse } from './types';
-import { getMorningstarTypeId } from './constants';
+import {
+  getMorningstarTypeId,
+  MORNINGSTAR_SECURITY_TOKEN,
+  MORNINGSTAR_TYPE_IDS,
+} from './constants';
 import { MORNINGSTAR_URL } from '../common/constants';
 import {
   extractPreferredFundId,
@@ -216,10 +220,31 @@ export class XRayService implements IXRayService {
   }
 
   /**
-   * Compact Instant X-Ray PDF URL (securityIds / marketValues / typeids).
-   * Shorter than SecurityTokenList so large portfolios stay under IIS query limits.
+   * Fund-only portfolios keep the short Instant X-Ray URL.
+   * Any stock switches the whole portfolio to SecurityTokenList.
+   * The client posts that token so the query string stays under the IIS limit.
    */
   private formatMorningstarUrl(
+    holdings: Array<{
+      tokenId: string;
+      weight: number;
+      typeId: string;
+    }>,
+  ): string {
+    const hasStock = holdings.some(
+      (holding) => holding.typeId === MORNINGSTAR_TYPE_IDS.STOCK,
+    );
+    if (hasStock) {
+      return this.formatSecurityTokenListUrl(holdings);
+    }
+    return this.formatShortUrl(holdings);
+  }
+
+  /**
+   * Compact Instant X-Ray PDF URL (securityIds / marketValues / typeids).
+   * Funds, ETFs and ETCs resolve with typeid FO.
+   */
+  private formatShortUrl(
     holdings: Array<{
       tokenId: string;
       weight: number;
@@ -242,6 +267,46 @@ export class XRayService implements IXRayService {
     url.searchParams.set('securityIds', `${securityIds}|`);
     url.searchParams.set('marketValues', `${marketValues}|`);
     url.searchParams.set('typeids', `${typeids}|`);
+    return url.toString();
+  }
+
+  /**
+   * Full token: {id}]2]0]FOESP$$ALL_1340 for funds, {id}]3]0]E0WWE$$ALL_1340 for stocks.
+   */
+  private formatSecurityTokenListUrl(
+    holdings: Array<{
+      tokenId: string;
+      weight: number;
+      typeId: string;
+    }>,
+  ): string {
+    const baseUrl = `${this.morningstarBaseUrl}${MORNINGSTAR_URL.XRAY_PATH}`;
+    const securityTokenList = holdings
+      .map((holding) => {
+        const stock = holding.typeId === MORNINGSTAR_TYPE_IDS.STOCK;
+        const typeCode = stock
+          ? MORNINGSTAR_SECURITY_TOKEN.STOCK_TYPE
+          : MORNINGSTAR_SECURITY_TOKEN.FUND_TYPE;
+        const exchange = stock
+          ? MORNINGSTAR_SECURITY_TOKEN.STOCK_EXCHANGE
+          : MORNINGSTAR_SECURITY_TOKEN.FUND_EXCHANGE;
+        return `${holding.tokenId}]${typeCode}]0]${exchange}${MORNINGSTAR_SECURITY_TOKEN.SUFFIX}`;
+      })
+      .join('|');
+    const values = holdings
+      .map((holding) =>
+        Math.round(holding.weight * MORNINGSTAR_URL.WEIGHT_MULTIPLIER),
+      )
+      .join('|');
+
+    const url = new URL(baseUrl);
+    url.searchParams.set('LanguageId', MORNINGSTAR_URL.LANGUAGE_ID);
+    url.searchParams.set(
+      'PortfolioType',
+      MORNINGSTAR_SECURITY_TOKEN.PORTFOLIO_TYPE,
+    );
+    url.searchParams.set('SecurityTokenList', securityTokenList);
+    url.searchParams.set('values', values);
     return url.toString();
   }
 
