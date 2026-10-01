@@ -120,7 +120,14 @@
     "confirmSingle": "Please confirm this is the correct asset:",
     "selectFromList": "Please select the correct asset from the list below:",
     "nameSearchNotice": "You searched by name or ticker. Select the correct asset from the list below.",
-    "nameSearchTip": "Next time, try an ISIN or Morningstar ID for faster, more accurate resolution."
+    "nameSearchTip": "Next time, try an ISIN or Morningstar ID for faster, more accurate resolution.",
+    "listingGuide": "This is the same company on different markets. Pick the market where you bought the shares. In Spain that is usually the ordinary line whose ISIN starts with ES.",
+    "listingOrdinary": "Ordinary share in {place}.",
+    "listingAdr": "ADR: a receipt listed in {place}. It has a different ISIN and is not the local share.",
+    "listingCdr": "CDR: a Canadian receipt ({place}), often hedged into Canadian dollars.",
+    "listingCedear": "Cedear: a certificate listed in {place}. It is not the Madrid share.",
+    "listingGdr": "GDR: an international receipt listed in {place}.",
+    "listingOther": "Another listing in {place}."
   },
   "editableIsin": {
     "manual": "(manual)",
