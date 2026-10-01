@@ -10,6 +10,11 @@ export const routing = defineRouting({
   // Always show locale prefix in URL (e.g., /es/..., /en/...)
   localePrefix: 'always',
 
+  // next-intl's own Link header emits hreflang="x-default" without the
+  // default locale prefix. generateMetadata already publishes reciprocal
+  // absolute alternates, including x-default on /es.
+  alternateLinks: false,
+
   // Unprefixed URLs always 308 to /es in middleware, not the browser language.
   localeDetection: false,
 });
