@@ -32,6 +32,7 @@ export const AlternativeAssetSchema = z.object({
   url: z.string(),
   score: z.number(),
   ticker: z.string().optional(),
+  isin: z.string().optional(),
   assetType: AssetTypeSchema.optional(),
   market: z.string().optional(),
 });

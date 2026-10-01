@@ -1178,6 +1178,7 @@ export class AssetsService implements IAssetsService {
       score: number;
       ticker?: string | null;
       assetType?: string | null;
+      isin?: string | null;
     }[],
     bestMatch?: {
       morningstarId: string | null;
@@ -1186,6 +1187,7 @@ export class AssetsService implements IAssetsService {
       score: number;
       ticker?: string | null;
       assetType?: string | null;
+      isin?: string | null;
     } | null,
   ) {
     const resultsWithId = allResults.filter((r) => r.morningstarId);
@@ -1202,6 +1204,7 @@ export class AssetsService implements IAssetsService {
       url: r.url,
       score: r.score,
       ticker: r.ticker ?? undefined,
+      isin: r.isin ?? undefined,
       assetType: this.mapAssetType(r.assetType ?? undefined),
       market: this.detectMarketFromUrl(r.url),
     }));

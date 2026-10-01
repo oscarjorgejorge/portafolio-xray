@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { UI_FEEDBACK } from '@/lib/constants';
+import { openMorningstarReport } from '@/lib/morningstar-report';
 import { captureException } from '@/lib/services/errorReporting';
 
 const SHAREABLE_URL_STORAGE_KEY = 'shareableUrlState';
@@ -179,7 +180,7 @@ export function useShareableUrl({
   // Open Morningstar PDF in new tab
   const openMorningstarPdf = useCallback(() => {
     if (morningstarUrl) {
-      window.open(morningstarUrl, '_blank');
+      openMorningstarReport(morningstarUrl);
     }
   }, [morningstarUrl]);
 

@@ -53,6 +53,8 @@ describe('identifier-classifier', () => {
     it('classifies tickers', () => {
       expect(classifyIdentifier('AAPL')).toBe(IdentifierType.TICKER);
       expect(classifyIdentifier('MSFT')).toBe(IdentifierType.TICKER);
+      expect(classifyIdentifier('BBVA.MC')).toBe(IdentifierType.TICKER);
+      expect(classifyIdentifier('BRK.B')).toBe(IdentifierType.TICKER);
     });
 
     it('classifies free text as name search', () => {

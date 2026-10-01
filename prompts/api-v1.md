@@ -2334,4 +2334,16 @@ Mantener timeout ~10s por request
 ### Prompt 199
 Arregla varios problemas de SEO/indexación, uno por uno, con un commit por punto. Confirma el redirect 308 de / a /es. Enriquece /explore/[id] con holdings, H1 y resumen en el HTML de servidor, y title/description a partir del nombre y la composición (fallback por activos si no hay nombre). Confirma enlaces rastreables en /explore y añade entrada desde la home. Revisa title/description de /terms. Filtra en el sitemap las carteras no indexables. Confirma compresión HTTP y el favicon.
 
+### Prompt 200
+entonces la propuesta seria si hay acciones formato largo, si no formato corto?
+
+### Prompt 201
+aplica los cambios
+
+### Prompt 202
+hay alguna forma de resolver mejor las acciones? nunca las resuelve bien
+
+### Prompt 203
+podemos solucionar todos los casos que estas nombrando?
+
 

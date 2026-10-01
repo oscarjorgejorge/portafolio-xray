@@ -20,3 +20,17 @@ export function getMorningstarTypeId(assetType?: AssetType | null): string {
   }
   return MORNINGSTAR_TYPE_IDS.FUND;
 }
+
+/**
+ * SecurityTokenList pieces for the Renta 4 X-Ray PDF.
+ * Funds use type 2 and FOESP. Stocks use type 3 and E0WWE.
+ * The short typeid ST does not resolve equities on that endpoint.
+ */
+export const MORNINGSTAR_SECURITY_TOKEN = {
+  FUND_TYPE: '2',
+  STOCK_TYPE: '3',
+  FUND_EXCHANGE: 'FOESP',
+  STOCK_EXCHANGE: 'E0WWE',
+  SUFFIX: '$$ALL_1340',
+  PORTFOLIO_TYPE: '2',
+} as const;
