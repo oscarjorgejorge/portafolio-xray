@@ -51,6 +51,24 @@ export class YahooFinanceSearchStrategy implements SearchStrategy {
 
   constructor(private readonly httpClient: HttpClientService) {}
 
+  /**
+   * Quote list only. Used to turn a company name into a ticker the screener can filter.
+   */
+  async findQuotes(query: string): Promise<YahooFinanceQuote[]> {
+    const response = await this.httpClient.get<string>(
+      buildYahooFinanceSearchUrl(query),
+      {
+        responseType: 'text',
+        timeout: 10000,
+        headers: { Accept: 'application/json' },
+      },
+    );
+    if (!response.ok || !response.data) {
+      return [];
+    }
+    return parseYahooQuotes(response.data);
+  }
+
   async search(query: string): Promise<SearchResult[]> {
     this.logger.debug(`[${this.name}] Searching Yahoo Finance for: ${query}`);
 

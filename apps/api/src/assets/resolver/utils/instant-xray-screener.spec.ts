@@ -2,6 +2,7 @@ import { MS_ASSET_TYPES } from './constants';
 import {
   assetTypeFromUniverse,
   buildInstantXrayScreenerUrl,
+  collapseListingsByIsin,
   exchangeRank,
   joinScreenerUniverseIds,
   morningstarIdFromScreenerRow,
@@ -34,7 +35,7 @@ describe('instant-xray-screener', () => {
     ).toBe('FOESP$$ALL|FOEUR$$ALL|FOGBR$$ALL|ETALL$$ALL|E0WWE$$ALL');
   });
 
-  it('uses broad universes for ISINs, Morningstar IDs and exchange universes for tickers', () => {
+  it('uses broad universes for ISINs, Morningstar IDs and tickers', () => {
     expect(screenerUniversesForQuery('LU0328476410')).toEqual([
       'FOESP$$ALL',
       'FOEUR$$ALL',
@@ -49,8 +50,68 @@ describe('instant-xray-screener', () => {
       'ETALL$$ALL',
       'E0WWE$$ALL',
     ]);
-    expect(screenerUniversesForQuery('SOFI')).toContain('E0EXG$XNAS');
-    expect(screenerUniversesForQuery('SOFI')).toContain('ETEXG$XLON');
+    expect(screenerUniversesForQuery('SOFI')).toEqual([
+      'E0WWE$$ALL',
+      'ETALL$$ALL',
+    ]);
+  });
+
+  it('filters tickers by Ticker:EQ instead of a name search', () => {
+    const url = buildInstantXrayScreenerUrl('BBVA', 'E0WWE$$ALL');
+    const params = new URL(url).searchParams;
+
+    expect(params.get('filters')).toBe('Ticker:EQ:BBVA');
+    expect(params.get('term')).toBeNull();
+    expect(params.get('universeIds')).toBe('E0WWE$$ALL');
+  });
+
+  it('strips an exchange suffix before the ticker filter', () => {
+    const params = new URL(
+      buildInstantXrayScreenerUrl('BBVA.MC', 'E0WWE$$ALL', 2),
+    ).searchParams;
+
+    expect(params.get('filters')).toBe('Ticker:EQ:BBVA');
+    expect(params.get('page')).toBe('2');
+  });
+
+  it('keeps one row per ISIN', () => {
+    const collapsed = collapseListingsByIsin([
+      {
+        url: 'https://example.test/madrid',
+        title: 'Banco Bilbao Vizcaya Argentaria SA',
+        snippet: 'Instant X-Ray | E0WWE$$ALL | XMAD',
+        morningstarId: '0P0000A5RZ',
+        domain: 'lt.morningstar.com',
+        ticker: 'BBVA',
+        isin: 'ES0113211835',
+        assetType: MS_ASSET_TYPES.STOCK,
+      },
+      {
+        url: 'https://example.test/mexico',
+        title: 'Banco Bilbao Vizcaya Argentaria SA',
+        snippet: 'Instant X-Ray | E0WWE$$ALL | XMEX',
+        morningstarId: '0P0000CDWV',
+        domain: 'lt.morningstar.com',
+        ticker: 'BBVA',
+        isin: 'ES0113211835',
+        assetType: MS_ASSET_TYPES.STOCK,
+      },
+      {
+        url: 'https://example.test/nyse',
+        title: 'Banco Bilbao Vizcaya Argentaria SA ADR',
+        snippet: 'Instant X-Ray | E0WWE$$ALL | XNYS',
+        morningstarId: '0P000000OX',
+        domain: 'lt.morningstar.com',
+        ticker: 'BBVA',
+        isin: 'US05946K1016',
+        assetType: MS_ASSET_TYPES.STOCK,
+      },
+    ]);
+
+    expect(collapsed.map((result) => result.morningstarId)).toEqual([
+      '0P0000A5RZ',
+      '0P000000OX',
+    ]);
   });
 
   it('maps universes to asset types', () => {
@@ -185,6 +246,47 @@ describe('instant-xray-screener', () => {
     );
 
     expect(ranked[0].morningstarId).toBe('0P000000B7');
+  });
+
+  it('prefers the Madrid ordinary share over the NYSE ADR and Mexico line', () => {
+    const ranked = rankInstantXrayResults(
+      [
+        {
+          url: 'https://global.morningstar.com/en-eu/investments/stocks/0P000000OX/quote',
+          title: 'Banco Bilbao Vizcaya Argentaria SA ADR',
+          snippet: 'Instant X-Ray | E0WWE$$ALL | XNYS',
+          morningstarId: '0P000000OX',
+          domain: 'lt.morningstar.com',
+          ticker: 'BBVA',
+          isin: 'US05946K1016',
+          assetType: MS_ASSET_TYPES.STOCK,
+        },
+        {
+          url: 'https://global.morningstar.com/en-eu/investments/stocks/0P0000CDWV/quote',
+          title: 'Banco Bilbao Vizcaya Argentaria SA',
+          snippet: 'Instant X-Ray | E0WWE$$ALL | XMEX',
+          morningstarId: '0P0000CDWV',
+          domain: 'lt.morningstar.com',
+          ticker: 'BBVA',
+          isin: 'ES0113211835',
+          assetType: MS_ASSET_TYPES.STOCK,
+        },
+        {
+          url: 'https://global.morningstar.com/en-eu/investments/stocks/0P0000A5RZ/quote',
+          title: 'Banco Bilbao Vizcaya Argentaria SA',
+          snippet: 'Instant X-Ray | E0WWE$$ALL | XMAD',
+          morningstarId: '0P0000A5RZ',
+          domain: 'lt.morningstar.com',
+          ticker: 'BBVA',
+          isin: 'ES0113211835',
+          assetType: MS_ASSET_TYPES.STOCK,
+        },
+      ],
+      'BBVA',
+    );
+
+    expect(ranked[0].morningstarId).toBe('0P0000A5RZ');
+    expect(ranked[ranked.length - 1].morningstarId).toBe('0P000000OX');
   });
 
   it('extracts a performance ID from screener rows', () => {

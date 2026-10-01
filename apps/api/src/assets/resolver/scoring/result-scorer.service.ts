@@ -255,18 +255,19 @@ export class ResultScorerService {
       // Sort group by score (highest first)
       group.sort((a, b) => b.score - a.score);
 
-      // For stocks, prioritize main market listings
+      // For stocks, keep one listing per ISIN so an ADR is not dropped
+      // in favour of the ordinary share (the user may hold either).
       const isStock = group[0].assetType === MS_ASSET_TYPES.STOCK;
       if (isStock) {
-        // Prefer results without "CDR", "CEDEAR", "Canadian Depository Receipt" in name
-        const mainMarketResult =
-          group.find(
-            (r) =>
-              !this.isSecondaryMarketListing(
-                IdentifierClassifier.normalizeInput(r.title),
-              ),
-          ) || group[0];
-        filtered.push(mainMarketResult);
+        const byIsin = new Map<string, ScoredResult>();
+        for (const row of group) {
+          const key = row.isin?.toUpperCase() || row.morningstarId || row.url;
+          const existing = byIsin.get(key);
+          if (!existing || this.preferStockListing(row, existing)) {
+            byIsin.set(key, row);
+          }
+        }
+        filtered.push(...byIsin.values());
       } else {
         // For funds/ETFs, just take the highest score
         filtered.push(group[0]);
@@ -285,7 +286,7 @@ export class ResultScorerService {
     // Remove common suffixes
     let baseName = normalizedName
       .replace(
-        /\s+(CLASS\s+[A-Z]|CDR|CEDEAR|CANADIAN\s+DEPOSITORY\s+RECEIPT).*$/i,
+        /\s+(CLASS\s+[A-Z]|CDR|CEDEAR|ADR|GDR|CANADIAN\s+DEPOSITORY\s+RECEIPT).*$/i,
         '',
       )
       .trim();
@@ -297,10 +298,31 @@ export class ResultScorerService {
   }
 
   /**
+   * Prefer the ordinary line over a receipt when both share an ISIN.
+   */
+  private preferStockListing(
+    candidate: ScoredResult,
+    current: ScoredResult,
+  ): boolean {
+    const candidateSecondary = this.isSecondaryMarketListing(
+      IdentifierClassifier.normalizeInput(candidate.title),
+    );
+    const currentSecondary = this.isSecondaryMarketListing(
+      IdentifierClassifier.normalizeInput(current.title),
+    );
+    if (candidateSecondary !== currentSecondary) {
+      return !candidateSecondary;
+    }
+    return candidate.score > current.score;
+  }
+
+  /**
    * Check if a normalized name indicates a secondary market listing
    */
   private isSecondaryMarketListing(normalizedName: string): boolean {
     const secondaryMarketPatterns = [
+      /\bADR\b/i,
+      /\bGDR\b/i,
       /CDR/i,
       /CEDEAR/i,
       /CANADIAN\s+DEPOSITORY\s+RECEIPT/i,

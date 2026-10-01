@@ -7,10 +7,22 @@ import {
   parseWwwMorningstarQuoteHtml,
   parseWwwMorningstarSearchHtml,
   wwwTickerQuoteTargets,
+  parseListingSymbol,
   yahooSymbolToTicker,
 } from './www-morningstar-quote';
 
 describe('www-morningstar-quote', () => {
+  describe('parseListingSymbol', () => {
+    it('pins Madrid for a Yahoo suffix and keeps a class ticker', () => {
+      expect(parseListingSymbol('BBVA.MC')).toEqual({
+        ticker: 'BBVA',
+        mics: ['XMAD', 'XMCE'],
+      });
+      expect(parseListingSymbol('BRK-B')).toEqual({ ticker: 'BRK.B' });
+      expect(parseListingSymbol('AAPL')).toEqual({ ticker: 'AAPL' });
+    });
+  });
+
   describe('yahooSymbolToTicker', () => {
     it('should strip the Yahoo exchange suffix', () => {
       expect(yahooSymbolToTicker('IWVL.L')).toBe('IWVL');

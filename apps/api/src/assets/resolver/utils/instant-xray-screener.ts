@@ -8,6 +8,7 @@ import {
   isPerformanceId,
 } from './id-extractor';
 import { buildMorningstarUrl } from './url-builder';
+import { parseListingSymbol } from './www-morningstar-quote';
 
 export const INSTANT_XRAY_SCREENER_BASE_URL =
   'https://lt.morningstar.com/api/rest.svc/klr5zyak8x/security/screener';
@@ -20,27 +21,55 @@ export const INSTANT_XRAY_ISIN_UNIVERSES = [
   'E0WWE$$ALL',
 ] as const;
 
+/**
+ * Broad universes plus `filters=Ticker:EQ:…`.
+ * A `term` search matches the name, so "BBVA" returns Banco BBVA Argentina
+ * and drops the Madrid listing whose ticker is actually BBVA.
+ */
 export const INSTANT_XRAY_TICKER_UNIVERSES = [
-  'E0EXG$XNAS',
-  'E0EXG$XNYS',
-  'E0EXG$XLON',
-  'E0EXG$XPAR',
-  'E0EXG$XMCE',
-  'ETEXG$XLON',
-  'ETEXG$XETR',
-  'ETEXG$XMCE',
+  'E0WWE$$ALL',
+  'ETALL$$ALL',
 ] as const;
 
 const PREFERRED_EXCHANGES = [
+  'XMAD',
   'XNAS',
   'XNYS',
   'XLON',
   'XETR',
-  'XMCE',
   'XPAR',
   'XAMS',
   'XSWX',
+  'XMCE',
 ];
+
+/** Home market for an ISIN country. IE/LU funds list on the main EU venues. */
+const HOME_MICS_BY_ISIN_COUNTRY: Record<string, readonly string[]> = {
+  ES: ['XMAD', 'XMCE'],
+  US: ['XNAS', 'XNYS', 'ARCX', 'XASE'],
+  GB: ['XLON'],
+  FR: ['XPAR'],
+  DE: ['XETR', 'XFRA'],
+  NL: ['XAMS'],
+  IT: ['XMIL'],
+  CH: ['XSWX'],
+  PT: ['XLIS'],
+  BE: ['XBRU'],
+  AT: ['XWBO'],
+  IE: ['XLON', 'XETR', 'XAMS', 'XMIL', 'XPAR'],
+  LU: ['XLON', 'XETR', 'XAMS', 'XMIL', 'XPAR'],
+  CA: ['XTSE'],
+  MX: ['XMEX'],
+  AU: ['XASX'],
+  NZ: ['XNZE'],
+  SE: ['XSTO'],
+  DK: ['XCSE'],
+  NO: ['XOSL'],
+  FI: ['XHEL'],
+  HK: ['XHKG'],
+};
+
+const DEPOSITARY_RECEIPT = /\b(ADR|GDR|CEDEAR)\b/i;
 
 const PREFERRED_UNIVERSES = [
   'FOESP$$ALL',
@@ -67,23 +96,31 @@ export interface InstantXrayScreenerResponse {
   rows?: InstantXrayScreenerRow[];
 }
 
+export const SCREENER_TICKER_PAGE_SIZE = 25;
+
 export function buildInstantXrayScreenerUrl(
   term: string,
   universeId: string,
+  page = 1,
 ): string {
+  const tickerLookup = IdentifierClassifier.isTicker(term);
   const params = new URLSearchParams({
-    page: '1',
-    pageSize: '15',
+    page: String(page),
+    pageSize: tickerLookup ? String(SCREENER_TICKER_PAGE_SIZE) : '15',
     sortOrder: 'LegalName asc',
     outputType: 'json',
     version: '1',
     languageId: 'es-ES',
     currencyId: 'EUR',
     universeIds: universeId,
-    term,
     securityDataPoints:
       'SecId|Name|Ticker|ISIN|PerformanceId|ExchangeId|ShareClassId|FundShareClassId|Universe',
   });
+  if (tickerLookup) {
+    params.set('filters', `Ticker:EQ:${parseListingSymbol(term).ticker}`);
+  } else {
+    params.set('term', term);
+  }
   return `${INSTANT_XRAY_SCREENER_BASE_URL}?${params.toString()}`;
 }
 
@@ -203,7 +240,10 @@ export function rowMatchesQuery(
     ].some((id) => id?.trim().toUpperCase() === normalized);
   }
 
-  return row.Ticker?.toUpperCase() === normalized;
+  const ticker = IdentifierClassifier.isTicker(normalized)
+    ? parseListingSymbol(normalized).ticker
+    : normalized;
+  return row.Ticker?.toUpperCase() === ticker;
 }
 
 export function exchangeRank(exchangeId?: string): number {
@@ -311,19 +351,33 @@ export function rankInstantXrayResults(
     }
   }
 
+  const expectedTicker = IdentifierClassifier.isTicker(normalized)
+    ? parseListingSymbol(normalized).ticker
+    : normalized;
+
   return [...bestById.values()].sort((a, b) => {
     const aExactTicker =
-      a.ticker?.toUpperCase() === normalized &&
+      a.ticker?.toUpperCase() === expectedTicker &&
       IdentifierClassifier.isTicker(normalized)
         ? 0
         : 1;
     const bExactTicker =
-      b.ticker?.toUpperCase() === normalized &&
+      b.ticker?.toUpperCase() === expectedTicker &&
       IdentifierClassifier.isTicker(normalized)
         ? 0
         : 1;
     if (aExactTicker !== bExactTicker) {
       return aExactTicker - bExactTicker;
+    }
+
+    const receiptRank = listingReceiptRank(a) - listingReceiptRank(b);
+    if (receiptRank !== 0) {
+      return receiptRank;
+    }
+
+    const homeRank = homeListingRank(a) - homeListingRank(b);
+    if (homeRank !== 0) {
+      return homeRank;
     }
 
     const hitRank = screenerHitRank(a) - screenerHitRank(b);
@@ -512,7 +566,56 @@ function screenerHitRank(result: SearchResult): number {
   );
 }
 
-function exchangeFromSnippet(snippet: string): string | undefined {
+export function exchangeFromSnippet(snippet: string): string | undefined {
   const parts = snippet.split('|').map((part) => part.trim());
   return parts[2] || undefined;
+}
+
+/** One row per ISIN, keeping the best-ranked listing of that line. */
+export function collapseListingsByIsin(
+  results: SearchResult[],
+): SearchResult[] {
+  const seen = new Set<string>();
+  const collapsed: SearchResult[] = [];
+  for (const result of results) {
+    const key =
+      result.isin?.toUpperCase() || result.morningstarId?.toUpperCase();
+    if (!key || seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    collapsed.push(result);
+  }
+  return collapsed;
+}
+
+export function distinctListingIsins(
+  results: { isin?: string | null }[],
+): string[] {
+  return [
+    ...new Set(
+      results
+        .map((result) => result.isin?.trim().toUpperCase())
+        .filter((isin): isin is string => Boolean(isin)),
+    ),
+  ];
+}
+
+function listingReceiptRank(result: SearchResult): number {
+  return DEPOSITARY_RECEIPT.test(result.title) ? 1 : 0;
+}
+
+/**
+ * Lower is better. Prefer the venue that matches the ISIN country so
+ * BBVA resolves to Madrid (ES) instead of the NYSE ADR or a Mexico line.
+ */
+function homeListingRank(result: SearchResult): number {
+  const mic = exchangeFromSnippet(result.snippet)?.toUpperCase();
+  const country = result.isin?.slice(0, 2).toUpperCase();
+  const homes = country ? HOME_MICS_BY_ISIN_COUNTRY[country] : undefined;
+  if (!homes || !mic) {
+    return 50;
+  }
+  const index = homes.indexOf(mic);
+  return index === -1 ? homes.length + 5 : index;
 }

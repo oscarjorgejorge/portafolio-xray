@@ -3,16 +3,24 @@ import { SearchResult } from '../resolver.types';
 import { SearchStrategy } from './search-strategy.interface';
 import { HttpClientService } from '../../../common/http';
 import { createContextLogger } from '../../../common/logger';
+import { IdentifierClassifier } from '../../../common/utils/identifier-classifier';
 import {
   buildInstantXrayScreenerUrl,
+  collapseListingsByIsin,
+  exchangeFromSnippet,
   parseInstantXrayScreenerResponse,
   rankInstantXrayResults,
+  SCREENER_TICKER_PAGE_SIZE,
   screenerUniversesForQuery,
+  type InstantXrayScreenerResponse,
 } from '../utils/instant-xray-screener';
+import { parseListingSymbol } from '../utils/www-morningstar-quote';
 
 /** Query at most this many Instant X-Ray universes at once. */
 const SCREENER_UNIVERSE_CONCURRENCY = 2;
 const SCREENER_TIMEOUT_MS = 10_000;
+/** Ticker filters can return more listings than one page. */
+const MAX_TICKER_PAGES = 4;
 
 /**
  * Instant X-Ray security screener on lt.morningstar.com.
@@ -32,6 +40,10 @@ export class InstantXrayScreenerStrategy implements SearchStrategy {
   constructor(private readonly httpClient: HttpClientService) {}
 
   async search(query: string): Promise<SearchResult[]> {
+    if (IdentifierClassifier.isTicker(query)) {
+      return this.searchByTicker(query);
+    }
+
     const universes = [...screenerUniversesForQuery(query)];
     this.logger.debug(
       `[${this.name}] Searching Instant X-Ray screener for: ${query} ` +
@@ -66,28 +78,82 @@ export class InstantXrayScreenerStrategy implements SearchStrategy {
     return ranked;
   }
 
+  /**
+   * Exact ticker filter on the equity and ETF universes.
+   * Name search (`term`) misses listings such as BBVA on Madrid.
+   */
+  private async searchByTicker(query: string): Promise<SearchResult[]> {
+    const universes = [...screenerUniversesForQuery(query)];
+    this.logger.debug(
+      `[${this.name}] Ticker filter for ${query} on ${universes.join(', ')}`,
+    );
+
+    const batches = await Promise.all(
+      universes.map((universeId) => this.searchUniverse(query, universeId)),
+    );
+    let ranked = rankInstantXrayResults(batches.flat(), query);
+    const pinnedMics = parseListingSymbol(query).mics;
+    if (pinnedMics?.length) {
+      const pinned = ranked.filter((result) => {
+        const mic = exchangeFromSnippet(result.snippet)?.toUpperCase();
+        return mic ? pinnedMics.includes(mic) : false;
+      });
+      if (pinned.length > 0) {
+        ranked = pinned;
+      }
+    }
+    const collapsed = collapseListingsByIsin(ranked);
+    this.logger.debug(
+      `[${this.name}] Ticker hits for ${query}: ${collapsed.length}`,
+    );
+    return collapsed;
+  }
+
   private async searchUniverse(
     query: string,
     universeId: string,
   ): Promise<SearchResult[]> {
-    const response = await this.httpClient.get<unknown>(
-      buildInstantXrayScreenerUrl(query, universeId),
-      {
-        responseType: 'json',
-        timeout: SCREENER_TIMEOUT_MS,
-        retries: 1,
-        retryDelay: 400,
-        headers: { Accept: 'application/json' },
-      },
-    );
+    const tickerLookup = IdentifierClassifier.isTicker(query);
+    const collected: SearchResult[] = [];
+    let seenRows = 0;
+    let total = 0;
 
-    if (!response.ok || !response.data) {
-      this.logger.debug(
-        `[${this.name}] No screener data for ${query} in ${universeId}`,
+    for (let page = 1; page <= (tickerLookup ? MAX_TICKER_PAGES : 1); page++) {
+      const response = await this.httpClient.get<InstantXrayScreenerResponse>(
+        buildInstantXrayScreenerUrl(query, universeId, page),
+        {
+          responseType: 'json',
+          timeout: SCREENER_TIMEOUT_MS,
+          retries: 1,
+          retryDelay: 400,
+          headers: { Accept: 'application/json' },
+        },
       );
-      return [];
+
+      if (!response.ok || !response.data) {
+        this.logger.debug(
+          `[${this.name}] No screener data for ${query} in ${universeId}`,
+        );
+        break;
+      }
+
+      const rawRows = Array.isArray(response.data.rows)
+        ? response.data.rows.length
+        : 0;
+      total = response.data.total ?? rawRows;
+      seenRows += rawRows;
+      collected.push(
+        ...parseInstantXrayScreenerResponse(response.data, query, universeId),
+      );
+
+      if (!tickerLookup || rawRows === 0 || seenRows >= total) {
+        break;
+      }
+      if (rawRows < SCREENER_TICKER_PAGE_SIZE) {
+        break;
+      }
     }
 
-    return parseInstantXrayScreenerResponse(response.data, query, universeId);
+    return collected;
   }
 }

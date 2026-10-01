@@ -87,7 +87,11 @@ describe('useShareableUrl', () => {
       result.current.openMorningstarPdf();
     });
 
-    expect(window.open).toHaveBeenCalledWith('https://ms.com/pdf', '_blank');
+    expect(window.open).toHaveBeenCalledWith(
+      'https://ms.com/pdf',
+      '_blank',
+      'noopener,noreferrer',
+    );
   });
 });
 

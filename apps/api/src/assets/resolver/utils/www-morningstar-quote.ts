@@ -109,6 +109,43 @@ export function morningstarMicsForYahooQuote(
   return ['xnas', 'xnys', 'arcx'];
 }
 
+export interface ParsedListingSymbol {
+  /** Symbol passed to Ticker:EQ. Class shares keep the dot (BRK.B). */
+  ticker: string;
+  /** When the user typed an exchange suffix (BBVA.MC). */
+  mics?: string[];
+}
+
+const MIC_ALIASES: Record<string, readonly string[]> = {
+  XMAD: ['XMAD', 'XMCE'],
+  XMCE: ['XMAD', 'XMCE'],
+};
+
+/**
+ * Split BBVA.MC into ticker BBVA + Madrid, and keep BRK.B as a class ticker.
+ * A hyphen class (BRK-B) is normalized to the dot form Morningstar stores.
+ */
+export function parseListingSymbol(symbol: string): ParsedListingSymbol {
+  const normalized = symbol.trim().toUpperCase().replace(/-/g, '.');
+  const dot = normalized.lastIndexOf('.');
+  if (dot <= 0) {
+    return { ticker: normalized };
+  }
+
+  const suffix = normalized.slice(dot + 1);
+  const base = normalized.slice(0, dot);
+  const mic = suffix ? YAHOO_SUFFIX_TO_MIC[suffix] : undefined;
+  if (!mic || !base) {
+    return { ticker: normalized };
+  }
+
+  const upper = mic.toUpperCase();
+  return {
+    ticker: base,
+    mics: [...(MIC_ALIASES[upper] ?? [upper])],
+  };
+}
+
 export function yahooSymbolToTicker(symbol: string): string {
   const bare = symbol.includes('.')
     ? symbol.slice(0, symbol.lastIndexOf('.'))

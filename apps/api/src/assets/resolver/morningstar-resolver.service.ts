@@ -25,6 +25,7 @@ import {
   canonicalMorningstarQuoteUrl,
   detectAssetTypeFromMorningstarUrl,
 } from './utils/url-builder';
+import { distinctListingIsins } from './utils/instant-xray-screener';
 
 // Search strategies
 import { ApiSearchStrategy } from './strategies/api-search.strategy';
@@ -83,6 +84,13 @@ export class MorningstarResolverService implements IMorningstarResolver {
         return screenerResults.slice(0, this.config.maxResults);
       }
 
+      if (IdentifierClassifier.isTicker(query)) {
+        const named = await this.searchCompanyNames(query);
+        if (named.length > 0) {
+          return named.slice(0, this.config.maxResults);
+        }
+      }
+
       const yahooResults = await this.yahooSearch.search(query);
       if (yahooResults.length > 0) {
         this.logger.debug(
@@ -92,6 +100,10 @@ export class MorningstarResolverService implements IMorningstarResolver {
       }
     }
 
+    // A company name such as "Inditex" is not a ticker. Yahoo supplies the
+    // symbol; fund searches still run so a fund query is not replaced by a stock.
+    const named = await this.searchCompanyNames(query);
+
     // Execute primary strategies in parallel
     const [apiResults, globalResults, ddgResults] = await Promise.all([
       this.apiSearch.search(query),
@@ -99,9 +111,9 @@ export class MorningstarResolverService implements IMorningstarResolver {
       this.duckDuckGo.search(query),
     ]);
 
-    // Priority: API first (best source)
     const allResults: SearchResult[] = [
       ...apiResults,
+      ...named,
       ...globalResults,
       ...ddgResults,
     ];
@@ -124,6 +136,43 @@ export class MorningstarResolverService implements IMorningstarResolver {
     this.logger.debug(`Total unique results: ${unique.length}`);
 
     return unique.slice(0, this.config.maxResults);
+  }
+
+  /**
+   * Yahoo knows the trading symbol for a company name (Inditex → ITX.MC).
+   * Each symbol is then resolved with the ticker filter, which returns a 0P ID.
+   */
+  private async searchCompanyNames(query: string): Promise<SearchResult[]> {
+    const quotes = await this.yahooSearch.findQuotes(query);
+    const symbols = [
+      ...new Set(
+        quotes
+          .filter((quote) => {
+            const kind = `${quote.quoteType ?? ''} ${quote.typeDisp ?? ''}`;
+            return /EQUITY|ETF|STOCK/i.test(kind) && quote.symbol;
+          })
+          .map((quote) => quote.symbol as string),
+      ),
+    ].slice(0, 4);
+
+    if (symbols.length === 0) {
+      return [];
+    }
+
+    const batches = await Promise.all(
+      symbols.map((symbol) => this.instantXrayScreener.search(symbol)),
+    );
+    const seen = new Set<string>();
+    const unique: SearchResult[] = [];
+    for (const result of batches.flat()) {
+      const key = result.morningstarId?.toUpperCase();
+      if (!key || seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      unique.push(result);
+    }
+    return unique;
   }
 
   /**
@@ -674,6 +723,16 @@ export class MorningstarResolverService implements IMorningstarResolver {
           IdentifierClassifier.normalizeInput(r.title) ===
             IdentifierClassifier.normalizeInput(bestMatch.title || ''),
       );
+
+    if (
+      inputType === IdentifierType.TICKER &&
+      distinctListingIsins(scoredResults).length > 1
+    ) {
+      this.logger.log(
+        `Ticker ${bestMatch.ticker ?? bestMatch.title} matches ${distinctListingIsins(scoredResults).length} ISINs; asking for confirmation`,
+      );
+      return 'needs_review';
+    }
 
     if (verified) {
       return 'resolved';

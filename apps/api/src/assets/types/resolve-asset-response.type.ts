@@ -73,6 +73,12 @@ export class AssetAlternativeDto {
   ticker?: string;
 
   @ApiPropertyOptional({
+    description: 'ISIN of this listing, when the screener returned one',
+    example: 'ES0113211835',
+  })
+  isin?: string;
+
+  @ApiPropertyOptional({
     description: 'Detected asset type (ETF, FUND, STOCK, ETC)',
     enum: ['ETF', 'FUND', 'STOCK', 'ETC'],
     example: 'STOCK',

@@ -5,7 +5,8 @@ import { ApiProperty } from '@nestjs/swagger';
  */
 export class GenerateXRayResponse {
   @ApiProperty({
-    description: 'Direct URL to Morningstar X-Ray PDF report',
+    description:
+      'Morningstar X-Ray PDF target. Fund-only portfolios use the short GET URL (securityIds / typeids=FO). Portfolios with a stock use SecurityTokenList; the client posts that URL as a form so the query stays under the IIS limit.',
     example:
       'https://lt.morningstar.com/j2uwuwirpv/xraypdf/default.aspx?LanguageId=es-ES&CurrencyId=EUR&securityIds=...',
   })

@@ -20,6 +20,7 @@ import { useAuth } from '@/lib/auth';
 import { useAuthModal } from '@/lib/auth/AuthModalContext';
 import { useFavoritePortfolio } from '@/lib/hooks/useFavoritePortfolio';
 import { Button } from '@/components/ui/Button';
+import { openMorningstarReport } from '@/lib/morningstar-report';
 import { Alert } from '@/components/ui/Alert';
 import { Spinner } from '@/components/ui/Spinner';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
@@ -199,9 +200,7 @@ function PublicPortfolioContent({
             <Button
               variant="primary"
               size="sm"
-              onClick={() =>
-                window.open(xrayUrl, '_blank', 'noopener,noreferrer')
-              }
+              onClick={() => openMorningstarReport(xrayUrl)}
             >
               {t('viewXRay')}
             </Button>

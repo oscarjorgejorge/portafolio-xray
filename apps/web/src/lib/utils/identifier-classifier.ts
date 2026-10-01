@@ -12,7 +12,7 @@ export enum IdentifierType {
 const ISIN_REGEX = /^[A-Z]{2}[A-Z0-9]{10}$/;
 const MS_ID_REGEX =
   /^(0P[A-Z0-9]{8}|F0[A-Z0-9]{8,10}|FOGBR[A-Z0-9]{5,8})$/i;
-const TICKER_REGEX = /^[A-Z]{1,5}$/;
+const TICKER_REGEX = /^[A-Z]{1,6}([.-][A-Z]{1,2})?$/;
 const MORNINGSTAR_URL_ID_REGEX =
   /(?:\/(?:funds|fondos|etfs|stocks|acciones)\/)([F0][A-Z0-9]{8,12})/i;
 
