@@ -29,7 +29,7 @@ export async function generateMetadata({
 
   try {
     const { portfolio, holdings } = await loadPublicPortfolioPage(id);
-    const copy = buildPortfolioPageCopy(locale, portfolio.name, holdings);
+    const copy = buildPortfolioPageCopy(locale, portfolio.name, holdings, portfolio.id);
 
     return {
       ...seo,
@@ -71,6 +71,7 @@ export default async function PublicPortfolioDetailPage({
       <PublicPortfolioDetailClient initialPortfolio={portfolio}>
         <PublicPortfolioIndexableContent
           locale={locale}
+          portfolioId={portfolio.id}
           portfolioName={portfolio.name}
           holdings={holdings}
         />

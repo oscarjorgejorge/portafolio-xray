@@ -6,6 +6,7 @@ import {
 
 interface PublicPortfolioIndexableContentProps {
   locale: string;
+  portfolioId?: string | null;
   portfolioName: string | null | undefined;
   holdings: PortfolioHoldingView[];
 }
@@ -16,10 +17,11 @@ interface PublicPortfolioIndexableContentProps {
  */
 export function PublicPortfolioIndexableContent({
   locale,
+  portfolioId,
   portfolioName,
   holdings,
 }: PublicPortfolioIndexableContentProps) {
-  const copy = buildPortfolioPageCopy(locale, portfolioName, holdings);
+  const copy = buildPortfolioPageCopy(locale, portfolioName, holdings, portfolioId);
 
   return (
     <section className="space-y-4">

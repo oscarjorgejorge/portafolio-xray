@@ -8,8 +8,8 @@ const handleI18n = createMiddleware(routing);
 export default function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Next.js HTTP Link hreflang="x-default" strips [locale], so crawlers hit
-  // /explore/:id. 308 to /es/... so those URLs are not 404s.
+  // Older responses advertised hreflang x-default without a locale prefix.
+  // Keep the 308 so those URLs still land on /es instead of 404.
   if (!hasLocalePrefix(pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = prefixWithDefaultLocale(pathname);
