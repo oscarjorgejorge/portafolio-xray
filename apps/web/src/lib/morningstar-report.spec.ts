@@ -38,7 +38,7 @@ describe('openMorningstarReport', () => {
     expect(form).not.toBeNull();
     expect(form?.method).toBe('post');
     expect(form?.action).toBe(
-      'https://lt.morningstar.com/j2uwuwirpv/xraypdf/default.aspx',
+      'https://lt.morningstar.com/j2uwuwirpv/xraypdf/default.aspx?LanguageId=es-ES',
     );
     expect(form?.target).toBe('_blank');
 
@@ -82,6 +82,7 @@ describe('openMorningstarReport', () => {
         input.value,
       ]),
     );
+    expect(submitted?.action).toContain('LanguageId=en-GB');
     expect(fields.LanguageId).toBe('en-GB');
     expect(fields.SecurityTokenList).toContain('0P000003RE]3]0]E0WWE$$ALL_1340');
   });
