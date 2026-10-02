@@ -83,6 +83,25 @@ describe('XRayController (e2e)', () => {
         expect(mockXRayService.generate).toHaveBeenCalled();
       });
 
+      it('should accept an English report language', async () => {
+        mockXRayService.generate.mockResolvedValue({
+          morningstarUrl: 'https://lt.morningstar.com/...',
+          shareableUrl: '/xray?assets=...',
+        });
+
+        await request(app.getHttpServer())
+          .post('/xray/generate')
+          .send({
+            assets: [{ morningstarId: '0P0000YXJO', weight: 100 }],
+            language: 'en',
+          })
+          .expect(200);
+
+        expect(mockXRayService.generate).toHaveBeenCalledWith(
+          expect.objectContaining({ language: 'en' }),
+        );
+      });
+
       it('should accept weights with decimals summing to 100', async () => {
         mockXRayService.generate.mockResolvedValue({
           morningstarUrl: 'https://...',
@@ -256,6 +275,19 @@ describe('XRayController (e2e)', () => {
     });
 
     describe('validation errors - non-whitelisted properties', () => {
+      it('should return 400 when language is not es or en', async () => {
+        const response = await request(app.getHttpServer())
+          .post('/xray/generate')
+          .send({
+            assets: [{ morningstarId: '0P0000YXJO', weight: 100 }],
+            language: 'fr',
+          })
+          .expect(400);
+
+        expect(response.body.statusCode).toBe(400);
+        expect(mockXRayService.generate).not.toHaveBeenCalled();
+      });
+
       it('should return 400 for non-whitelisted properties at root level', async () => {
         const response = await request(app.getHttpServer())
           .post('/xray/generate')

@@ -1,9 +1,11 @@
 'use client';
 
 import { useCallback, useRef } from 'react';
+import { useLocale } from 'next-intl';
 import { useMutation } from '@tanstack/react-query';
 import type { PortfolioAsset, AllocationMode } from '@/types';
-import { generateXRay, toXRayTokenId } from '@/lib/api/xray';
+import { generateXRay, toXRayTokenId, type XRayAsset } from '@/lib/api/xray';
+import { toReportLanguage } from '@/lib/morningstar-report';
 import { useShareableUrl } from './useShareableUrl';
 import { VALIDATION } from '@/lib/constants';
 import { captureException } from '@/lib/services/errorReporting';
@@ -55,6 +57,8 @@ export function useXRayGeneration({
   onSuccess,
   onError,
 }: UseXRayGenerationOptions): UseXRayGenerationReturn {
+  const locale = useLocale();
+  const language = toReportLanguage(locale);
   const generatingRef = useRef(false);
   const {
     shareableUrl,
@@ -66,10 +70,10 @@ export function useXRayGeneration({
     copyToClipboard,
     openMorningstarPdf,
     clearUrls,
-  } = useShareableUrl();
+  } = useShareableUrl({ language });
 
   const generateMutation = useMutation({
-    mutationFn: generateXRay,
+    mutationFn: (assets: XRayAsset[]) => generateXRay(assets, language),
     onSuccess: (data) => {
       setUrls(data.shareableUrl, data.morningstarUrl);
       onSuccess?.();
