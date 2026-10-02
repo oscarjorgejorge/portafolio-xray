@@ -2,7 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { UI_FEEDBACK } from '@/lib/constants';
-import { openMorningstarReport } from '@/lib/morningstar-report';
+import {
+  openMorningstarReport,
+  type ReportLanguage,
+} from '@/lib/morningstar-report';
 import { captureException } from '@/lib/services/errorReporting';
 
 const SHAREABLE_URL_STORAGE_KEY = 'shareableUrlState';
@@ -14,6 +17,8 @@ interface UseShareableUrlOptions {
   initialMorningstarUrl?: string | null;
   /** Callback when copy fails */
   onCopyError?: (error: Error) => void;
+  /** Report language applied when the Morningstar URL is opened */
+  language?: ReportLanguage;
 }
 
 interface UseShareableUrlReturn {
@@ -49,6 +54,7 @@ export function useShareableUrl({
   initialShareableUrl = null,
   initialMorningstarUrl = null,
   onCopyError,
+  language,
 }: UseShareableUrlOptions = {}): UseShareableUrlReturn {
   const [shareableUrl, setShareableUrl] = useState<string | null>(
     initialShareableUrl
@@ -180,9 +186,9 @@ export function useShareableUrl({
   // Open Morningstar PDF in new tab
   const openMorningstarPdf = useCallback(() => {
     if (morningstarUrl) {
-      openMorningstarReport(morningstarUrl);
+      openMorningstarReport(morningstarUrl, language);
     }
-  }, [morningstarUrl]);
+  }, [morningstarUrl, language]);
 
   // Clear all URLs
   const clearUrls = useCallback(() => {

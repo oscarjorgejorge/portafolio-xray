@@ -99,6 +99,37 @@ describe('XRayService', () => {
         expect(result.morningstarUrl).toContain('CurrencyId=EUR');
       });
 
+      it('should use the English Morningstar report when language is en', async () => {
+        repository.findManyByMorningstarIds.mockResolvedValue([
+          createMockAsset({ morningstarId: '0P0000YXJO', type: AssetType.ETF }),
+        ]);
+
+        const result = await service.generate({
+          assets: [{ morningstarId: '0P0000YXJO', weight: 100 }],
+          language: 'en',
+        });
+
+        expect(result.morningstarUrl).toContain('LanguageId=en-GB');
+        expect(result.morningstarUrl).not.toContain('LanguageId=es-ES');
+      });
+
+      it('should keep English on the stock token URL', async () => {
+        repository.findManyByMorningstarIds.mockResolvedValue([
+          createMockAsset({
+            morningstarId: '0P000003RE',
+            type: AssetType.STOCK,
+          }),
+        ]);
+
+        const result = await service.generate({
+          assets: [{ morningstarId: '0P000003RE', weight: 100 }],
+          language: 'en',
+        });
+
+        expect(result.morningstarUrl).toContain('LanguageId=en-GB');
+        expect(result.morningstarUrl).toContain('SecurityTokenList=');
+      });
+
       it('should include securityIds parameter', async () => {
         repository.findManyByMorningstarIds.mockResolvedValue([
           createMockAsset({ morningstarId: '0P0000YXJO', type: AssetType.ETF }),

@@ -90,6 +90,7 @@ describe('useXRayGeneration', () => {
           { morningstarId: '0P0000YXJO', weight: 60 },
           { morningstarId: 'F00000THA5', weight: 40 },
         ]);
+        expect(mockGenerateXRay.mock.calls[0][1]).toBe('en');
       });
     });
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useRouter } from '@/i18n/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -18,7 +18,7 @@ import { Card } from '@/components/ui/Card';
 import { Alert } from '@/components/ui/Alert';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { generateXRay } from '@/lib/api/xray';
-import { openMorningstarReport } from '@/lib/morningstar-report';
+import { openMorningstarReport, toReportLanguage } from '@/lib/morningstar-report';
 import { VALIDATION } from '@/lib/constants';
 import { TrashIcon, EditIcon, ShareIcon } from '@/components/ui/Icons';
 import { EditPortfolioModal } from '@/components/portfolio/EditPortfolioModal';
@@ -49,6 +49,8 @@ function isPortfolioWeightValid(assets: { morningstarId: string; weight: number 
 export default function PortfoliosPage() {
   const t = useTranslations('portfolios');
   const tCommon = useTranslations('common');
+  const locale = useLocale();
+  const language = toReportLanguage(locale);
   const router = useRouter();
   const queryClient = useQueryClient();
   const { isAuthenticated, user, isLoading: authLoading } = useAuth();
@@ -99,7 +101,7 @@ export default function PortfoliosPage() {
     setXrayError(null);
     setActiveXRayPortfolioId(portfolio.id);
     try {
-      const result = await generateXRay(portfolio.assets);
+      const result = await generateXRay(portfolio.assets, language);
 
       // Persist X-Ray URLs on the portfolio so they are available in public views
       try {
@@ -118,7 +120,7 @@ export default function PortfoliosPage() {
       }
 
       if (result.morningstarUrl) {
-        openMorningstarReport(result.morningstarUrl);
+        openMorningstarReport(result.morningstarUrl, language);
       }
     } catch (err) {
       const message =

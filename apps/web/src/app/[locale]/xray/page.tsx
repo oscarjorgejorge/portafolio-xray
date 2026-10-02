@@ -2,7 +2,7 @@
 
 import { useEffect, Suspense, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useRouter } from '@/i18n/navigation';
 import { Card } from '@/components/ui/Card';
 import { XRayIssueHint } from '@/components/portfolio/XRayIssueHint';
@@ -10,7 +10,8 @@ import { XRayGenerateHints } from '@/components/portfolio/XRayGenerateHints';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { PageLoading } from '@/components/ui/PageLoading';
-import { generateXRay } from '@/lib/api/xray';
+import { generateXRay, type XRayAsset } from '@/lib/api/xray';
+import { toReportLanguage } from '@/lib/morningstar-report';
 import { useMutation } from '@tanstack/react-query';
 import { useShareableUrl } from '@/lib/hooks/useShareableUrl';
 import { captureException } from '@/lib/services/errorReporting';
@@ -32,6 +33,8 @@ function generateErrorMessage(
 function XRayPageContent() {
   const t = useTranslations('xray');
   const tCommon = useTranslations('common');
+  const locale = useLocale();
+  const language = toReportLanguage(locale);
   const router = useRouter();
   const searchParams = useSearchParams();
   const hasGeneratedRef = useRef(false);
@@ -43,10 +46,10 @@ function XRayPageContent() {
     setUrls,
     copyToClipboard,
     openMorningstarPdf,
-  } = useShareableUrl();
+  } = useShareableUrl({ language });
 
   const generateMutation = useMutation({
-    mutationFn: generateXRay,
+    mutationFn: (assets: XRayAsset[]) => generateXRay(assets, language),
     onSuccess: (data) => {
       setUrls(data.shareableUrl, data.morningstarUrl);
     },

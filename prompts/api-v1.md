@@ -2349,3 +2349,6 @@ podemos solucionar todos los casos que estas nombrando?
 ### Prompt 204
 cual es la diferencia entre cada respuesta? podriamos dar alguna informacion adicional al usuario para guiarle?
 
+### Prompt 205
+es posible generar el reporte en ingles? puedes hacer comprobaciones?
+

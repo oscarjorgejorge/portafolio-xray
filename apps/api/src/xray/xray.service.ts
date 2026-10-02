@@ -11,6 +11,7 @@ import {
   getMorningstarTypeId,
   MORNINGSTAR_SECURITY_TOKEN,
   MORNINGSTAR_TYPE_IDS,
+  resolveReportLanguageId,
 } from './constants';
 import { MORNINGSTAR_URL } from '../common/constants';
 import {
@@ -83,7 +84,7 @@ export class XRayService implements IXRayService {
     );
 
     return {
-      morningstarUrl: this.formatMorningstarUrl(holdings),
+      morningstarUrl: this.formatMorningstarUrl(holdings, dto.language),
       shareableUrl: this.formatShareableUrl(holdings),
       holdingsUsingFallback,
       holdingsUsingRelatedShareClass,
@@ -230,14 +231,16 @@ export class XRayService implements IXRayService {
       weight: number;
       typeId: string;
     }>,
+    language?: string,
   ): string {
+    const languageId = resolveReportLanguageId(language);
     const hasStock = holdings.some(
       (holding) => holding.typeId === MORNINGSTAR_TYPE_IDS.STOCK,
     );
     if (hasStock) {
-      return this.formatSecurityTokenListUrl(holdings);
+      return this.formatSecurityTokenListUrl(holdings, languageId);
     }
-    return this.formatShortUrl(holdings);
+    return this.formatShortUrl(holdings, languageId);
   }
 
   /**
@@ -250,6 +253,7 @@ export class XRayService implements IXRayService {
       weight: number;
       typeId: string;
     }>,
+    languageId: string,
   ): string {
     const baseUrl = `${this.morningstarBaseUrl}${MORNINGSTAR_URL.XRAY_PATH}`;
     const securityIds = holdings.map((holding) => holding.tokenId).join('|');
@@ -261,7 +265,7 @@ export class XRayService implements IXRayService {
     const typeids = holdings.map((holding) => holding.typeId).join('|');
 
     const url = new URL(baseUrl);
-    url.searchParams.set('LanguageId', MORNINGSTAR_URL.LANGUAGE_ID);
+    url.searchParams.set('LanguageId', languageId);
     url.searchParams.set('CurrencyId', MORNINGSTAR_URL.CURRENCY_ID);
     // Trailing | matches Instant X-Ray / Rankia short-format URLs that work in production.
     url.searchParams.set('securityIds', `${securityIds}|`);
@@ -279,6 +283,7 @@ export class XRayService implements IXRayService {
       weight: number;
       typeId: string;
     }>,
+    languageId: string,
   ): string {
     const baseUrl = `${this.morningstarBaseUrl}${MORNINGSTAR_URL.XRAY_PATH}`;
     const securityTokenList = holdings
@@ -300,7 +305,7 @@ export class XRayService implements IXRayService {
       .join('|');
 
     const url = new URL(baseUrl);
-    url.searchParams.set('LanguageId', MORNINGSTAR_URL.LANGUAGE_ID);
+    url.searchParams.set('LanguageId', languageId);
     url.searchParams.set(
       'PortfolioType',
       MORNINGSTAR_SECURITY_TOKEN.PORTFOLIO_TYPE,

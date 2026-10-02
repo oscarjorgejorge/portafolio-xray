@@ -56,4 +56,33 @@ describe('openMorningstarReport', () => {
     expect(fields.values).toBe('5000|5000');
     expect(HTMLFormElement.prototype.submit).toHaveBeenCalled();
   });
+
+  it('rewrites a stored Spanish report to English before opening it', () => {
+    openMorningstarReport(
+      'https://lt.morningstar.com/j2uwuwirpv/xraypdf/default.aspx?LanguageId=es-ES&securityIds=F00000THA5%7C&typeids=FO%7C',
+      'en',
+    );
+
+    expect(window.open).toHaveBeenCalledWith(
+      expect.stringContaining('LanguageId=en-GB'),
+      '_blank',
+      'noopener,noreferrer',
+    );
+  });
+
+  it('posts the English language on a stock token report', () => {
+    openMorningstarReport(
+      'https://lt.morningstar.com/j2uwuwirpv/xraypdf/default.aspx?LanguageId=es-ES&PortfolioType=2&SecurityTokenList=0P000003RE%5D3%5D0%5DE0WWE%24%24ALL_1340&values=10000',
+      'en',
+    );
+
+    const fields = Object.fromEntries(
+      [...submitted!.querySelectorAll('input')].map((input) => [
+        input.name,
+        input.value,
+      ]),
+    );
+    expect(fields.LanguageId).toBe('en-GB');
+    expect(fields.SecurityTokenList).toContain('0P000003RE]3]0]E0WWE$$ALL_1340');
+  });
 });
