@@ -52,7 +52,14 @@ export function openMorningstarReport(
 
   const form = document.createElement('form');
   form.method = 'POST';
-  form.action = `${parsed.origin}${parsed.pathname}`;
+  // Morningstar reads LanguageId from the query string. A hidden field is ignored
+  // and the stock report stays in Spanish.
+  const action = new URL(`${parsed.origin}${parsed.pathname}`);
+  const languageId = parsed.searchParams.get('LanguageId');
+  if (languageId) {
+    action.searchParams.set('LanguageId', languageId);
+  }
+  form.action = action.toString();
   form.target = '_blank';
   form.acceptCharset = 'UTF-8';
 
