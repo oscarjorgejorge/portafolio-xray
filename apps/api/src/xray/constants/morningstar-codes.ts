@@ -1,6 +1,24 @@
 import { AssetType } from '@prisma/client';
 
 /**
+ * Site locale to Instant X-Ray LanguageId.
+ * en-GB is the English report that Morningstar actually renders for this client.
+ */
+export const REPORT_LANGUAGE_IDS = {
+  es: 'es-ES',
+  en: 'en-GB',
+} as const;
+
+export type ReportLanguage = keyof typeof REPORT_LANGUAGE_IDS;
+
+export function resolveReportLanguageId(language?: string): string {
+  if (language === 'en') {
+    return REPORT_LANGUAGE_IDS.en;
+  }
+  return REPORT_LANGUAGE_IDS.es;
+}
+
+/**
  * Instant X-Ray short-format typeids (securityIds / marketValues / typeids).
  * FO = funds, ETFs and ETCs; ST = stocks.
  */

@@ -23,7 +23,7 @@ import { SavePortfolioModal } from './SavePortfolioModal';
 import { Button } from '@/components/ui/Button';
 import { SaveChangesModeModal } from './SaveChangesModeModal';
 import { updatePortfolio } from '@/lib/api/portfolios';
-import { openMorningstarReport } from '@/lib/morningstar-report';
+import { openMorningstarReport, toReportLanguage } from '@/lib/morningstar-report';
 import { Switch } from '@/components/ui/Switch';
 
 // Lazy load modal components - they are only rendered when needed
@@ -158,8 +158,8 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
       }
     }
 
-    openMorningstarReport(morningstarUrl);
-  }, [morningstarUrl, shareableUrl, portfolioId, isAuthenticated, user?.emailVerified]);
+    openMorningstarReport(morningstarUrl, toReportLanguage(locale));
+  }, [morningstarUrl, shareableUrl, portfolioId, isAuthenticated, user?.emailVerified, locale]);
 
   const [showSaveModeModal, setShowSaveModeModal] = useState(false);
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from '@/i18n/navigation';
 import {
@@ -20,7 +20,7 @@ import { useAuth } from '@/lib/auth';
 import { useAuthModal } from '@/lib/auth/AuthModalContext';
 import { useFavoritePortfolio } from '@/lib/hooks/useFavoritePortfolio';
 import { Button } from '@/components/ui/Button';
-import { openMorningstarReport } from '@/lib/morningstar-report';
+import { openMorningstarReport, toReportLanguage } from '@/lib/morningstar-report';
 import { Alert } from '@/components/ui/Alert';
 import { Spinner } from '@/components/ui/Spinner';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
@@ -118,6 +118,7 @@ function PublicPortfolioContent({
   const tCommon = useTranslations('common');
   const tComments = useTranslations('comments');
   const tNav = useTranslations('navigation');
+  const locale = useLocale();
   const router = useRouter();
   const [copied, setCopied] = useState(false);
 
@@ -200,7 +201,7 @@ function PublicPortfolioContent({
             <Button
               variant="primary"
               size="sm"
-              onClick={() => openMorningstarReport(xrayUrl)}
+              onClick={() => openMorningstarReport(xrayUrl, toReportLanguage(locale))}
             >
               {t('viewXRay')}
             </Button>

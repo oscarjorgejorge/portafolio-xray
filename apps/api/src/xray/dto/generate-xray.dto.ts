@@ -1,6 +1,8 @@
 import {
   IsArray,
+  IsIn,
   IsNumber,
+  IsOptional,
   IsString,
   Min,
   Max,
@@ -10,7 +12,8 @@ import {
   IsNotEmpty,
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import type { ReportLanguage } from '../constants';
 import { trimUppercase } from '../../common/transforms';
 import { HasUniqueProperty, HasTotalWeight100 } from '../../common/validators';
 import { WEIGHT_VALIDATION, INPUT_VALIDATION } from '../../common/constants';
@@ -64,4 +67,14 @@ export class GenerateXRayDto {
   @ValidateNested({ each: true })
   @Type(() => XRayAssetDto)
   assets!: XRayAssetDto[];
+
+  @ApiPropertyOptional({
+    description:
+      'Report language. Matches the site locale. Spanish is the default. English uses Morningstar en-GB.',
+    enum: ['es', 'en'],
+    default: 'es',
+  })
+  @IsOptional()
+  @IsIn(['es', 'en'], { message: 'Language must be either "es" or "en"' })
+  language?: ReportLanguage;
 }

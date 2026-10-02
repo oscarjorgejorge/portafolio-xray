@@ -4,6 +4,7 @@ import {
   GenerateXRayResponseSchema,
   type GenerateXRayResponse,
 } from './schemas';
+import type { ReportLanguage } from '@/lib/morningstar-report';
 
 export interface XRayAsset {
   morningstarId: string;
@@ -12,6 +13,7 @@ export interface XRayAsset {
 
 export interface GenerateXRayRequest {
   assets: XRayAsset[];
+  language?: ReportLanguage;
 }
 
 // Re-export type for backward compatibility
@@ -33,11 +35,12 @@ export function toXRayTokenId(asset: {
  * Validates response against Zod schema
  */
 export async function generateXRay(
-  assets: XRayAsset[]
+  assets: XRayAsset[],
+  language: ReportLanguage = 'es',
 ): Promise<GenerateXRayResponse> {
   const response = await apiClient.post<GenerateXRayResponse>(
     '/xray/generate',
-    { assets },
+    { assets, language },
     { timeout: API.GENERATE_TIMEOUT_MS }
   );
 
