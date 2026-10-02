@@ -2352,3 +2352,6 @@ cual es la diferencia entre cada respuesta? podriamos dar alguna informacion adi
 ### Prompt 205
 es posible generar el reporte en ingles? puedes hacer comprobaciones?
 
+### Prompt 206
+sigue generandose en espanhol
+
