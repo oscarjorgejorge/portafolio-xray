@@ -1,5 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { openMorningstarReport } from './morningstar-report';
+import { openMorningstarReport, toReportCurrency } from './morningstar-report';
+
+describe('toReportCurrency', () => {
+  it('accepts supported codes in any case', () => {
+    expect(toReportCurrency('NOK')).toBe('NOK');
+    expect(toReportCurrency(' usd ')).toBe('USD');
+  });
+
+  it('falls back to EUR for missing or unknown values', () => {
+    expect(toReportCurrency(null)).toBe('EUR');
+    expect(toReportCurrency(undefined)).toBe('EUR');
+    expect(toReportCurrency('XYZ')).toBe('EUR');
+  });
+});
 
 describe('openMorningstarReport', () => {
   let submitted: HTMLFormElement | null;
@@ -85,5 +98,26 @@ describe('openMorningstarReport', () => {
     expect(submitted?.action).toContain('LanguageId=en-GB');
     expect(fields.LanguageId).toBe('en-GB');
     expect(fields.SecurityTokenList).toContain('0P000003RE]3]0]E0WWE$$ALL_1340');
+  });
+
+  it('keeps the report currency on a posted stock token report', () => {
+    openMorningstarReport(
+      'https://lt.morningstar.com/j2uwuwirpv/xraypdf/default.aspx?LanguageId=es-ES&CurrencyId=NOK&PortfolioType=2&SecurityTokenList=0P000003RE%5D3%5D0%5DE0WWE%24%24ALL_1340&values=10000',
+    );
+
+    expect(submitted?.action).toBe(
+      'https://lt.morningstar.com/j2uwuwirpv/xraypdf/default.aspx?LanguageId=es-ES&CurrencyId=NOK',
+    );
+  });
+
+  it('keeps the report currency when switching a short URL language', () => {
+    openMorningstarReport(
+      'https://lt.morningstar.com/j2uwuwirpv/xraypdf/default.aspx?LanguageId=es-ES&CurrencyId=NOK&securityIds=F000011IM4%7C&typeids=FO%7C',
+      'en',
+    );
+
+    const opened = vi.mocked(window.open).mock.calls[0][0] as string;
+    expect(opened).toContain('LanguageId=en-GB');
+    expect(opened).toContain('CurrencyId=NOK');
   });
 });

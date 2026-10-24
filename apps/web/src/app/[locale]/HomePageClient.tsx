@@ -14,6 +14,7 @@ import { generateSimpleId } from '@/lib/utils/id';
 import { useQuery } from '@tanstack/react-query';
 import { getPortfolio } from '@/lib/api/portfolios';
 import { queryKeys } from '@/lib/api/queryKeys';
+import { toReportCurrency } from '@/lib/morningstar-report';
 
 const RESOLVED_ASSETS_CACHE_KEY = 'builderResolvedAssetsCache';
 
@@ -31,6 +32,7 @@ function HomePageContent() {
 
   const portfolioId = searchParams.get('portfolioId');
   const initialAllocationModeParam = searchParams.get('allocationMode');
+  const currencyParam = searchParams.get('currency');
   const resetBuilder = searchParams.get('resetBuilder') === 'true';
 
   const {
@@ -355,6 +357,7 @@ function HomePageContent() {
                 ? (initialAllocationModeParam as 'amount' | 'percentage')
                 : undefined
             }
+            initialCurrency={currencyParam ? toReportCurrency(currencyParam) : undefined}
           />
         )}
       </div>

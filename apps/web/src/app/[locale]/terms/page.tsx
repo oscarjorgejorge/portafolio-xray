@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { setRequestLocale } from 'next-intl/server';
 import { localeMetadata } from '@/lib/seo';
 
 interface TermsPageProps {
@@ -22,6 +23,7 @@ export async function generateMetadata({
 
 export default async function TermsPage({ params }: TermsPageProps) {
   const { locale } = await params;
+  setRequestLocale(locale);
   const isSpanish = locale === 'es';
 
   if (isSpanish) {

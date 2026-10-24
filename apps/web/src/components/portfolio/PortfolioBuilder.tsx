@@ -6,6 +6,7 @@ import { useTranslations, useLocale } from 'next-intl';
 import { AssetInput } from './AssetInput';
 import { AssetRow } from './AssetRow';
 import { AllocationModeToggle } from './AllocationModeToggle';
+import { ReportCurrencySelect } from './ReportCurrencySelect';
 import { PortfolioSummary } from './PortfolioSummary';
 import { ShareableUrlSection } from './ShareableUrlSection';
 import { XRayIssueHint } from './XRayIssueHint';
@@ -23,7 +24,11 @@ import { SavePortfolioModal } from './SavePortfolioModal';
 import { Button } from '@/components/ui/Button';
 import { SaveChangesModeModal } from './SaveChangesModeModal';
 import { updatePortfolio } from '@/lib/api/portfolios';
-import { openMorningstarReport, toReportLanguage } from '@/lib/morningstar-report';
+import {
+  openMorningstarReport,
+  toReportLanguage,
+  type ReportCurrency,
+} from '@/lib/morningstar-report';
 import { Switch } from '@/components/ui/Switch';
 
 // Lazy load modal components - they are only rendered when needed
@@ -50,6 +55,7 @@ interface PortfolioBuilderProps {
   initialIsPublic?: boolean;
   resetBuilder?: boolean;
   initialAllocationMode?: 'percentage' | 'amount';
+  initialCurrency?: ReportCurrency;
 }
 
 type SaveMode = 'create' | 'editCurrent' | 'createNew';
@@ -62,6 +68,7 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
   initialIsPublic = true,
   resetBuilder = false,
   initialAllocationMode,
+  initialCurrency,
 }) => {
   const t = useTranslations('portfolio');
   const tSave = useTranslations('savePortfolio');
@@ -99,6 +106,7 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
   const {
     assets,
     allocationMode,
+    currency,
     selectedAssetForAlternatives,
     selectedAssetForManual,
     showClearAllConfirmation,
@@ -116,6 +124,7 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
     holdingsUsingFallback,
     holdingsUsingRelatedShareClass,
     setAllocationMode,
+    handleCurrencyChange,
     handleAssetResolved,
     handleWeightChange,
     handleRemove,
@@ -131,7 +140,12 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
     setShowClearAllConfirmation,
     setShowSuccessToast,
     getAssetById,
-  } = usePortfolioBuilder({ initialAssets, reset: resetBuilder, initialAllocationMode });
+  } = usePortfolioBuilder({
+    initialAssets,
+    reset: resetBuilder,
+    initialAllocationMode,
+    initialCurrency,
+  });
 
   const handleAllocationModeChange = useCallback(
     (mode: AllocationMode) => {
@@ -229,6 +243,8 @@ export const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({
         </div>
 
         <AllocationModeToggle mode={allocationMode} onChange={handleAllocationModeChange} />
+
+        <ReportCurrencySelect currency={currency} onChange={handleCurrencyChange} />
 
         <div className="mb-6">
           <AssetInput

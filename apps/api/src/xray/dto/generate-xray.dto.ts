@@ -13,7 +13,12 @@ import {
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import type { ReportLanguage } from '../constants';
+import {
+  DEFAULT_REPORT_CURRENCY,
+  REPORT_CURRENCIES,
+  type ReportCurrency,
+  type ReportLanguage,
+} from '../constants';
 import { trimUppercase } from '../../common/transforms';
 import { HasUniqueProperty, HasTotalWeight100 } from '../../common/validators';
 import { WEIGHT_VALIDATION, INPUT_VALIDATION } from '../../common/constants';
@@ -77,4 +82,17 @@ export class GenerateXRayDto {
   @IsOptional()
   @IsIn(['es', 'en'], { message: 'Language must be either "es" or "en"' })
   language?: ReportLanguage;
+
+  @ApiPropertyOptional({
+    description:
+      'Report base currency. Morningstar converts every return and risk figure into it. EUR is the default.',
+    enum: REPORT_CURRENCIES,
+    default: DEFAULT_REPORT_CURRENCY,
+  })
+  @IsOptional()
+  @Transform(trimUppercase)
+  @IsIn(REPORT_CURRENCIES, {
+    message: `Currency must be one of: ${REPORT_CURRENCIES.join(', ')}`,
+  })
+  currency?: ReportCurrency;
 }

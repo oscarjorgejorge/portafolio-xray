@@ -1,8 +1,11 @@
 import type { Metadata } from 'next';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { localeMetadata, absoluteUrl } from '@/lib/seo';
 import { HomePage } from './HomePageClient';
 import { RecentPublicPortfolios } from './RecentPublicPortfolios';
+
+// Static HTML; the recent public portfolios list refreshes every 5 minutes.
+export const revalidate = 300;
 
 interface HomePageProps {
   params: Promise<{ locale: string }>;
@@ -32,6 +35,7 @@ export async function generateMetadata({
 
 export default async function LocaleHomePage({ params }: HomePageProps) {
   const { locale } = await params;
+  setRequestLocale(locale);
 
   return (
     <>
