@@ -5,12 +5,18 @@ import type { PortfolioAsset, AllocationMode, Asset, AssetType } from '@/types';
 import { useAssetManagement } from './useAssetManagement';
 import { usePortfolioValidation } from './usePortfolioValidation';
 import { useXRayGeneration } from './useXRayGeneration';
+import {
+  DEFAULT_REPORT_CURRENCY,
+  toReportCurrency,
+  type ReportCurrency,
+} from '@/lib/morningstar-report';
 
 const PORTFOLIO_BUILDER_STORAGE_KEY = 'portfolioBuilderState';
 
 function readStoredPortfolioBuilderState(): {
   assets: PortfolioAsset[];
   allocationMode: AllocationMode;
+  currency: ReportCurrency;
 } | null {
   if (typeof window === 'undefined') {
     return null;
@@ -25,11 +31,13 @@ function readStoredPortfolioBuilderState(): {
     const parsed = JSON.parse(stored) as {
       assets?: PortfolioAsset[];
       allocationMode?: AllocationMode;
+      currency?: string;
     };
 
     return {
       assets: Array.isArray(parsed.assets) ? parsed.assets : [],
       allocationMode: parsed.allocationMode || 'percentage',
+      currency: toReportCurrency(parsed.currency),
     };
   } catch {
     return null;
@@ -40,12 +48,15 @@ interface UsePortfolioBuilderOptions {
   initialAssets?: PortfolioAsset[];
   reset?: boolean;
   initialAllocationMode?: AllocationMode;
+  /** Report currency from the `currency` query param */
+  initialCurrency?: ReportCurrency;
 }
 
 interface UsePortfolioBuilderReturn {
   // State
   assets: PortfolioAsset[];
   allocationMode: AllocationMode;
+  currency: ReportCurrency;
   selectedAssetForAlternatives: PortfolioAsset | null;
   selectedAssetForManual: PortfolioAsset | null;
   showClearAllConfirmation: boolean;
@@ -65,6 +76,7 @@ interface UsePortfolioBuilderReturn {
 
   // Actions
   setAllocationMode: (mode: AllocationMode) => void;
+  handleCurrencyChange: (currency: ReportCurrency) => void;
   handleAssetResolved: (newAsset: PortfolioAsset) => void;
   handleWeightChange: (id: string, weight: number) => void;
   handleRemove: (id: string) => void;
@@ -106,6 +118,7 @@ export function usePortfolioBuilder({
   initialAssets = [],
   reset = false,
   initialAllocationMode,
+  initialCurrency,
 }: UsePortfolioBuilderOptions = {}): UsePortfolioBuilderReturn {
   // Keep the first render identical on server and client. Restoring from
   // sessionStorage during useState would add saved assets only on the client
@@ -142,6 +155,11 @@ export function usePortfolioBuilder({
     initialState.allocationMode
   );
 
+  // Report currency: the query param wins over the session copy
+  const [currency, setCurrency] = useState<ReportCurrency>(
+    reset ? DEFAULT_REPORT_CURRENCY : initialCurrency ?? DEFAULT_REPORT_CURRENCY
+  );
+
   // Modal states
   const [selectedAssetForAlternatives, setSelectedAssetForAlternatives] =
     useState<PortfolioAsset | null>(null);
@@ -169,11 +187,19 @@ export function usePortfolioBuilder({
     const stored = readStoredPortfolioBuilderState();
     if (
       stored &&
-      (stored.assets.length > 0 || stored.allocationMode !== 'percentage')
+      (stored.assets.length > 0 ||
+        stored.allocationMode !== 'percentage' ||
+        stored.currency !== DEFAULT_REPORT_CURRENCY)
     ) {
-      setInitialState(stored);
+      setInitialState({
+        assets: stored.assets,
+        allocationMode: stored.allocationMode,
+      });
       assetManagement.replaceAssets(stored.assets);
       setAllocationMode(stored.allocationMode);
+      if (!initialCurrency) {
+        setCurrency(stored.currency);
+      }
     }
     setStorageHydrated(true);
     // Restore only once after hydration; later prop updates are handled elsewhere.
@@ -186,7 +212,11 @@ export function usePortfolioBuilder({
     if (typeof window === 'undefined') return;
 
     const hasAssets = assetManagement.assets.length > 0;
-    if (!hasAssets && allocationMode === 'percentage') {
+    if (
+      !hasAssets &&
+      allocationMode === 'percentage' &&
+      currency === DEFAULT_REPORT_CURRENCY
+    ) {
       window.sessionStorage.removeItem(PORTFOLIO_BUILDER_STORAGE_KEY);
       return;
     }
@@ -197,12 +227,13 @@ export function usePortfolioBuilder({
         JSON.stringify({
           assets: assetManagement.assets,
           allocationMode,
+          currency,
         })
       );
     } catch {
       // Ignore storage errors
     }
-  }, [storageHydrated, assetManagement.assets, allocationMode]);
+  }, [storageHydrated, assetManagement.assets, allocationMode, currency]);
 
   // Validation hook
   const { totalWeight, isValid } = usePortfolioValidation({
@@ -252,8 +283,19 @@ export function usePortfolioBuilder({
     assets: assetManagement.assets,
     allocationMode,
     isValid,
+    currency,
     onSuccess: () => setShowSuccessToast(true),
   });
+
+  // Handler: Report currency change. A generated link is in the old currency.
+  const handleCurrencyChange = useCallback(
+    (nextCurrency: ReportCurrency) => {
+      if (nextCurrency === currency) return;
+      setCurrency(nextCurrency);
+      xrayGeneration.clearUrls();
+    },
+    [currency, xrayGeneration]
+  );
 
   // Handler: Asset resolved from input
   const handleAssetResolved = useCallback(
@@ -343,6 +385,7 @@ export function usePortfolioBuilder({
   const actions = useMemo(
     () => ({
       setAllocationMode,
+      handleCurrencyChange,
       handleAssetResolved,
       handleWeightChange,
       handleRemove,
@@ -362,6 +405,7 @@ export function usePortfolioBuilder({
     }),
     [
       setAllocationMode,
+      handleCurrencyChange,
       handleAssetResolved,
       handleWeightChange,
       handleRemove,
@@ -381,6 +425,7 @@ export function usePortfolioBuilder({
     // State (these change and should trigger re-renders)
     assets: assetManagement.assets,
     allocationMode,
+    currency,
     selectedAssetForAlternatives,
     selectedAssetForManual,
     showClearAllConfirmation,

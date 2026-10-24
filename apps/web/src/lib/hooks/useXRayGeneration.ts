@@ -5,7 +5,11 @@ import { useLocale } from 'next-intl';
 import { useMutation } from '@tanstack/react-query';
 import type { PortfolioAsset, AllocationMode } from '@/types';
 import { generateXRay, toXRayTokenId, type XRayAsset } from '@/lib/api/xray';
-import { toReportLanguage } from '@/lib/morningstar-report';
+import {
+  DEFAULT_REPORT_CURRENCY,
+  toReportLanguage,
+  type ReportCurrency,
+} from '@/lib/morningstar-report';
 import { useShareableUrl } from './useShareableUrl';
 import { VALIDATION } from '@/lib/constants';
 import { captureException } from '@/lib/services/errorReporting';
@@ -14,6 +18,8 @@ interface UseXRayGenerationOptions {
   assets: PortfolioAsset[];
   allocationMode: AllocationMode;
   isValid: boolean;
+  /** Base currency the Morningstar report is calculated in */
+  currency?: ReportCurrency;
   onSuccess?: () => void;
   onError?: (error: Error) => void;
 }
@@ -54,6 +60,7 @@ export function useXRayGeneration({
   assets,
   allocationMode,
   isValid,
+  currency = DEFAULT_REPORT_CURRENCY,
   onSuccess,
   onError,
 }: UseXRayGenerationOptions): UseXRayGenerationReturn {
@@ -73,7 +80,8 @@ export function useXRayGeneration({
   } = useShareableUrl({ language });
 
   const generateMutation = useMutation({
-    mutationFn: (assets: XRayAsset[]) => generateXRay(assets, language),
+    mutationFn: (assets: XRayAsset[]) =>
+      generateXRay(assets, language, currency),
     onSuccess: (data) => {
       setUrls(data.shareableUrl, data.morningstarUrl);
       onSuccess?.();

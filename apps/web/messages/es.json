@@ -98,6 +98,19 @@
     "amountInfoTitle": "Cómo se usan los importes",
     "amountInfoBody": "En modo Importe calculamos automáticamente los porcentajes a partir del importe total introducido. Al compartir o explorar carteras públicas solo mostramos los porcentajes, nunca los importes. Tus importes originales se guardan y solo tú los ves en el constructor de cartera."
   },
+  "reportCurrency": {
+    "label": "Divisa del informe:",
+    "hint": "Morningstar calcula rentabilidades y riesgo en esta divisa. Elige la de tu cuenta para no ver el efecto del tipo de cambio.",
+    "options": {
+      "EUR": "Euro",
+      "NOK": "Corona noruega",
+      "USD": "Dólar estadounidense",
+      "SEK": "Corona sueca",
+      "DKK": "Corona danesa",
+      "GBP": "Libra esterlina",
+      "CHF": "Franco suizo"
+    }
+  },
   "clearConfirm": {
     "title": "Limpiar Todos los Activos",
     "message": "¿Estás seguro de que quieres eliminar todos los activos? Esta acción no se puede deshacer.",

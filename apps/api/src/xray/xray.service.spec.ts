@@ -130,6 +130,51 @@ describe('XRayService', () => {
         expect(result.morningstarUrl).toContain('SecurityTokenList=');
       });
 
+      it('should keep EUR and the plain share link when no currency is sent', async () => {
+        repository.findManyByMorningstarIds.mockResolvedValue([
+          createMockAsset({ morningstarId: '0P0000YXJO', type: AssetType.ETF }),
+        ]);
+
+        const result = await service.generate({
+          assets: [{ morningstarId: '0P0000YXJO', weight: 100 }],
+        });
+
+        expect(result.morningstarUrl).toContain('CurrencyId=EUR');
+        expect(result.shareableUrl).not.toContain('currency=');
+      });
+
+      it('should use the requested report currency on the short URL', async () => {
+        repository.findManyByMorningstarIds.mockResolvedValue([
+          createMockAsset({ morningstarId: '0P0000YXJO', type: AssetType.ETF }),
+        ]);
+
+        const result = await service.generate({
+          assets: [{ morningstarId: '0P0000YXJO', weight: 100 }],
+          currency: 'NOK',
+        });
+
+        expect(result.morningstarUrl).toContain('CurrencyId=NOK');
+        expect(result.morningstarUrl).not.toContain('CurrencyId=EUR');
+        expect(result.shareableUrl).toContain('&currency=NOK');
+      });
+
+      it('should use the requested report currency on the stock token URL', async () => {
+        repository.findManyByMorningstarIds.mockResolvedValue([
+          createMockAsset({
+            morningstarId: '0P000003RE',
+            type: AssetType.STOCK,
+          }),
+        ]);
+
+        const result = await service.generate({
+          assets: [{ morningstarId: '0P000003RE', weight: 100 }],
+          currency: 'USD',
+        });
+
+        expect(result.morningstarUrl).toContain('SecurityTokenList=');
+        expect(result.morningstarUrl).toContain('CurrencyId=USD');
+      });
+
       it('should include securityIds parameter', async () => {
         repository.findManyByMorningstarIds.mockResolvedValue([
           createMockAsset({ morningstarId: '0P0000YXJO', type: AssetType.ETF }),

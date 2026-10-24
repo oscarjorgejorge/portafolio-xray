@@ -1,34 +1,23 @@
+import { Suspense } from 'react';
 import type { Metadata } from 'next';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 import {
   getPublicPortfolios,
   type GetPublicPortfoliosParams,
 } from '@/lib/api/portfolios';
 import { Link } from '@/i18n/navigation';
 import { localeMetadata } from '@/lib/seo';
+import { PageLoading } from '@/components/ui/PageLoading';
 import { ExplorePortfoliosPage } from './ExplorePageClient';
 
-export const dynamic = 'force-dynamic';
+// Static HTML with the default listing, refreshed every 5 minutes.
+// Filters (?name, ?userName, ?sortBy) are read and fetched on the client.
+export const revalidate = 300;
+
+const DEFAULT_FILTERS: GetPublicPortfoliosParams = { sortBy: 'recent' };
 
 interface ExplorePageProps {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{
-    name?: string;
-    userName?: string;
-    sortBy?: string;
-  }>;
-}
-
-function parseExploreFilters(searchParams: {
-  name?: string;
-  userName?: string;
-  sortBy?: string;
-}): GetPublicPortfoliosParams {
-  return {
-    name: searchParams.name?.trim() || undefined,
-    userName: searchParams.userName?.trim() || undefined,
-    sortBy: searchParams.sortBy === 'favorites' ? 'favorites' : 'recent',
-  };
 }
 
 export async function generateMetadata({
@@ -44,20 +33,17 @@ export async function generateMetadata({
   };
 }
 
-export default async function ExplorePage({
-  params,
-  searchParams,
-}: ExplorePageProps) {
+export default async function ExplorePage({ params }: ExplorePageProps) {
   const { locale } = await params;
-  const resolvedSearchParams = await searchParams;
-  const initialFilters = parseExploreFilters(resolvedSearchParams);
+  setRequestLocale(locale);
   const t = await getTranslations({ locale, namespace: 'portfolios' });
+  const tCommon = await getTranslations({ locale, namespace: 'common' });
 
   let initialPortfolios: Awaited<ReturnType<typeof getPublicPortfolios>> = [];
   let initialLoadSucceeded = false;
 
   try {
-    initialPortfolios = await getPublicPortfolios(initialFilters);
+    initialPortfolios = await getPublicPortfolios(DEFAULT_FILTERS);
     initialLoadSucceeded = true;
   } catch {
     initialPortfolios = [];
@@ -76,12 +62,14 @@ export default async function ExplorePage({
           </ul>
         </nav>
       )}
-      <ExplorePortfoliosPage
-        initialPortfolios={initialPortfolios}
-        initialFilters={initialFilters}
-        initialLoadSucceeded={initialLoadSucceeded}
-      />
+      {/* The client reads filters with useSearchParams, which needs a Suspense boundary on a static page. */}
+      <Suspense fallback={<PageLoading message={tCommon('loading')} />}>
+        <ExplorePortfoliosPage
+          initialPortfolios={initialPortfolios}
+          initialFilters={DEFAULT_FILTERS}
+          initialLoadSucceeded={initialLoadSucceeded}
+        />
+      </Suspense>
     </>
   );
 }
-

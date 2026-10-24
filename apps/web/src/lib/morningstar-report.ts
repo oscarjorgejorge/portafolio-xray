@@ -17,6 +17,27 @@ export function toReportLanguage(locale: string): ReportLanguage {
   return locale === 'en' ? 'en' : 'es';
 }
 
+/** Base currencies Instant X-Ray converts the whole report into (CurrencyId). */
+export const REPORT_CURRENCIES = [
+  'EUR',
+  'NOK',
+  'USD',
+  'SEK',
+  'DKK',
+  'GBP',
+  'CHF',
+] as const;
+
+export type ReportCurrency = (typeof REPORT_CURRENCIES)[number];
+
+export const DEFAULT_REPORT_CURRENCY: ReportCurrency = 'EUR';
+
+/** Read a `currency` query value; anything unknown falls back to EUR. */
+export function toReportCurrency(value: string | null | undefined): ReportCurrency {
+  const upper = value?.trim().toUpperCase();
+  return REPORT_CURRENCIES.find((code) => code === upper) ?? DEFAULT_REPORT_CURRENCY;
+}
+
 /**
  * Point an existing X-Ray URL at the report language for the current locale.
  * Stored portfolio links keep the language they were generated with until opened.
@@ -58,6 +79,10 @@ export function openMorningstarReport(
   const languageId = parsed.searchParams.get('LanguageId');
   if (languageId) {
     action.searchParams.set('LanguageId', languageId);
+  }
+  const currencyId = parsed.searchParams.get('CurrencyId');
+  if (currencyId) {
+    action.searchParams.set('CurrencyId', currencyId);
   }
   form.action = action.toString();
   form.target = '_blank';

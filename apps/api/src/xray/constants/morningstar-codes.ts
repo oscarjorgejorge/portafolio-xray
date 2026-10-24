@@ -19,6 +19,32 @@ export function resolveReportLanguageId(language?: string): string {
 }
 
 /**
+ * Instant X-Ray CurrencyId values the PDF converts every return into.
+ * Each one was checked against the live report ("Growth Of 10,000 NOK", etc.).
+ * An unknown code renders a broken PDF, so the DTO only accepts this list.
+ */
+export const REPORT_CURRENCIES = [
+  'EUR',
+  'NOK',
+  'USD',
+  'SEK',
+  'DKK',
+  'GBP',
+  'CHF',
+] as const;
+
+export type ReportCurrency = (typeof REPORT_CURRENCIES)[number];
+
+export const DEFAULT_REPORT_CURRENCY: ReportCurrency = 'EUR';
+
+export function resolveReportCurrencyId(currency?: string): ReportCurrency {
+  return (
+    REPORT_CURRENCIES.find((code) => code === currency) ??
+    DEFAULT_REPORT_CURRENCY
+  );
+}
+
+/**
  * Instant X-Ray short-format typeids (securityIds / marketValues / typeids).
  * FO = funds, ETFs and ETCs; ST = stocks.
  */

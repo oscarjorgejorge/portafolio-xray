@@ -1,5 +1,6 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { ReactNode } from 'react';
+import { Inter } from 'next/font/google';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
@@ -9,11 +10,25 @@ import { MainWithSidebar } from '@/components/layout/MainWithSidebar';
 import { BottomNav } from '@/components/navigation/BottomNav';
 import { AuthModalProvider } from '@/lib/auth/AuthModalContext';
 import { BRAND_NAME, getSiteUrl } from '@/lib/seo';
+import { QueryProvider } from '@/providers/QueryProvider';
+import { AuthProvider } from '@/lib/auth';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
+
+const inter = Inter({ subsets: ['latin'] });
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#3b82f6',
+};
 
 interface LocaleLayoutProps {
   children: ReactNode;
   params: Promise<{ locale: string }>;
 }
+
+// Only /es and /en exist; any other first segment is a 404.
+export const dynamicParams = false;
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
@@ -60,15 +75,25 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
   }
 
   // Load messages for the current locale
-  const messages = await getMessages();
+  const messages = await getMessages({ locale });
 
   return (
-    <NextIntlClientProvider messages={messages}>
-      <AuthModalProvider>
-        <NavBar />
-        <MainWithSidebar>{children}</MainWithSidebar>
-        <BottomNav />
-      </AuthModalProvider>
-    </NextIntlClientProvider>
+    <html lang={locale} suppressHydrationWarning>
+      <body className={inter.className} suppressHydrationWarning>
+        <QueryProvider>
+          <AuthProvider>
+            <ErrorBoundary>
+              <NextIntlClientProvider messages={messages}>
+                <AuthModalProvider>
+                  <NavBar />
+                  <MainWithSidebar>{children}</MainWithSidebar>
+                  <BottomNav />
+                </AuthModalProvider>
+              </NextIntlClientProvider>
+            </ErrorBoundary>
+          </AuthProvider>
+        </QueryProvider>
+      </body>
+    </html>
   );
 }

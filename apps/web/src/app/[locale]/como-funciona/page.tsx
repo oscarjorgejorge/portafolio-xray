@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { localeMetadata } from '@/lib/seo';
 import { HowItWorksContent } from '@/components/seo/HowItWorksContent';
 
@@ -22,6 +22,9 @@ export async function generateMetadata({
   };
 }
 
-export default async function HowItWorksPage() {
+export default async function HowItWorksPage({ params }: HowItWorksPageProps) {
+  const { locale } = await params;
+  setRequestLocale(locale);
+
   return <HowItWorksContent />;
 }

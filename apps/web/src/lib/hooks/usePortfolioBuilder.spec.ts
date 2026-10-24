@@ -119,6 +119,52 @@ describe('usePortfolioBuilder', () => {
     });
   });
 
+  describe('report currency', () => {
+    it('should default to EUR', () => {
+      const { result } = renderHook(() => usePortfolioBuilder(), { wrapper });
+
+      expect(result.current.currency).toBe('EUR');
+    });
+
+    it('should start from the currency query param', () => {
+      const { result } = renderHook(
+        () => usePortfolioBuilder({ initialCurrency: 'NOK' }),
+        { wrapper }
+      );
+
+      expect(result.current.currency).toBe('NOK');
+    });
+
+    it('should update and persist the currency', async () => {
+      const { result } = renderHook(() => usePortfolioBuilder(), { wrapper });
+
+      act(() => {
+        result.current.handleCurrencyChange('USD');
+      });
+
+      expect(result.current.currency).toBe('USD');
+      await waitFor(() => {
+        const stored = JSON.parse(
+          window.sessionStorage.getItem(PORTFOLIO_BUILDER_STORAGE_KEY) ?? '{}'
+        );
+        expect(stored.currency).toBe('USD');
+      });
+    });
+
+    it('should restore the currency from sessionStorage after mount', async () => {
+      window.sessionStorage.setItem(
+        PORTFOLIO_BUILDER_STORAGE_KEY,
+        JSON.stringify({ assets: [], allocationMode: 'percentage', currency: 'NOK' })
+      );
+
+      const { result } = renderHook(() => usePortfolioBuilder(), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.currency).toBe('NOK');
+      });
+    });
+  });
+
   describe('handleClearAll and handleConfirmClearAll', () => {
     it('should show confirmation when handleClearAll is called', () => {
       const initial = [createMockPortfolioAsset({ id: '1' })];

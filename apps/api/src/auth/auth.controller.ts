@@ -42,6 +42,7 @@ import {
   UpdateProfileDto,
 } from './dto';
 import { JwtAuthGuard, GoogleAuthGuard } from './guards';
+import type { GoogleAuthRequest } from './guards/google-auth.guard';
 import { CurrentUser, Public } from './decorators';
 import { AuthenticatedUser } from './interfaces';
 import { GoogleUser } from './strategies/google.strategy';
@@ -182,10 +183,10 @@ export class AuthController {
 
       // Check if user data is available from Google OAuth
       if (!req.user) {
-        this.logger.error(
-          'Google OAuth callback failed: No user data received',
-        );
-        throw new Error('Google OAuth callback failed: No user data received');
+        const reason =
+          (req as GoogleAuthRequest).googleAuthError ?? 'No user data received';
+        this.logger.error(`Google OAuth callback failed: ${reason}`);
+        throw new Error(`Google OAuth callback failed: ${reason}`);
       }
 
       const googleUser = req.user as GoogleUser;

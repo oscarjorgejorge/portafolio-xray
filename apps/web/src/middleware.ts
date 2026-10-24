@@ -19,11 +19,13 @@ export default function middleware(request: NextRequest) {
   return handleI18n(request);
 }
 
+// Only unprefixed paths need the middleware (to 308 them to /es). /es/* and
+// /en/* read the locale from the [locale] segment, so skipping them avoids
+// running code on every page view and keeps those pages static.
 export const config = {
   matcher: [
     '/',
-    '/(es|en)/:path*',
-    // Unprefixed public paths (not /_next, /favicon.ico, /sitemap.xml, …)
-    '/((?!_next|_vercel|.*\\..*).*)',
+    // Unprefixed public paths (not /es, /en, /_next, /favicon.ico, /sitemap.xml, …)
+    '/((?!(?:es|en)(?:/|$)|_next|_vercel|.*\\..*).*)',
   ],
 };
