@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { setRequestLocale } from 'next-intl/server';
 import { localeMetadata } from '@/lib/seo';
 
 interface PrivacyPageProps {
@@ -19,6 +20,7 @@ export async function generateMetadata({
 
 export default async function PrivacyPage({ params }: PrivacyPageProps) {
   const { locale } = await params;
+  setRequestLocale(locale);
   const isSpanish = locale === 'es';
 
   if (isSpanish) {

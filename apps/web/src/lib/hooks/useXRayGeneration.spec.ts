@@ -91,6 +91,29 @@ describe('useXRayGeneration', () => {
           { morningstarId: 'F00000THA5', weight: 40 },
         ]);
         expect(mockGenerateXRay.mock.calls[0][1]).toBe('en');
+        expect(mockGenerateXRay.mock.calls[0][2]).toBe('EUR');
+      });
+    });
+
+    it('should send the selected report currency', async () => {
+      const { result } = renderHook(
+        () =>
+          useXRayGeneration({
+            assets: [resolvedAsset, resolvedAsset2],
+            allocationMode: 'percentage',
+            isValid: true,
+            currency: 'NOK',
+          }),
+        { wrapper }
+      );
+
+      act(() => {
+        result.current.generate();
+      });
+
+      await waitFor(() => {
+        expect(mockGenerateXRay).toHaveBeenCalled();
+        expect(mockGenerateXRay.mock.calls[0][2]).toBe('NOK');
       });
     });
 

@@ -1,7 +1,7 @@
 import { cache } from 'react';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { ApiError } from '@/lib/api/client';
 import { resolvePortfolioHoldings } from '@/lib/api/portfolio-holdings';
 import { getPublicPortfolio } from '@/lib/api/portfolios';
@@ -18,6 +18,13 @@ const loadPublicPortfolioPage = cache(async (id: string) => {
 
 interface PublicPortfolioPageProps {
   params: Promise<{ locale: string; id: string }>;
+}
+
+// Rendered on first visit, then served from cache and refreshed every 10 minutes.
+export const revalidate = 600;
+
+export function generateStaticParams() {
+  return [];
 }
 
 export async function generateMetadata({
@@ -60,6 +67,7 @@ export default async function PublicPortfolioDetailPage({
   params,
 }: PublicPortfolioPageProps) {
   const { locale, id } = await params;
+  setRequestLocale(locale);
 
   if (!id) {
     notFound();

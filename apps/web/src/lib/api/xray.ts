@@ -4,7 +4,11 @@ import {
   GenerateXRayResponseSchema,
   type GenerateXRayResponse,
 } from './schemas';
-import type { ReportLanguage } from '@/lib/morningstar-report';
+import {
+  DEFAULT_REPORT_CURRENCY,
+  type ReportCurrency,
+  type ReportLanguage,
+} from '@/lib/morningstar-report';
 
 export interface XRayAsset {
   morningstarId: string;
@@ -14,6 +18,7 @@ export interface XRayAsset {
 export interface GenerateXRayRequest {
   assets: XRayAsset[];
   language?: ReportLanguage;
+  currency?: ReportCurrency;
 }
 
 // Re-export type for backward compatibility
@@ -37,10 +42,11 @@ export function toXRayTokenId(asset: {
 export async function generateXRay(
   assets: XRayAsset[],
   language: ReportLanguage = 'es',
+  currency: ReportCurrency = DEFAULT_REPORT_CURRENCY,
 ): Promise<GenerateXRayResponse> {
   const response = await apiClient.post<GenerateXRayResponse>(
     '/xray/generate',
-    { assets, language },
+    { assets, language, currency },
     { timeout: API.GENERATE_TIMEOUT_MS }
   );
 

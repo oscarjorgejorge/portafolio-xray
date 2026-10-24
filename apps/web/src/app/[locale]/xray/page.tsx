@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { PageLoading } from '@/components/ui/PageLoading';
 import { generateXRay, type XRayAsset } from '@/lib/api/xray';
-import { toReportLanguage } from '@/lib/morningstar-report';
+import { toReportCurrency, toReportLanguage } from '@/lib/morningstar-report';
 import { useMutation } from '@tanstack/react-query';
 import { useShareableUrl } from '@/lib/hooks/useShareableUrl';
 import { captureException } from '@/lib/services/errorReporting';
@@ -37,6 +37,7 @@ function XRayPageContent() {
   const language = toReportLanguage(locale);
   const router = useRouter();
   const searchParams = useSearchParams();
+  const currency = toReportCurrency(searchParams.get('currency'));
   const hasGeneratedRef = useRef(false);
 
   const {
@@ -49,7 +50,8 @@ function XRayPageContent() {
   } = useShareableUrl({ language });
 
   const generateMutation = useMutation({
-    mutationFn: (assets: XRayAsset[]) => generateXRay(assets, language),
+    mutationFn: (assets: XRayAsset[]) =>
+      generateXRay(assets, language, currency),
     onSuccess: (data) => {
       setUrls(data.shareableUrl, data.morningstarUrl);
     },

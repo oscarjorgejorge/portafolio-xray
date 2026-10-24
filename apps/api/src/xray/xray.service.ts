@@ -10,7 +10,9 @@ import { GenerateXRayResponse } from './types';
 import {
   getMorningstarTypeId,
   MORNINGSTAR_SECURITY_TOKEN,
+  DEFAULT_REPORT_CURRENCY,
   MORNINGSTAR_TYPE_IDS,
+  resolveReportCurrencyId,
   resolveReportLanguageId,
 } from './constants';
 import { MORNINGSTAR_URL } from '../common/constants';
@@ -83,9 +85,14 @@ export class XRayService implements IXRayService {
         `)`,
     );
 
+    const currencyId = resolveReportCurrencyId(dto.currency);
     return {
-      morningstarUrl: this.formatMorningstarUrl(holdings, dto.language),
-      shareableUrl: this.formatShareableUrl(holdings),
+      morningstarUrl: this.formatMorningstarUrl(
+        holdings,
+        dto.language,
+        currencyId,
+      ),
+      shareableUrl: this.formatShareableUrl(holdings, currencyId),
       holdingsUsingFallback,
       holdingsUsingRelatedShareClass,
     };
@@ -232,15 +239,16 @@ export class XRayService implements IXRayService {
       typeId: string;
     }>,
     language?: string,
+    currencyId: string = DEFAULT_REPORT_CURRENCY,
   ): string {
     const languageId = resolveReportLanguageId(language);
     const hasStock = holdings.some(
       (holding) => holding.typeId === MORNINGSTAR_TYPE_IDS.STOCK,
     );
     if (hasStock) {
-      return this.formatSecurityTokenListUrl(holdings, languageId);
+      return this.formatSecurityTokenListUrl(holdings, languageId, currencyId);
     }
-    return this.formatShortUrl(holdings, languageId);
+    return this.formatShortUrl(holdings, languageId, currencyId);
   }
 
   /**
@@ -254,6 +262,7 @@ export class XRayService implements IXRayService {
       typeId: string;
     }>,
     languageId: string,
+    currencyId: string,
   ): string {
     const baseUrl = `${this.morningstarBaseUrl}${MORNINGSTAR_URL.XRAY_PATH}`;
     const securityIds = holdings.map((holding) => holding.tokenId).join('|');
@@ -266,7 +275,7 @@ export class XRayService implements IXRayService {
 
     const url = new URL(baseUrl);
     url.searchParams.set('LanguageId', languageId);
-    url.searchParams.set('CurrencyId', MORNINGSTAR_URL.CURRENCY_ID);
+    url.searchParams.set('CurrencyId', currencyId);
     // Trailing | matches Instant X-Ray / Rankia short-format URLs that work in production.
     url.searchParams.set('securityIds', `${securityIds}|`);
     url.searchParams.set('marketValues', `${marketValues}|`);
@@ -284,6 +293,7 @@ export class XRayService implements IXRayService {
       typeId: string;
     }>,
     languageId: string,
+    currencyId: string,
   ): string {
     const baseUrl = `${this.morningstarBaseUrl}${MORNINGSTAR_URL.XRAY_PATH}`;
     const securityTokenList = holdings
@@ -306,6 +316,7 @@ export class XRayService implements IXRayService {
 
     const url = new URL(baseUrl);
     url.searchParams.set('LanguageId', languageId);
+    url.searchParams.set('CurrencyId', currencyId);
     url.searchParams.set(
       'PortfolioType',
       MORNINGSTAR_SECURITY_TOKEN.PORTFOLIO_TYPE,
@@ -388,11 +399,15 @@ export class XRayService implements IXRayService {
    */
   private formatShareableUrl(
     holdings: Array<{ tokenId: string; weight: number }>,
+    currencyId: string = DEFAULT_REPORT_CURRENCY,
   ): string {
     const assetsParam = holdings
       .map((holding) => `${holding.tokenId}:${holding.weight}`)
       .join(',');
     const defaultLocale = 'es';
-    return `/${defaultLocale}/xray?assets=${encodeURIComponent(assetsParam)}`;
+    // EUR links keep their current shape; other currencies travel with the link.
+    const currencyParam =
+      currencyId === DEFAULT_REPORT_CURRENCY ? '' : `&currency=${currencyId}`;
+    return `/${defaultLocale}/xray?assets=${encodeURIComponent(assetsParam)}${currencyParam}`;
   }
 }

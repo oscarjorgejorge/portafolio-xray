@@ -1,12 +1,10 @@
 import type { MetadataRoute } from 'next';
-import { headers } from 'next/headers';
 import { getPublicPortfolios } from '@/lib/api/portfolios';
 import { isIndexablePublicPortfolio } from '@/lib/portfolio-seo';
 import { API } from '@/lib/constants';
 import { routing } from '@/i18n/routing';
 import {
   absoluteUrl,
-  isCanonicalHost,
   localeLanguageAlternates,
   toValidDate,
 } from '@/lib/seo';
@@ -38,21 +36,10 @@ function sitemapEntry(
   };
 }
 
-async function getRequestHost(): Promise<string | null> {
-  try {
-    return (await headers()).get('host');
-  } catch {
-    return null;
-  }
-}
-
+// URLs are always absolute on the canonical host, and robots.txt on any other
+// host disallows crawling, so the sitemap no longer reads the request host.
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
-    const host = await getRequestHost();
-    if (!isCanonicalHost(host)) {
-      return [];
-    }
-
     const lastModified = new Date();
 
     const staticEntries = routing.locales.flatMap((locale) =>

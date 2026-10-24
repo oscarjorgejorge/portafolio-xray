@@ -1,3 +1,4 @@
+const path = require('path');
 const createNextIntlPlugin = require('next-intl/plugin');
 
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
@@ -6,6 +7,11 @@ const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 const nextConfig = {
   reactStrictMode: true,
   trailingSlash: false,
+
+  // Self-contained server (node server.js) for the Railway Docker image.
+  // Tracing stays inside apps/web even though the monorepo root has a lockfile.
+  output: 'standalone',
+  outputFileTracingRoot: path.join(__dirname),
 
   // Block on generateMetadata for every UA so <title> and hreflang are in
   // the initial HTML (view-source / SEO crawlers), not only after streaming.
@@ -135,6 +141,32 @@ const nextConfig = {
       { source: '/', ...noIndexHeader },
       { source: '/:path*', ...noIndexHeader },
     ];
+  },
+
+  // Apex to www. This used to live in vercel.json; here it works on any host.
+  async redirects() {
+    return [
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: 'xrayportfolio.com' }],
+        destination: 'https://www.xrayportfolio.com/:path*',
+        permanent: true,
+      },
+    ];
+  },
+
+  // robots.txt is static for www. Any other host gets a disallow-all file
+  // instead, without running code per request.
+  async rewrites() {
+    return {
+      beforeFiles: [
+        {
+          source: '/robots.txt',
+          missing: [{ type: 'host', value: 'www.xrayportfolio.com' }],
+          destination: '/robots-noindex.txt',
+        },
+      ],
+    };
   },
 
   // i18n is now handled by next-intl via the [locale] folder structure

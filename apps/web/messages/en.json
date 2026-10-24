@@ -97,6 +97,19 @@
     "amountInfoTitle": "How amounts are used",
     "amountInfoBody": "In Amount mode we automatically calculate percentages from the total amount you enter. When you share or explore public portfolios we only show percentages, never the raw amounts. Your original amounts are saved and only visible to you in the portfolio builder."
   },
+  "reportCurrency": {
+    "label": "Report currency:",
+    "hint": "Morningstar calculates returns and risk in this currency. Pick your account's currency to avoid the exchange-rate effect.",
+    "options": {
+      "EUR": "Euro",
+      "NOK": "Norwegian krone",
+      "USD": "US dollar",
+      "SEK": "Swedish krona",
+      "DKK": "Danish krone",
+      "GBP": "Pound sterling",
+      "CHF": "Swiss franc"
+    }
+  },
   "clearConfirm": {
     "title": "Clear All Assets",
     "message": "Are you sure you want to clear all assets? This action cannot be undone.",
