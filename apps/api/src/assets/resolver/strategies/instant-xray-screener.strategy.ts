@@ -21,6 +21,13 @@ const SCREENER_UNIVERSE_CONCURRENCY = 2;
 const SCREENER_TIMEOUT_MS = 10_000;
 /** Ticker filters can return more listings than one page. */
 const MAX_TICKER_PAGES = 4;
+/**
+ * After a 401/403 the screener is skipped for this long. Morningstar answered
+ * every request with 401 once access was revoked; retrying each universe and
+ * term only multiplied the rejected calls.
+ */
+export const SCREENER_UNAUTHORIZED_COOLDOWN_MS = 5 * 60_000;
+const UNAUTHORIZED_STATUSES = new Set([401, 403]);
 
 /**
  * Instant X-Ray security screener on lt.morningstar.com.
@@ -36,10 +43,25 @@ export class InstantXrayScreenerStrategy implements SearchStrategy {
     InstantXrayScreenerStrategy.name,
   );
   readonly name = 'XRAY_SCREENER';
+  /** Epoch ms until which the screener is considered unauthorized. */
+  private unauthorizedUntil = 0;
 
   constructor(private readonly httpClient: HttpClientService) {}
 
+  /** True while a recent 401/403 keeps the screener switched off. */
+  isUnauthorized(now = Date.now()): boolean {
+    return now < this.unauthorizedUntil;
+  }
+
   async search(query: string): Promise<SearchResult[]> {
+    if (this.isUnauthorized()) {
+      this.logger.debug(
+        `[${this.name}] Skipping ${query}: screener unauthorized until ` +
+          new Date(this.unauthorizedUntil).toISOString(),
+      );
+      return [];
+    }
+
     if (IdentifierClassifier.isTicker(query)) {
       return this.searchByTicker(query);
     }
@@ -60,6 +82,10 @@ export class InstantXrayScreenerStrategy implements SearchStrategy {
 
       for (const hits of batchHits) {
         collected.push(...hits);
+      }
+
+      if (this.isUnauthorized()) {
+        break;
       }
 
       if (collected.length > 0) {
@@ -130,6 +156,11 @@ export class InstantXrayScreenerStrategy implements SearchStrategy {
         },
       );
 
+      if (UNAUTHORIZED_STATUSES.has(response.status)) {
+        this.markUnauthorized(response.status, universeId);
+        break;
+      }
+
       if (!response.ok || !response.data) {
         this.logger.debug(
           `[${this.name}] No screener data for ${query} in ${universeId}`,
@@ -155,5 +186,23 @@ export class InstantXrayScreenerStrategy implements SearchStrategy {
     }
 
     return collected;
+  }
+
+  /**
+   * Log once per outage at error level, then keep the screener off for the
+   * cooldown. The next search after it expires probes Morningstar again.
+   */
+  private markUnauthorized(status: number, universeId: string): void {
+    const alreadyBlocked = this.isUnauthorized();
+    this.unauthorizedUntil = Date.now() + SCREENER_UNAUTHORIZED_COOLDOWN_MS;
+    if (alreadyBlocked) {
+      return;
+    }
+    this.logger.error(
+      `[${this.name}] Instant X-Ray screener returned HTTP ${status} (${universeId}). ` +
+        `Morningstar is rejecting the screener; F-ID lookups are paused for ` +
+        `${SCREENER_UNAUTHORIZED_COOLDOWN_MS / 60_000} min. ` +
+        `New funds will use 0P fallback IDs until it recovers.`,
+    );
   }
 }
