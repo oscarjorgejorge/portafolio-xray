@@ -1,5 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { InstantXrayScreenerStrategy } from './instant-xray-screener.strategy';
+import {
+  InstantXrayScreenerStrategy,
+  SCREENER_UNAUTHORIZED_COOLDOWN_MS,
+} from './instant-xray-screener.strategy';
 import { HttpClientService } from '../../../common/http';
 import { MS_ASSET_TYPES } from '../utils/constants';
 
@@ -299,6 +302,71 @@ describe('InstantXrayScreenerStrategy', () => {
     expect(httpClient.get.mock.calls[0][1]).toMatchObject({
       timeout: 10_000,
       responseType: 'json',
+    });
+  });
+
+  describe('when Morningstar rejects the screener', () => {
+    const unauthorized = { ok: false, status: 401, data: null };
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('stops after the first batch on 401 instead of trying every universe', async () => {
+      httpClient.get.mockResolvedValue(unauthorized);
+
+      const results = await strategy.search('IE00B56FVB15');
+
+      expect(results).toEqual([]);
+      expect(httpClient.get).toHaveBeenCalledTimes(2);
+      expect(strategy.isUnauthorized()).toBe(true);
+    });
+
+    it('skips the screener entirely during the cooldown', async () => {
+      httpClient.get.mockResolvedValue(unauthorized);
+      await strategy.search('IE00B56FVB15');
+      httpClient.get.mockClear();
+
+      const results = await strategy.search('ES0147868014');
+
+      expect(results).toEqual([]);
+      expect(httpClient.get).not.toHaveBeenCalled();
+    });
+
+    it('treats 403 the same as 401', async () => {
+      httpClient.get.mockResolvedValue({ ok: false, status: 403, data: null });
+
+      await strategy.search('LU1241525184');
+
+      expect(strategy.isUnauthorized()).toBe(true);
+    });
+
+    it('probes Morningstar again once the cooldown has passed', async () => {
+      const start = 1_700_000_000_000;
+      const now = jest.spyOn(Date, 'now').mockReturnValue(start);
+      httpClient.get.mockResolvedValue(unauthorized);
+      await strategy.search('IE00B56FVB15');
+      httpClient.get.mockClear();
+
+      now.mockReturnValue(start + SCREENER_UNAUTHORIZED_COOLDOWN_MS + 1);
+      httpClient.get.mockResolvedValue({
+        ok: true,
+        status: 200,
+        data: { total: 0, rows: [] },
+      });
+      await strategy.search('IE00B56FVB15');
+
+      expect(strategy.isUnauthorized()).toBe(false);
+      expect(httpClient.get).toHaveBeenCalled();
+    });
+
+    it('does not pause the screener on other HTTP errors', async () => {
+      httpClient.get.mockResolvedValue({ ok: false, status: 500, data: null });
+
+      await strategy.search('IE00B56FVB15');
+
+      expect(strategy.isUnauthorized()).toBe(false);
+      expect(httpClient.get).toHaveBeenCalledTimes(5);
     });
   });
 });
