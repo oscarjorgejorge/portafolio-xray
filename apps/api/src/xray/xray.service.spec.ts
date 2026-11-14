@@ -523,6 +523,71 @@ describe('XRayService', () => {
         );
       });
 
+      it('should fall back to the stored unverified F ID when the screener finds nothing', async () => {
+        repository.findManyByMorningstarIds.mockResolvedValue([
+          createMockAsset({
+            morningstarId: '0P0000UUVM',
+            isin: 'IE00B56FVB15',
+            shareClassId: 'F00000NGS1',
+            shareClassVerified: false,
+            type: AssetType.FUND,
+            name: 'Dimensional World Allocation 40/60 Fund GBP Accumulation',
+          }),
+        ]);
+
+        const result = await service.generate({
+          assets: [{ morningstarId: '0P0000UUVM', weight: 100 }],
+        });
+
+        expect(shareClassLookup.lookupIdentityFromScreener).toHaveBeenCalled();
+        expect(result.morningstarUrl).toContain('F00000NGS1');
+        expect(result.morningstarUrl).not.toContain('0P0000UUVM');
+        expect(result.shareableUrl).toContain('F00000NGS1');
+        expect(result.holdingsUsingFallback).toBe(0);
+        expect(result.holdingsUsingRelatedShareClass).toBe(0);
+        expect(repository.tryAssignShareClassId).not.toHaveBeenCalled();
+      });
+
+      it('should prefer a related-class screener F over the stored unverified F', async () => {
+        repository.findManyByMorningstarIds.mockResolvedValue([
+          createMockAsset({
+            morningstarId: '0P0001JDIC',
+            isin: 'IE00BKSBDB61',
+            shareClassId: 'F00000AAAA',
+            shareClassVerified: false,
+            type: AssetType.FUND,
+          }),
+        ]);
+        shareClassLookup.lookupIdentityFromScreener.mockResolvedValue({
+          shareClassId: null,
+          proxyShareClassId: 'F000014W7F',
+        });
+
+        const result = await service.generate({
+          assets: [{ morningstarId: '0P0001JDIC', weight: 100 }],
+        });
+
+        expect(result.morningstarUrl).toContain('F000014W7F');
+        expect(result.morningstarUrl).not.toContain('F00000AAAA');
+      });
+
+      it('should not use an unverified F ID for a stock', async () => {
+        repository.findManyByMorningstarIds.mockResolvedValue([
+          createMockAsset({
+            morningstarId: '0P000003RE',
+            shareClassId: 'F00000AAAA',
+            shareClassVerified: false,
+            type: AssetType.STOCK,
+          }),
+        ]);
+
+        const result = await service.generate({
+          assets: [{ morningstarId: '0P000003RE', weight: 100 }],
+        });
+
+        expect(result.morningstarUrl).not.toContain('F00000AAAA');
+      });
+
       it('should use a related-class F ID in the URL without persisting it as verified', async () => {
         repository.findManyByMorningstarIds.mockResolvedValue([
           createMockAsset({

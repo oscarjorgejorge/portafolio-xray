@@ -35,6 +35,11 @@ type XRayHolding = {
   usedFallback: boolean;
   /** True when Instant X-Ray token is a sibling-class F ID (not verified for this ISIN). */
   usedRelatedShareClass: boolean;
+  /**
+   * F ID stored for this asset but never confirmed by the screener (usually
+   * read from its own quote page). Last resort when the screener has nothing.
+   */
+  unverifiedShareClassId?: string;
   assetId?: string;
   lookup?: {
     morningstarId: string;
@@ -151,6 +156,7 @@ export class XRayService implements IXRayService {
           dbAsset,
         ),
         usedRelatedShareClass: false,
+        unverifiedShareClassId: this.unverifiedShareClassId(dbAsset),
         assetId: dbAsset?.id,
         lookup: {
           morningstarId: dbAsset?.morningstarId ?? asset.morningstarId,
@@ -186,6 +192,7 @@ export class XRayService implements IXRayService {
       const proxyId = identity.proxyShareClassId;
       const tokenId = ownId ?? proxyId ?? null;
       if (!tokenId) {
+        this.useUnverifiedShareClassId(holding);
         return;
       }
       holding.tokenId = tokenId;
@@ -206,6 +213,38 @@ export class XRayService implements IXRayService {
         );
       }
     });
+  }
+
+  /**
+   * A 0P token always renders a blank Instant X-Ray row, so a stored but
+   * unverified F ID is the better bet once the screener has nothing to offer
+   * (e.g. while Morningstar answers it with 401). The screener still wins
+   * whenever it responds, because an unverified F can be stale.
+   */
+  private useUnverifiedShareClassId(holding: XRayHolding): void {
+    const unverifiedId = holding.unverifiedShareClassId;
+    if (!unverifiedId) {
+      return;
+    }
+    holding.tokenId = unverifiedId;
+    holding.usedFallback = false;
+    this.logger.log(
+      `[XRAY] Using unverified shareClassId ${unverifiedId} for ${holding.lookup?.morningstarId} (screener returned no F ID)`,
+    );
+  }
+
+  private unverifiedShareClassId(
+    dbAsset: Asset | undefined,
+  ): string | undefined {
+    if (
+      !dbAsset ||
+      dbAsset.shareClassVerified ||
+      !isFundLikeType(dbAsset.type) ||
+      !isFundShareClassId(dbAsset.shareClassId)
+    ) {
+      return undefined;
+    }
+    return dbAsset.shareClassId!;
   }
 
   private async runPool<T>(
